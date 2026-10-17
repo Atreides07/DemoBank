@@ -94,6 +94,39 @@ final class _BrokenStore implements PendingPaymentStore {
       throw StateError('disk full');
 }
 
+/// A journal whose entry cannot be decoded until it is explicitly discarded.
+final class _UnreadableStore implements PendingPaymentStore {
+  _UnreadableStore([this.failureCode = PaymentFailureCode.journalUnreadable]);
+  final PaymentFailureCode failureCode;
+  bool failing = true;
+  int discards = 0;
+  PendingPayment? _value;
+
+  @override
+  Future<PendingPayment?> load() async {
+    if (failing) throw PaymentFailure(failureCode, 'journal');
+    return _value;
+  }
+
+  @override
+  Future<void> save(PendingPayment payment) async => _value = payment;
+
+  @override
+  Future<PendingPayment> reserve(PendingPayment candidate) async =>
+      (await load()) ?? (_value = candidate);
+
+  @override
+  Future<void> clear({String? expectedKey}) async {
+    if (expectedKey == null) {
+      discards++;
+      failing = false;
+    }
+    if (expectedKey == null || _value?.idempotencyKey == expectedKey) {
+      _value = null;
+    }
+  }
+}
+
 void main() {
   late _Gateway gateway;
   late MemoryPendingPaymentStore store;
@@ -223,6 +256,65 @@ void main() {
       await controller.confirm();
       expect(gateway.posts, 0);
       expect(controller.state.failure!.code, PaymentFailureCode.storage);
+    },
+  );
+
+  test(
+    'an unreadable journal blocks payment until explicitly discarded',
+    () async {
+      final journal = _UnreadableStore();
+      await controller.close();
+      controller = CheckoutCubit(
+        gateway: gateway,
+        pendingStore: journal,
+        clock: _Clock(),
+        keyFactory: keys,
+      );
+      await controller.begin(_intent());
+      expect(controller.state.phase, CheckoutPhase.failed);
+      expect(
+        controller.state.failure!.code,
+        PaymentFailureCode.journalUnreadable,
+      );
+      expect(journal.discards, 0, reason: 'Never discarded implicitly');
+      await controller.discardUnreadableJournal();
+      expect(journal.discards, 1);
+      expect(controller.state.phase, CheckoutPhase.review);
+      await controller.confirm();
+      expect(controller.state.phase, CheckoutPhase.succeeded);
+      expect(gateway.posts, 1);
+    },
+  );
+
+  test(
+    'a transient read failure or a recovered journal is never discarded',
+    () async {
+      final transient = _UnreadableStore(PaymentFailureCode.storage);
+      await controller.close();
+      controller = CheckoutCubit(
+        gateway: gateway,
+        pendingStore: transient,
+        clock: _Clock(),
+        keyFactory: keys,
+      );
+      await controller.begin(_intent());
+      expect(controller.state.failure!.code, PaymentFailureCode.storage);
+      await controller.discardUnreadableJournal();
+      expect(transient.discards, 0);
+
+      final recovered = _UnreadableStore();
+      await controller.close();
+      controller = CheckoutCubit(
+        gateway: gateway,
+        pendingStore: recovered,
+        clock: _Clock(),
+        keyFactory: keys,
+      );
+      await controller.begin(_intent());
+      recovered.failing = false;
+      await controller.discardUnreadableJournal();
+      expect(recovered.discards, 0);
+      expect(controller.state.phase, CheckoutPhase.review);
     },
   );
 

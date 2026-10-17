@@ -13,6 +13,11 @@ enum PaymentFailureCode {
   network,
   timeout,
   storage,
+
+  /// The recovery journal holds an entry that cannot be decoded. Submission is
+  /// blocked until the user explicitly discards it; a transient read failure
+  /// is [storage] instead and is never discarded.
+  journalUnreadable,
   unknown,
 }
 

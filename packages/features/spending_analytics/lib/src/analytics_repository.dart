@@ -9,10 +9,8 @@ final class ApiAnalyticsRepository implements AnalyticsReader {
   final CacheStore _cache;
   String _key(LedgerFilter filter) => 'analytics:${filter.cacheKey}';
   @override
-  Future<SpendingSummary?> cached(LedgerFilter filter) async {
-    final value = await _cache.read(_key(filter));
-    return value == null ? null : _decode(value.value, filter);
-  }
+  Future<SpendingSummary?> cached(LedgerFilter filter) =>
+      _cache.readDecoded(_key(filter), (value) => _decode(value, filter));
 
   @override
   Future<SpendingSummary> summary(LedgerFilter filter) async {

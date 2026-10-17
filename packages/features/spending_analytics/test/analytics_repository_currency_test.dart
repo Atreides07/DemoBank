@@ -41,8 +41,11 @@ void main() {
       expect(restored.previous.currency, 'USD');
       expect(restored.refunds.currency, 'USD');
       expect(await repository.cached(filter.copyWith(currency: 'RUB')), isNull);
+      // A cached summary in another currency is never shown: it is discarded
+      // as a miss, so the next network response replaces it.
       await cache.write('analytics:${filter.cacheKey}', _summary('RUB'));
-      await expectLater(repository.cached(filter), throwsFormatException);
+      expect(await repository.cached(filter), isNull);
+      expect(await cache.read('analytics:${filter.cacheKey}'), isNull);
     },
   );
 

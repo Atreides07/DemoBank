@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:local_storage/local_storage.dart';
+import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -100,6 +101,114 @@ void main() {
       expect(entry.isFresh, isTrue);
       await reopened.close();
       await directory.delete(recursive: true);
+    },
+  );
+
+  test(
+    'readDecoded drops malformed values but surfaces programming errors',
+    () async {
+      final store = MemoryCacheStore();
+      addTearDown(store.close);
+      await store.write('old', {'schema': 0});
+      expect(
+        await store.readDecoded<String>(
+          'old',
+          (_) => throw const FormatException('older schema'),
+        ),
+        isNull,
+      );
+      expect(await store.read('old'), isNull);
+      await store.write('kept', {'ok': true});
+      await expectLater(
+        store.readDecoded('kept', (value) => value['name'] as String),
+        throwsA(isA<TypeError>()),
+      );
+      expect(await store.read('kept'), isNotNull);
+    },
+  );
+
+  test('quarantine keeps the raw entry under a new key', () async {
+    final store = MemoryCacheStore(durable: true);
+    addTearDown(store.close);
+    await store.write('pending_payment', {'value': 'raw'});
+    final archived = await store.quarantine('pending_payment');
+    expect(archived, startsWith('pending_payment.unreadable.'));
+    expect(await store.read('pending_payment'), isNull);
+    expect((await store.read(archived!))!.value['value'], 'raw');
+    expect(await store.quarantine('pending_payment'), isNull);
+  });
+
+  test('durable memory store never evicts', () async {
+    final store = MemoryCacheStore(maxEntries: 1, durable: true);
+    addTearDown(store.close);
+    await store.write('pending_payment', {'value': 'a'});
+    await store.write('simulator_state', {'value': 'b'});
+    expect(await store.read('pending_payment'), isNotNull);
+    expect(await store.read('simulator_state'), isNotNull);
+  });
+
+  test(
+    'durable native store keeps and reports a corrupt row; a cache drops it',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'demobank-durable-',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      void corrupt(String path, String key) {
+        final database = sqlite.sqlite3.open(path);
+        try {
+          database.execute(
+            'UPDATE cache_entries SET payload = ? WHERE cache_key = ?',
+            ['{broken', key],
+          );
+        } finally {
+          database.dispose();
+        }
+      }
+
+      final journalPath = '${directory.path}/journal.sqlite';
+      final writer = CacheStore(path: journalPath, durable: true);
+      await writer.write('pending_payment', {'value': 'key-1'});
+      await writer.write('other', {'value': 'kept'});
+      await writer.close();
+      corrupt(journalPath, 'pending_payment');
+
+      final journal = CacheStore(
+        path: journalPath,
+        durable: true,
+        maxEntries: 1,
+      );
+      await expectLater(
+        journal.read('pending_payment'),
+        throwsA(isA<CorruptCacheEntry>()),
+      );
+      await journal.write('third', {'value': 'new'});
+      expect(await journal.read('other'), isNotNull);
+      expect(await journal.read('third'), isNotNull);
+      await expectLater(
+        journal.read('pending_payment'),
+        throwsA(isA<FormatException>()),
+        reason: 'A corrupt durable row stays until explicitly deleted',
+      );
+      final archived = await journal.quarantine('pending_payment');
+      expect(archived, startsWith('pending_payment.unreadable.'));
+      expect(await journal.read('pending_payment'), isNull);
+      await expectLater(
+        journal.read(archived!),
+        throwsA(isA<CorruptCacheEntry>()),
+        reason: 'The raw row is preserved for diagnosis, not repaired',
+      );
+      expect(await journal.quarantine('pending_payment'), isNull);
+      await journal.close();
+
+      final cachePath = '${directory.path}/cache.sqlite';
+      final cacheWriter = CacheStore(path: cachePath);
+      await cacheWriter.write('accounts', {'accounts': <Object>[]});
+      await cacheWriter.close();
+      corrupt(cachePath, 'accounts');
+      final cache = CacheStore(path: cachePath);
+      expect(await cache.read('accounts'), isNull);
+      await cache.close();
     },
   );
 }

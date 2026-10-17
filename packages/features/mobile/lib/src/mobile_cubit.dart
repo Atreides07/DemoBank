@@ -77,7 +77,8 @@ final class MobileCubit extends Cubit<MobileState> {
           ),
         );
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
+      addError(error, stackTrace);
       if (!isClosed && generation == _generation) {
         emit(
           MobileState(

@@ -37,7 +37,7 @@ final class AnalyticsCubit extends Cubit<AnalyticsState> {
     );
     try {
       if (state.summary == null) {
-        final cached = await reader.cached(query);
+        final cached = await _cached(query);
         if (isClosed || epoch != _epoch) return;
         if (cached != null) {
           emit(
@@ -54,7 +54,8 @@ final class AnalyticsCubit extends Cubit<AnalyticsState> {
       if (!isClosed && epoch == _epoch) {
         emit(AnalyticsState(filter: query, summary: result));
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
+      addError(error, stackTrace);
       if (!isClosed && epoch == _epoch) {
         emit(
           AnalyticsState(
@@ -65,6 +66,17 @@ final class AnalyticsCubit extends Cubit<AnalyticsState> {
           ),
         );
       }
+    }
+  }
+
+  /// The cache only speeds up the first frame; its failure never skips the
+  /// network request.
+  Future<SpendingSummary?> _cached(LedgerFilter filter) async {
+    try {
+      return await reader.cached(filter);
+    } catch (error, stackTrace) {
+      addError(error, stackTrace);
+      return null;
     }
   }
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:bank_core/bank_core.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ledger_data/ledger_data.dart';
 import 'package:local_storage/local_storage.dart';
 import 'package:network_client/network_client.dart';
 import 'package:network_simulation/network_simulation.dart';
@@ -57,6 +58,32 @@ void main() {
       expect(cubit.state.stale, isFalse);
     },
   );
+
+  test('an unreadable cache never prevents the network request', () async {
+    final reader = _Reader(
+      cacheFailure: const FormatException('cached DTO from an older version'),
+    );
+    final cubit = HistoryCubit(reader);
+    addTearDown(cubit.close);
+    await cubit.load();
+    expect(reader.requests, hasLength(1));
+    expect(cubit.state.at(0)?.id, 'txn-0');
+    expect(cubit.state.error, isNull);
+    expect(cubit.state.stale, isFalse);
+  });
+
+  test('an undecodable cached page is discarded as a miss', () async {
+    final cache = MemoryCacheStore();
+    final client = ApiClient(baseUri: Uri.parse('https://not-used.invalid'));
+    addTearDown(cache.close);
+    addTearDown(client.close);
+    final filter = LedgerFilter();
+    final key = 'history:${filter.cacheKey}:first';
+    await cache.write(key, {'items': 'not-a-list'});
+    final repository = ApiHistoryRepository(client, cache);
+    expect(await repository.cached(filter), isNull);
+    expect(await cache.read(key), isNull);
+  });
 
   test('refresh failure leaves cache visible and exposes a retry', () async {
     final reader = _Reader(
@@ -519,14 +546,23 @@ final class _Request {
 }
 
 final class _Reader implements HistoryReader {
-  _Reader({this.cachedPage, this.request, this.resolveAround});
+  _Reader({
+    this.cachedPage,
+    this.cacheFailure,
+    this.request,
+    this.resolveAround,
+  });
   final LedgerPage? cachedPage;
+  final Object? cacheFailure;
   final Future<LedgerPage> Function(LedgerFilter, String?, int)? request;
   final Future<LedgerPage> Function(LedgerFilter, String, int)? resolveAround;
   final List<_Request> requests = [];
   @override
-  Future<LedgerPage?> cached(LedgerFilter filter, {String? cursor}) async =>
-      cachedPage;
+  Future<LedgerPage?> cached(LedgerFilter filter, {String? cursor}) async {
+    if (cacheFailure case final failure?) throw failure;
+    return cachedPage;
+  }
+
   @override
   Future<LedgerPage> page(
     LedgerFilter filter, {

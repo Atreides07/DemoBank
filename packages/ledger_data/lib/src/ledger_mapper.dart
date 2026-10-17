@@ -1,49 +1,53 @@
 import 'package:bank_core/bank_core.dart';
 
+import 'json_fields.dart';
+
 Account decodeAccount(Map<String, dynamic> json) => Account(
-  id: json['id'] as String,
-  name: json['name'] as String,
-  balance: Money(json['balanceMinor'] as int, currency: _currency(json)),
-  availableBalance: json['availableMinor'] == null
-      ? null
-      : Money(json['availableMinor'] as int, currency: _currency(json)),
-  lastDigits: json['lastDigits'] as String? ?? '',
-  kind: json['kind'] as String? ?? 'debit',
+  id: json.string('id'),
+  name: json.string('name'),
+  balance: Money(json.integer('balanceMinor'), currency: _currency(json)),
+  availableBalance: switch (json.optionalInteger('availableMinor')) {
+    final minor? => Money(minor, currency: _currency(json)),
+    null => null,
+  },
+  lastDigits: json.optionalString('lastDigits') ?? '',
+  kind: json.optionalString('kind') ?? 'debit',
 );
 
 List<Account> decodeAccounts(Map<String, dynamic> json) =>
-    List.unmodifiable(_rows(json, 'accounts').map(decodeAccount));
+    List.unmodifiable(json.objects('accounts').map(decodeAccount));
 
 LedgerEntry decodeLedgerEntry(Map<String, dynamic> json, {String? currency}) =>
     LedgerEntry(
-      id: json['id'] as String,
-      title: json['title'] as String,
-      subtitle: json['subtitle'] as String? ?? '',
+      id: json.string('id'),
+      title: json.string('title'),
+      subtitle: json.optionalString('subtitle') ?? '',
       amount: Money(
-        json['amountMinor'] as int,
+        json.integer('amountMinor'),
         currency: _currency(json, inherited: currency),
       ),
-      occurredAt: DateTime.parse(json['occurredAt'] as String),
-      categoryId: json['categoryId'] as String,
-      merchantId: json['merchantId'] as String,
-      accountId: json['accountId'] as String,
-      kind: EntryKind.values.byName(json['kind'] as String),
-      status: EntryStatus.values.byName(json['status'] as String),
+      occurredAt: json.dateTime('occurredAt'),
+      categoryId: json.string('categoryId'),
+      merchantId: json.string('merchantId'),
+      accountId: json.string('accountId'),
+      kind: json.enumValue('kind', EntryKind.values),
+      status: json.enumValue('status', EntryStatus.values),
     );
 
 LedgerPage decodeLedgerPage(Map<String, dynamic> json) {
   final currency = _currency(json);
   return LedgerPage(
-    items: _rows(json, 'items')
+    items: json
+        .objects('items')
         .map((row) => decodeLedgerEntry(row, currency: currency))
         .toList(growable: false),
-    total: json['total'] as int,
-    totalAmount: Money(json['totalMinor'] as int, currency: currency),
+    total: json.integer('total'),
+    totalAmount: Money(json.integer('totalMinor'), currency: currency),
     revision: _revision(json),
-    nextCursor: json['nextCursor'] as String?,
-    startIndex: json['startIndex'] as int? ?? 0,
-    startCursor: json['startCursor'] as String?,
-    prevCursor: json['prevCursor'] as String?,
+    nextCursor: json.optionalString('nextCursor'),
+    startIndex: json.optionalInteger('startIndex') ?? 0,
+    startCursor: json.optionalString('startCursor'),
+    prevCursor: json.optionalString('prevCursor'),
   );
 }
 
@@ -51,33 +55,34 @@ AggregatePoint decodeAggregatePoint(
   Map<String, dynamic> json, {
   String? currency,
 }) => AggregatePoint(
-  id: json['id'] as String,
-  label: json['label'] as String,
+  id: json.string('id'),
+  label: json.string('label'),
   amount: Money(
-    json['amountMinor'] as int,
+    json.integer('amountMinor'),
     currency: _currency(json, inherited: currency),
   ),
-  count: json['count'] as int,
-  from: json['from'] == null ? null : DateTime.parse(json['from'] as String),
-  to: json['to'] == null ? null : DateTime.parse(json['to'] as String),
+  count: json.integer('count'),
+  from: json.optionalDateTime('from'),
+  to: json.optionalDateTime('to'),
 );
 
 SpendingSummary decodeSpendingSummary(Map<String, dynamic> json) {
   final currency = _currency(json);
-  List<AggregatePoint> points(String key) => _rows(json, key)
+  List<AggregatePoint> points(String key) => json
+      .objects(key)
       .map((row) => decodeAggregatePoint(row, currency: currency))
       .toList(growable: false);
   return SpendingSummary(
-    total: Money(json['totalMinor'] as int, currency: currency),
-    refunds: Money(json['refundMinor'] as int, currency: currency),
-    previous: Money(json['previousTotalMinor'] as int, currency: currency),
-    count: json['count'] as int,
+    total: Money(json.integer('totalMinor'), currency: currency),
+    refunds: Money(json.integer('refundMinor'), currency: currency),
+    previous: Money(json.integer('previousTotalMinor'), currency: currency),
+    count: json.integer('count'),
     revision: _revision(json),
     categories: points('categories'),
     merchants: points('merchants'),
     timeline: points('timeline'),
-    comparisonFrom: DateTime.parse(json['comparisonFrom'] as String),
-    comparisonTo: DateTime.parse(json['comparisonTo'] as String),
+    comparisonFrom: json.dateTime('comparisonFrom'),
+    comparisonTo: json.dateTime('comparisonTo'),
   );
 }
 
@@ -114,7 +119,7 @@ String _currency(Map<String, dynamic> json, {String? inherited}) {
   if (own != null && (own is! String || own.isEmpty)) {
     throw const FormatException('Invalid ledger currency');
   }
-  final resolved = own as String? ?? inherited;
+  final resolved = own is String ? own : inherited;
   if (resolved == null || resolved.isEmpty) {
     throw const FormatException('Ledger currency is required');
   }
@@ -131,8 +136,3 @@ String _revision(Map<String, dynamic> json) {
   }
   return value.toString();
 }
-
-Iterable<Map<String, dynamic>> _rows(Map<String, dynamic> json, String key) =>
-    (json[key] as List<Object?>).map(
-      (row) => Map<String, dynamic>.from(row! as Map),
-    );

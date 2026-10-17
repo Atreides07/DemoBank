@@ -485,4 +485,96 @@ void main() {
       expect(expired.body['code'], 'quote_expired');
     },
   );
+
+  test(
+    'runtime ledger rows stay in the demo reporting month on any wall clock',
+    () async {
+      api = DemoApi(now: () => DateTime.utc(2027, 3, 5, 9));
+      await api.warmUp();
+      final activity = await request(api, '/demo/activity', method: 'POST');
+      final quote = await request(
+        api,
+        '/checkout/quotes',
+        method: 'POST',
+        body: {
+          'kind': 'cinema',
+          'referenceIds': ['seat-1'],
+          'accountId': 'main',
+          'recipient': 'Кинотеатр «Сфера»',
+          'currency': 'RUB',
+          'details': {'sessionId': 'movie-001-evening', 'seatVersion': '1'},
+        },
+      );
+      await request(
+        api,
+        '/checkout/payments',
+        method: 'POST',
+        body: {'quoteId': quote['id'], 'idempotencyKey': 'calendar-key-01'},
+      );
+      final month = await request(
+        api,
+        '/transactions?from=2026-10-01&to=2026-10-16&limit=10',
+      );
+      final items = [for (final item in month['items'] as List) item as Map];
+      expect(items.take(2).map((item) => item['id']), [
+        'txn-payment-1',
+        activity['addedId'],
+      ]);
+      for (final item in items.take(2)) {
+        final occurredAt = DateTime.parse(item['occurredAt'] as String);
+        expect(occurredAt.isAfter(DemoApi.businessNow), isTrue);
+      }
+    },
+  );
+
+  test('one failed save does not stop later saves', () async {
+    var failNext = true;
+    var saves = 0;
+    api = DemoApi(
+      saveState: (_) async {
+        if (failNext) {
+          failNext = false;
+          throw StateError('disk full');
+        }
+        saves++;
+      },
+    );
+    await api.warmUp();
+    final activity = SimulatedRequest(
+      method: 'POST',
+      uri: Uri.parse('https://demo.invalid/v1/demo/activity'),
+    );
+    await expectLater(api.handle(activity), throwsStateError);
+    await request(api, '/demo/activity', method: 'POST');
+    expect(saves, 1);
+  });
+
+  test('long-expired quotes are pruned from the persisted state', () async {
+    var now = DateTime.utc(2026, 10, 16, 12);
+    api = DemoApi(now: () => now);
+    await api.warmUp();
+    Future<String> quote(String fine) async {
+      final body = await request(
+        api,
+        '/checkout/quotes',
+        method: 'POST',
+        body: {
+          'kind': 'fines',
+          'referenceIds': [fine],
+          'accountId': 'main',
+          'recipient': 'Штраф',
+          'currency': 'RUB',
+        },
+      );
+      return body['id'] as String;
+    }
+
+    final stale = await quote('fine-001');
+    now = now.add(const Duration(minutes: 30));
+    final recent = await quote('fine-001');
+    expect((api.exportState()['quotes'] as Map).keys, [stale, recent]);
+    now = now.add(const Duration(hours: 1));
+    final current = await quote('fine-001');
+    expect((api.exportState()['quotes'] as Map).keys, [recent, current]);
+  });
 }

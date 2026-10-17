@@ -43,11 +43,11 @@ void main() {
     addTearDown(cache.close);
     addTearDown(client.close);
     final filter = LedgerFilter(currency: 'USD');
-    await cache.write('history:${filter.cacheKey}:first', _page('RUB'));
-    await expectLater(
-      ApiHistoryRepository(client, cache).cached(filter),
-      throwsFormatException,
-    );
+    final key = 'history:${filter.cacheKey}:first';
+    await cache.write(key, _page('RUB'));
+    // Never shown; discarded as a miss so the network response replaces it.
+    expect(await ApiHistoryRepository(client, cache).cached(filter), isNull);
+    expect(await cache.read(key), isNull);
   });
 
   test(

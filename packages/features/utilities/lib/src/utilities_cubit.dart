@@ -60,7 +60,8 @@ final class UtilitiesCubit extends Cubit<UtilitiesState> {
           ),
         );
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
+      addError(error, stackTrace);
       if (!isClosed && generation == _generation) {
         emit(
           UtilitiesState(

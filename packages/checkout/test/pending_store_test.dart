@@ -99,11 +99,83 @@ void main() {
             isA<PaymentFailure>().having(
               (failure) => failure.code,
               'code',
-              PaymentFailureCode.storage,
+              PaymentFailureCode.journalUnreadable,
             ),
           ),
         );
       }
+    },
+  );
+
+  test(
+    'an undecodable storage entry is unreadable; a failed read is retryable',
+    () async {
+      for (final (error, code) in [
+        (
+          const FormatException('corrupt row'),
+          PaymentFailureCode.journalUnreadable,
+        ),
+        (StateError('database locked'), PaymentFailureCode.storage),
+      ]) {
+        final store = CallbackPendingPaymentStore(
+          read: () async => throw error,
+          write: (_) async => fail('A failed read must not write'),
+        );
+        await expectLater(
+          store.load(),
+          throwsA(
+            isA<PaymentFailure>().having(
+              (failure) => failure.code,
+              'code',
+              code,
+            ),
+          ),
+        );
+      }
+    },
+  );
+
+  test(
+    'discarding sets an unreadable entry aside and deletes a readable one',
+    () async {
+      String? disk = 'not json';
+      var quarantined = 0;
+      CallbackPendingPaymentStore open() => CallbackPendingPaymentStore(
+        read: () async => disk,
+        write: (value) async => disk = value,
+        quarantine: () async {
+          quarantined++;
+          disk = null;
+        },
+      );
+      await open().clear();
+      expect(quarantined, 1, reason: 'Unreadable data is never deleted');
+      expect(disk, isNull);
+
+      final now = DateTime.utc(2026, 10, 16);
+      await open().save(
+        PendingPayment(
+          idempotencyKey: 'readable',
+          preparedAt: now,
+          quote: PaymentQuote(
+            id: 'q',
+            amount: const Money(10000),
+            fee: const Money(0),
+            expiresAt: now.add(const Duration(minutes: 5)),
+            recipient: 'ЖКХ',
+            description: 'Счёт',
+            intent: PaymentIntent(
+              kind: PaymentKind.utilities,
+              accountId: 'a',
+              recipient: 'ЖКХ',
+              referenceIds: ['u'],
+            ),
+          ),
+        ),
+      );
+      await open().clear();
+      expect(quarantined, 1);
+      expect(disk, isNull);
     },
   );
 }

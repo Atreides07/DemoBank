@@ -10,10 +10,8 @@ final class ApiHistoryRepository implements HistoryReader {
   String _key(LedgerFilter filter, String? cursor) =>
       'history:${filter.cacheKey}:${cursor ?? 'first'}';
   @override
-  Future<LedgerPage?> cached(LedgerFilter filter, {String? cursor}) async {
-    final value = await _cache.read(_key(filter, cursor));
-    return value == null ? null : _decode(value.value, filter);
-  }
+  Future<LedgerPage?> cached(LedgerFilter filter, {String? cursor}) => _cache
+      .readDecoded(_key(filter, cursor), (value) => _decode(value, filter));
 
   @override
   Future<LedgerPage> page(

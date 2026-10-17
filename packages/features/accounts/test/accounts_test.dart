@@ -59,4 +59,44 @@ void main() {
       expect(() => accounts.clear(), throwsUnsupportedError);
     },
   );
+
+  test('undecodable cached accounts are dropped as a miss', () async {
+    final cache = MemoryCacheStore();
+    final client = ApiClient(baseUri: Uri.parse('https://not-used.invalid'));
+    addTearDown(cache.close);
+    addTearDown(client.close);
+    await cache.write('accounts', {
+      'accounts': [
+        {'id': 'written-by-an-older-version'},
+      ],
+    });
+    expect(await ApiAccountsRepository(client, cache).cachedAccounts(), isNull);
+    expect(await cache.read('accounts'), isNull);
+  });
+
+  test('a failing cache read never prevents the network load', () async {
+    final cubit = AccountsCubit(
+      _Reader(
+        cached: () async => throw const FormatException('older cache schema'),
+        fresh: [_account('main', 50000, 'RUB')],
+      ),
+    );
+    addTearDown(cubit.close);
+    await cubit.load();
+    expect(cubit.state.accounts.single.id, 'main');
+    expect(cubit.state.error, isNull);
+    expect(cubit.state.loading, isFalse);
+  });
+}
+
+final class _Reader implements AccountsReader {
+  _Reader({required this.cached, required this.fresh});
+  final Future<List<Account>?> Function() cached;
+  final List<Account> fresh;
+
+  @override
+  Future<List<Account>?> cachedAccounts() => cached();
+
+  @override
+  Future<List<Account>> accounts() async => fresh;
 }

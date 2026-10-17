@@ -66,7 +66,8 @@ final class CheckoutCubit extends Cubit<CheckoutState> {
         final quote = await _gateway.quote(intent);
         _set(CheckoutState(phase: CheckoutPhase.review, quote: quote));
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
+      addError(error, stackTrace);
       _set(
         CheckoutState(phase: CheckoutPhase.failed, failure: _failure(error)),
       );
@@ -87,7 +88,8 @@ final class CheckoutCubit extends Cubit<CheckoutState> {
         _intent = pending.quote.intent;
         await _check(pending);
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
+      addError(error, stackTrace);
       _set(
         CheckoutState(phase: CheckoutPhase.failed, failure: _failure(error)),
       );
@@ -139,7 +141,8 @@ final class CheckoutCubit extends Cubit<CheckoutState> {
         return;
       }
       pending = reserved;
-    } catch (_) {
+    } catch (error, stackTrace) {
+      addError(error, stackTrace);
       _set(
         CheckoutState(
           phase: CheckoutPhase.failed,
@@ -178,6 +181,43 @@ final class CheckoutCubit extends Cubit<CheckoutState> {
     }
   }
 
+  /// Explicit last resort for a journal entry that cannot be decoded. The
+  /// journal is re-read first: a readable pending payment, or one that merely
+  /// failed to load, is never removed here and stays authoritative.
+  Future<void> discardUnreadableJournal() async {
+    if (_working ||
+        state.failure?.code != PaymentFailureCode.journalUnreadable) {
+      return;
+    }
+    _working = true;
+    try {
+      try {
+        await _store.load();
+      } on PaymentFailure catch (failure) {
+        if (failure.code != PaymentFailureCode.journalUnreadable) rethrow;
+        await _store.clear();
+      }
+    } catch (error, stackTrace) {
+      addError(error, stackTrace);
+      _set(
+        CheckoutState(
+          phase: CheckoutPhase.failed,
+          failure: error is PaymentFailure
+              ? error
+              : const PaymentFailure(
+                  PaymentFailureCode.storage,
+                  'Не удалось удалить повреждённую запись. Повторите действие.',
+                ),
+        ),
+      );
+      return;
+    } finally {
+      _working = false;
+    }
+    final intent = _intent;
+    await (intent == null ? restore() : begin(intent));
+  }
+
   /// Explicit user action only. The identical key protects against a response
   /// lost after acceptance, and survives a process restart.
   Future<void> retrySamePayment() async {
@@ -207,7 +247,8 @@ final class CheckoutCubit extends Cubit<CheckoutState> {
         idempotencyKey: pending.idempotencyKey,
       );
       await _accept(pending, record);
-    } catch (error) {
+    } catch (error, stackTrace) {
+      addError(error, stackTrace);
       final failure = _failure(error);
       if (failure.outcomeUnknown) {
         await _check(pending);
@@ -239,7 +280,8 @@ final class CheckoutCubit extends Cubit<CheckoutState> {
       } else {
         await _accept(pending, record);
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
+      addError(error, stackTrace);
       _uncertain(pending, _failure(error));
     }
   }
@@ -282,7 +324,8 @@ final class CheckoutCubit extends Cubit<CheckoutState> {
   Future<void> _clearQuietly(String key) async {
     try {
       await _store.clear(expectedKey: key);
-    } catch (_) {
+    } catch (error, stackTrace) {
+      addError(error, stackTrace);
       // The server result remains authoritative. A stale journal entry is
       // harmless: next restore queries the same server operation and clears it.
     }

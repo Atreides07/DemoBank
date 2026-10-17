@@ -48,6 +48,32 @@ final class _CheckoutViewState extends State<CheckoutView> {
     super.dispose();
   }
 
+  /// Setting the journal aside unblocks new payments, so it needs an explicit
+  /// second confirmation. The dialog lives on the root navigator.
+  Future<void> _confirmDiscard() async {
+    void close(bool confirmed) =>
+        Navigator.of(context, rootNavigator: true).pop(confirmed);
+    final confirmed = await dsShowDialog<bool>(
+      context: context,
+      title: 'Удалить повреждённую запись?',
+      child: const DsText(
+        'Запись будет перенесена в архив для разбора, а новые оплаты '
+        'разблокируются. Если эта операция уже отправлялась, сначала '
+        'проверьте историю, чтобы не оплатить её повторно.',
+      ),
+      actions: [
+        DsButton(
+          label: 'Отмена',
+          onPressed: () => close(false),
+          variant: DsButtonVariant.quiet,
+        ),
+        DsButton(label: 'Удалить запись', onPressed: () => close(true)),
+      ],
+    );
+    if (!mounted || confirmed != true) return;
+    await _controller.discardUnreadableJournal();
+  }
+
   @override
   Widget build(BuildContext context) => BlocProvider.value(
     value: _controller,
@@ -179,7 +205,8 @@ final class _CheckoutViewState extends State<CheckoutView> {
         action: switch (state.failure?.code) {
           PaymentFailureCode.seatConflict || PaymentFailureCode.billStale =>
             DsButton(label: 'Обновить выбор', onPressed: widget.onFinished),
-          PaymentFailureCode.storage => DsButton(
+          PaymentFailureCode.storage ||
+          PaymentFailureCode.journalUnreadable => DsButton(
             label: 'Повторить проверку',
             onPressed: _controller.restore,
           ),
@@ -191,6 +218,12 @@ final class _CheckoutViewState extends State<CheckoutView> {
           ),
         },
       ),
+      if (state.failure?.code == PaymentFailureCode.journalUnreadable)
+        DsButton(
+          label: 'Удалить повреждённую запись',
+          onPressed: () => unawaited(_confirmDiscard()),
+          variant: DsButtonVariant.secondary,
+        ),
       DsButton(
         label: 'Вернуться',
         onPressed: widget.onFinished,

@@ -11,6 +11,8 @@ import 'package:network_client/network_client.dart';
 import 'package:network_simulation/network_simulation.dart';
 import 'package:payment_domain/payment_domain.dart';
 
+export 'src/error_reporting.dart';
+
 /// Application-scoped resources; contains no bank-specific feature dependency.
 final class AppEnvironment extends ChangeNotifier {
   AppEnvironment({
@@ -34,11 +36,13 @@ final class AppEnvironment extends ChangeNotifier {
              namespace:
                  '${storageScope(http: http, baseUri: baseUri, seed: simulation?.transport.seed ?? seed)}_responses',
            ),
+       // Recovery data is never evicted and never silently discarded.
        journal =
            journal ??
            CacheStore(
              namespace:
                  '${storageScope(http: http, baseUri: baseUri, seed: simulation?.transport.seed ?? seed)}_journal',
+             durable: true,
            ) {
     this.simulation =
         simulation ??
@@ -46,8 +50,7 @@ final class AppEnvironment extends ChangeNotifier {
           seed: seed,
           profile: profile,
           api: DemoApi(
-            loadState: () async =>
-                (await this.journal.read('simulator_state'))?.value,
+            loadState: _loadSimulatorState,
             saveState: (state) => this.journal.write(
               'simulator_state',
               state,
@@ -69,8 +72,13 @@ final class AppEnvironment extends ChangeNotifier {
       gateway: ApiPaymentGateway(api),
       pendingStore: CallbackPendingPaymentStore(
         read: () async {
-          final value = await this.journal.read('pending_payment');
-          return value?.value['value'] as String?;
+          final entry = await this.journal.read('pending_payment');
+          if (entry == null) return null;
+          final value = entry.value['value'];
+          if (value is! String) {
+            throw const FormatException('Pending payment journal entry');
+          }
+          return value;
         },
         write: (value) async {
           if (value == null) {
@@ -81,6 +89,7 @@ final class AppEnvironment extends ChangeNotifier {
             }, ttl: const Duration(days: 365));
           }
         },
+        quarantine: () => this.journal.quarantine('pending_payment'),
       ),
       clock: const SystemPaymentClock(),
       keyFactory: SecureIdempotencyKeyFactory(),
@@ -133,7 +142,23 @@ final class AppEnvironment extends ChangeNotifier {
   String get sourceLabel => http
       ? 'Сетевой транспорт · тестовый сервер'
       : 'Локальный симулятор · seed ${simulation.transport.seed}';
-  DateTime now() => DateTime(2026, 10, 16, 12);
+
+  /// The demo calendar shared with the ledger backend; see
+  /// [DemoApi.businessNow]. Reporting periods computed from it include every
+  /// payment and operation created during the session.
+  DateTime now() => DemoApi.businessNow;
+
+  /// Simulator state is synthetic and can be regenerated, unlike the payment
+  /// journal: an unreadable copy is replaced by fresh fixtures instead of
+  /// leaving the local backend unable to start.
+  Future<Map<String, dynamic>?> _loadSimulatorState() async {
+    try {
+      return (await journal.read('simulator_state'))?.value;
+    } on FormatException {
+      await journal.delete('simulator_state');
+      return null;
+    }
+  }
 
   /// Stable across process restarts and distinct for every backend or fixture.
   /// A pending simulated payment can never be restored against an HTTP server.

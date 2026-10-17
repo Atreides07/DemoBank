@@ -1,36 +1,38 @@
 import 'package:bank_core/bank_core.dart';
 
+import 'json_fields.dart';
+
 AccountProfile decodeAccountProfile(Map<String, dynamic> json) {
-  final currency = json['currency'] as String;
+  final currency = json.string('currency');
   return AccountProfile(
-    id: json['id'] as String,
-    name: json['name'] as String,
-    cashback: Money(json['cashbackMinor'] as int, currency: currency),
-    cashbackDate: DateTime.parse(json['cashbackDate'] as String),
-    contract: json['contract'] as String,
-    requisites: Map<String, String>.from(json['requisites'] as Map),
+    id: json.string('id'),
+    name: json.string('name'),
+    cashback: Money(json.integer('cashbackMinor'), currency: currency),
+    cashbackDate: json.dateTime('cashbackDate'),
+    contract: json.string('contract'),
+    requisites: json.stringMap('requisites'),
     cards: [
-      for (final value in json['cards'] as List)
+      for (final card in json.objects('cards'))
         AccountCard(
-          id: (value as Map)['id'] as String,
-          lastDigits: value['lastDigits'] as String,
-          frozen: value['frozen'] as bool,
+          id: card.string('id'),
+          lastDigits: card.string('lastDigits'),
+          frozen: card.boolean('frozen'),
         ),
     ],
     limits: [
-      for (final value in json['limits'] as List)
+      for (final limit in json.objects('limits'))
         AccountLimit(
-          id: (value as Map)['id'] as String,
-          title: value['title'] as String,
-          limit: Money(value['limitMinor'] as int, currency: currency),
-          remaining: Money(value['remainingMinor'] as int, currency: currency),
+          id: limit.string('id'),
+          title: limit.string('title'),
+          limit: Money(limit.integer('limitMinor'), currency: currency),
+          remaining: Money(limit.integer('remainingMinor'), currency: currency),
         ),
     ],
-    autoTopUp: json['autoTopUp'] as bool,
-    roundUp: json['roundUp'] as bool,
-    charity: json['charity'] as bool,
-    cashbackDestination: json['cashbackDestination'] as String,
-    linkedServicesEnabled: json['linkedServicesEnabled'] as bool,
+    autoTopUp: json.boolean('autoTopUp'),
+    roundUp: json.boolean('roundUp'),
+    charity: json.boolean('charity'),
+    cashbackDestination: json.string('cashbackDestination'),
+    linkedServicesEnabled: json.boolean('linkedServicesEnabled'),
   );
 }
 

@@ -53,7 +53,8 @@ final class FinesCubit extends Cubit<FinesState> {
           ),
         );
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
+      addError(error, stackTrace);
       if (!isClosed && generation == _generation) {
         emit(
           FinesState(

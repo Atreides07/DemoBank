@@ -133,7 +133,8 @@ final class AccountManagementCubit extends Cubit<AccountManagementState> {
       if (!isClosed && epoch == _epoch) {
         emit(AccountManagementState(profile: profile));
       }
-    } catch (_) {
+    } catch (error, stackTrace) {
+      addError(error, stackTrace);
       if (!isClosed && epoch == _epoch) {
         emit(
           AccountManagementState(
@@ -155,7 +156,8 @@ final class AccountManagementCubit extends Cubit<AccountManagementState> {
       if (isClosed || epoch != _epoch) return false;
       emit(AccountManagementState(profile: profile));
       return true;
-    } catch (error) {
+    } catch (error, stackTrace) {
+      addError(error, stackTrace);
       if (!isClosed && epoch == _epoch) {
         emit(
           AccountManagementState(

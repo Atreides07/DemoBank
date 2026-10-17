@@ -50,7 +50,8 @@ final class CinemaCubit extends Cubit<CinemaState> {
       if (!isClosed && generation == _generation) {
         emit(CinemaState(movies: List.unmodifiable(movies), loaded: true));
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
+      addError(error, stackTrace);
       if (!isClosed && generation == _generation) {
         emit(CinemaState(loaded: true, error: _message(error)));
       }
@@ -73,7 +74,8 @@ final class CinemaCubit extends Cubit<CinemaState> {
           ),
         );
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
+      addError(error, stackTrace);
       if (!isClosed && generation == _generation) {
         emit(
           CinemaState(
@@ -126,7 +128,8 @@ final class CinemaCubit extends Cubit<CinemaState> {
           ),
         );
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
+      addError(error, stackTrace);
       if (!isClosed && generation == _generation) {
         emit(
           CinemaState(

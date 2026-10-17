@@ -16,17 +16,17 @@ final class ApiAccountsRepository implements AccountsReader {
   final ApiClient _api;
   final CacheStore _cache;
   @override
-  Future<List<Account>?> cachedAccounts() async {
-    final entry = await _cache.read('accounts');
-    return entry == null ? null : _decode(entry.value);
-  }
+  Future<List<Account>?> cachedAccounts() =>
+      _cache.readDecoded('accounts', decodeAccounts);
 
-  List<Account> _decode(Map<String, dynamic> value) => decodeAccounts(value);
   @override
   Future<List<Account>> accounts() async {
     final json = await _api.get('/v1/accounts');
+    // Only a response that decodes is cached; a malformed one must not replace
+    // the last good copy or be served on the next launch.
+    final accounts = decodeAccounts(json);
     await _cache.write('accounts', json);
-    return _decode(json);
+    return accounts;
   }
 }
 
@@ -71,7 +71,7 @@ final class AccountsCubit extends Cubit<AccountsState> {
     final epoch = ++_epoch;
     emit(AccountsState(accounts: state.accounts, loading: true));
     try {
-      final cached = await reader.cachedAccounts();
+      final cached = await _cached();
       if (isClosed || epoch != _epoch) return;
       if (cached != null) emit(AccountsState(accounts: cached, loading: true));
       final accounts = await reader.accounts();
@@ -80,7 +80,8 @@ final class AccountsCubit extends Cubit<AccountsState> {
           AccountsState(accounts: List.unmodifiable(accounts), loading: false),
         );
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
+      addError(error, stackTrace);
       if (!isClosed && epoch == _epoch) {
         emit(
           AccountsState(
@@ -90,6 +91,17 @@ final class AccountsCubit extends Cubit<AccountsState> {
           ),
         );
       }
+    }
+  }
+
+  /// The cache only speeds up the first frame; its failure never skips the
+  /// network request.
+  Future<List<Account>?> _cached() async {
+    try {
+      return await reader.cachedAccounts();
+    } catch (error, stackTrace) {
+      addError(error, stackTrace);
+      return null;
     }
   }
 }

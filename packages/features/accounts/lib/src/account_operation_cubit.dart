@@ -54,7 +54,8 @@ final class AccountOperationCubit extends Cubit<AccountOperationState> {
                     'Восстановлен незавершённый запрос. Повторите его с сохранённым ключом.',
               ),
       );
-    } catch (_) {
+    } catch (error, stackTrace) {
+      addError(error, stackTrace);
       if (!isClosed) {
         emit(
           const AccountOperationState(
@@ -168,7 +169,8 @@ final class AccountOperationCubit extends Cubit<AccountOperationState> {
     } on AccountOperationRejected catch (error) {
       try {
         await journal.clear(operation);
-      } catch (_) {
+      } catch (clearError, stackTrace) {
+        addError(clearError, stackTrace);
         if (!isClosed) {
           emit(
             AccountOperationState(
@@ -184,7 +186,8 @@ final class AccountOperationCubit extends Cubit<AccountOperationState> {
       _attempted = false;
       if (!isClosed) emit(AccountOperationState(error: error.message));
       return false;
-    } catch (_) {
+    } catch (error, stackTrace) {
+      addError(error, stackTrace);
       if (!isClosed) {
         emit(
           AccountOperationState(

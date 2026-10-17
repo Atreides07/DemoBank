@@ -16,10 +16,12 @@ CacheStore createCacheStore({
   String namespace = 'responses',
   DateTime Function()? now,
   int maxEntries = 120,
+  bool durable = false,
 }) => _WebCacheStore(
   namespace: path ?? 'demobank-cache-v1-$namespace',
   now: now,
   maxEntries: maxEntries,
+  durable: durable,
 );
 
 final class _WebCacheStore implements CacheStore {
@@ -27,12 +29,18 @@ final class _WebCacheStore implements CacheStore {
     required this.namespace,
     DateTime Function()? now,
     this.maxEntries = 120,
+    this.durable = false,
   }) : _now = now ?? DateTime.now,
-       _fallback = MemoryCacheStore(now: now, maxEntries: maxEntries);
+       _fallback = MemoryCacheStore(
+         now: now,
+         maxEntries: maxEntries,
+         durable: durable,
+       );
 
   final String namespace;
   final DateTime Function() _now;
   final int maxEntries;
+  final bool durable;
   final MemoryCacheStore _fallback;
   bool _closed = false;
 
@@ -49,14 +57,23 @@ final class _WebCacheStore implements CacheStore {
   @override
   Future<CacheEntry?> read(String key) async {
     _checkOpen();
+    String? value;
     try {
-      final value = _localStorage.getItem(_key(key));
-      if (value == null) return _fallback.read(key);
-      final keys = _keys()..remove(key);
-      _saveKeys([...keys, key]);
-      return decodeEntry(value, _now);
+      value = _localStorage.getItem(_key(key));
+      if (value != null) {
+        final keys = _keys()..remove(key);
+        _saveKeys([...keys, key]);
+      }
     } on Object {
       return _fallback.read(key);
+    }
+    if (value == null) return _fallback.read(key);
+    try {
+      return decodeEntry(value, _now);
+    } on Object {
+      if (durable) throw CorruptCacheEntry(key);
+      await delete(key);
+      return null;
     }
   }
 
@@ -73,7 +90,7 @@ final class _WebCacheStore implements CacheStore {
       final keys = _keys()..remove(key);
       keys.add(key);
       _localStorage.setItem(_key(key), encoded);
-      while (keys.length > maxEntries) {
+      while (!durable && keys.length > maxEntries) {
         _localStorage.removeItem(_key(keys.removeAt(0)));
       }
       _saveKeys(keys);
@@ -94,6 +111,25 @@ final class _WebCacheStore implements CacheStore {
       // The same storage operation may be unavailable in a private context.
     }
     await _fallback.delete(key);
+  }
+
+  @override
+  Future<String?> quarantine(String key) async {
+    _checkOpen();
+    try {
+      final raw = _localStorage.getItem(_key(key));
+      if (raw != null) {
+        final target = quarantineKey(key, _now());
+        _localStorage.setItem(_key(target), raw);
+        _localStorage.removeItem(_key(key));
+        final keys = _keys()..remove(key);
+        _saveKeys([...keys, target]);
+        return target;
+      }
+    } on Object {
+      // Unavailable browser storage falls back to the session-local copy.
+    }
+    return _fallback.quarantine(key);
   }
 
   @override

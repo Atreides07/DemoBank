@@ -156,7 +156,31 @@ void main() {
     expect(() => decodeLedgerPage(page), throwsFormatException);
     expect(
       () => decodeLedgerEntry(_entry()..['amountMinor'] = 123.45),
-      throwsA(isA<TypeError>()),
+      throwsFormatException,
+    );
+  });
+
+  test('every malformed field is a FormatException, never a TypeError', () {
+    for (final (field, value) in [
+      ('id', null),
+      ('title', 42),
+      ('occurredAt', 'yesterday'),
+      ('kind', 'chargeback'),
+      ('status', null),
+    ]) {
+      expect(
+        () => decodeLedgerEntry(_entry()..[field] = value),
+        throwsFormatException,
+        reason: field,
+      );
+    }
+    expect(
+      () => decodeLedgerPage(_page()..['items'] = ['not an object']),
+      throwsFormatException,
+    );
+    expect(
+      () => decodeAccountProfile({'currency': 'RUB', 'id': 7}),
+      throwsFormatException,
     );
   });
 }

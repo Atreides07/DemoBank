@@ -105,7 +105,7 @@ final class HistoryCubit extends Cubit<HistoryState> {
     );
     try {
       if (!background && old.rowCount == 0) {
-        final cached = await reader.cached(target);
+        final cached = await _cachedFirstPage(target);
         if (!_current(epoch)) return;
         if (cached != null) {
           _applyWindow(
@@ -159,7 +159,8 @@ final class HistoryCubit extends Cubit<HistoryState> {
       } else {
         _applyWindow(window);
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
+      addError(error, stackTrace);
       if (_current(epoch)) {
         emit(
           _copy(
@@ -173,6 +174,17 @@ final class HistoryCubit extends Cubit<HistoryState> {
   }
 
   bool _current(int epoch) => !isClosed && epoch == _epoch;
+
+  /// The cache only speeds up the first frame; its failure never skips the
+  /// network request.
+  Future<LedgerPage?> _cachedFirstPage(LedgerFilter filter) async {
+    try {
+      return await reader.cached(filter);
+    } catch (error, stackTrace) {
+      addError(error, stackTrace);
+      return null;
+    }
+  }
 
   Future<_HistoryWindow> _prepareWindow(
     LedgerFilter filter,
@@ -411,7 +423,8 @@ final class HistoryCubit extends Cubit<HistoryState> {
           loadingPages: {...state.loadingPages}..remove(index),
         ),
       );
-    } catch (error) {
+    } catch (error, stackTrace) {
+      addError(error, stackTrace);
       if (_current(epoch)) {
         emit(
           _copy(

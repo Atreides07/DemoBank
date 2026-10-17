@@ -11,6 +11,7 @@ CacheStore createCacheStore({
   String namespace = 'responses',
   DateTime Function()? now,
   int maxEntries = 120,
+  bool durable = false,
 }) {
   if (!RegExp(r'^[a-zA-Z0-9_-]+$').hasMatch(namespace)) {
     throw ArgumentError.value(namespace, 'namespace');
@@ -20,6 +21,7 @@ CacheStore createCacheStore({
     namespace: namespace,
     now: now,
     maxEntries: maxEntries,
+    durable: durable,
   );
 }
 
@@ -29,9 +31,11 @@ final class _DriftCacheStore implements CacheStore {
     required String namespace,
     DateTime Function()? now,
     int maxEntries = 120,
+    bool durable = false,
   }) : assert(maxEntries > 0),
        _now = now ?? DateTime.now,
        _maxEntries = maxEntries,
+       _durable = durable,
        _database = _CacheDatabase(
          LazyDatabase(() async {
            final resolved =
@@ -45,6 +49,7 @@ final class _DriftCacheStore implements CacheStore {
 
   final DateTime Function() _now;
   final int _maxEntries;
+  final bool _durable;
   final _CacheDatabase _database;
   bool _closed = false;
   int _accessSequence = 0;
@@ -66,6 +71,10 @@ final class _DriftCacheStore implements CacheStore {
     try {
       return decodeEntry(rows.single.read<String>('payload'), _now);
     } on Object {
+      // A response cache treats an unreadable row as a miss. A durable journal
+      // keeps it: silently dropping recovery data could permit a second
+      // submission, so the owner must decide explicitly.
+      if (_durable) throw CorruptCacheEntry(key);
       await delete(key);
       return null;
     }
@@ -87,6 +96,7 @@ final class _DriftCacheStore implements CacheStore {
         'payload = excluded.payload, accessed_at = excluded.accessed_at',
         [key, encoded, _accessedAt],
       );
+      if (_durable) return;
       await _database.customStatement(
         'DELETE FROM cache_entries WHERE cache_key IN '
         '(SELECT cache_key FROM cache_entries ORDER BY accessed_at DESC, '
@@ -106,6 +116,17 @@ final class _DriftCacheStore implements CacheStore {
       'DELETE FROM cache_entries WHERE cache_key = ?',
       [key],
     );
+  }
+
+  @override
+  Future<String?> quarantine(String key) async {
+    _checkOpen();
+    final target = quarantineKey(key, _now());
+    final moved = await _database.customUpdate(
+      'UPDATE cache_entries SET cache_key = ? WHERE cache_key = ?',
+      variables: [Variable<String>(target), Variable<String>(key)],
+    );
+    return moved == 0 ? null : target;
   }
 
   @override

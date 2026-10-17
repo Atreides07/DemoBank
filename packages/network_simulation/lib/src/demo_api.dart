@@ -39,6 +39,13 @@ final class DemoApi {
     this.saveState,
   }) : _now = now ?? (() => DateTime.now().toUtc());
 
+  /// The synthetic bank's "today": 15:00 MSK on 16 October 2026, right after
+  /// the newest fixture. Clients derive reporting periods from it, and rows
+  /// created at runtime are dated just after it, so a new payment always lands
+  /// in the current period whatever the device's wall clock says. The wall
+  /// clock passed as `now` still governs quote expiry and payment metadata.
+  static final businessNow = DateTime.utc(2026, 10, 16, 12);
+
   static const reportTimezone = 'Europe/Moscow';
   static const datasetSize = 12000;
   static const categories = <String, String>{
@@ -73,6 +80,7 @@ final class DemoApi {
   int _quoteSequence = 0;
   int _paymentSequence = 0;
   int _demoSequence = 0;
+  int _ledgerSequence = 0;
   bool pendingNextPayment = false;
 
   String get revision => '$_revision';
@@ -95,6 +103,7 @@ final class DemoApi {
     _quoteSequence = 0;
     _paymentSequence = 0;
     _demoSequence = 0;
+    _ledgerSequence = 0;
     pendingNextPayment = false;
     _initializing = _generateData(restoreSavedState: false);
     await _initializing;
@@ -102,6 +111,12 @@ final class DemoApi {
   }
 
   Future<void> _ensureData() => _initializing ??= _generateData();
+
+  /// Timestamp of a ledger row created at runtime: strictly increasing on the
+  /// demo calendar and persisted with the state, so rows keep their order
+  /// across restarts.
+  DateTime _ledgerTime() =>
+      businessNow.add(Duration(seconds: ++_ledgerSequence));
 
   Future<void> warmUp() => _ensureData();
 
@@ -302,9 +317,7 @@ final class DemoApi {
       'subtitle': 'Новая операция',
       'amountMinor': 38500,
       'currency': 'RUB',
-      'occurredAt': _now()
-          .add(Duration(seconds: _demoSequence))
-          .toIso8601String(),
+      'occurredAt': _ledgerTime().toIso8601String(),
       'categoryId': 'dining',
       'merchantId': 'dining-0',
       'accountId': 'main',
@@ -873,8 +886,20 @@ final class DemoApi {
       '_details': details,
       '_accountId': account,
     };
+    _pruneQuotes();
     _quotes[quote['id'] as String] = quote;
     return SimulatedResponse(_public(quote));
+  }
+
+  /// Expired quotes stay for an hour so a late confirmation still receives an
+  /// explicit `quote_expired`; older ones are dropped to keep the persisted
+  /// state bounded. A payment keeps its own copy of the quote it consumed.
+  void _pruneQuotes() {
+    final cutoff = _now().subtract(const Duration(hours: 1));
+    _quotes.removeWhere(
+      (_, quote) =>
+          DateTime.parse(quote['expiresAt'] as String).isBefore(cutoff),
+    );
   }
 
   SimulatedResponse? _checkSeats(
@@ -1007,7 +1032,7 @@ final class DemoApi {
       'subtitle': quote['description'],
       'amountMinor': (quote['amountMinor'] as int) + (quote['feeMinor'] as int),
       'currency': quote['currency'],
-      'occurredAt': payment['createdAt'],
+      'occurredAt': _ledgerTime().toIso8601String(),
       'categoryId': category,
       'merchantId': 'provider-$kind',
       'accountId': quote['_accountId'],
@@ -1073,6 +1098,7 @@ final class DemoApi {
             'quoteSequence': _quoteSequence,
             'paymentSequence': _paymentSequence,
             'demoSequence': _demoSequence,
+            'ledgerSequence': _ledgerSequence,
             'mutations': _mutations,
             'accountAdjustments': _accountAdjustments,
             'accountPreferences': _accountPreferences,
@@ -1129,6 +1155,7 @@ final class DemoApi {
     _quoteSequence = state['quoteSequence'] as int;
     _paymentSequence = state['paymentSequence'] as int;
     _demoSequence = state['demoSequence'] as int;
+    _ledgerSequence = state['ledgerSequence'] as int? ?? 0;
     _revision = state['revision'] as int;
     if (_mutations.isNotEmpty) {
       final restored =
@@ -1153,7 +1180,11 @@ final class DemoApi {
     final save = saveState;
     if (save == null) return Future<void>.value();
     final snapshot = exportState();
-    return _persistence = _persistence.then((_) => save(snapshot));
+    final saved = _persistence.then((_) => save(snapshot));
+    // A failed save fails only the request that caused it. Keeping the error
+    // in the chain would make every later mutation fail without being tried.
+    _persistence = saved.catchError((Object _) {});
+    return saved;
   }
 
   Map<String, dynamic> _public(Map<String, dynamic> body) => {

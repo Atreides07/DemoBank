@@ -8,6 +8,44 @@ import 'package:local_storage/local_storage.dart';
 import 'package:network_simulation/network_simulation.dart';
 import 'package:payment_domain/payment_domain.dart';
 
+/// A durable journal whose simulator snapshot cannot be decoded until deleted.
+final class _UnreadableStateJournal implements CacheStore {
+  final MemoryCacheStore _delegate = MemoryCacheStore(durable: true);
+  bool corrupt = true;
+
+  @override
+  Future<CacheEntry?> read(String key) async {
+    if (key == 'simulator_state' && corrupt) throw CorruptCacheEntry(key);
+    return _delegate.read(key);
+  }
+
+  @override
+  Future<void> write(
+    String key,
+    Map<String, dynamic> value, {
+    Duration ttl = const Duration(minutes: 5),
+    String? revision,
+  }) => _delegate.write(key, value, ttl: ttl, revision: revision);
+
+  @override
+  Future<void> delete(String key) {
+    if (key == 'simulator_state') corrupt = false;
+    return _delegate.delete(key);
+  }
+
+  @override
+  Future<String?> quarantine(String key) => _delegate.quarantine(key);
+
+  @override
+  Future<void> clear() => _delegate.clear();
+
+  @override
+  Future<void> expireAll() => _delegate.expireAll();
+
+  @override
+  Future<void> close() => _delegate.close();
+}
+
 /// Observes the resource boundary rather than its private implementation. The
 /// delegate preserves serialization/copy semantics of the real cache contract.
 final class _CountingStore implements CacheStore {
@@ -17,9 +55,11 @@ final class _CountingStore implements CacheStore {
   int deletions = 0;
   int clears = 0;
   int expirations = 0;
+  int quarantines = 0;
   int closes = 0;
 
-  int get ioCalls => reads + writes + deletions + clears + expirations;
+  int get ioCalls =>
+      reads + writes + deletions + clears + expirations + quarantines;
 
   @override
   Future<CacheEntry?> read(String key) {
@@ -42,6 +82,12 @@ final class _CountingStore implements CacheStore {
   Future<void> delete(String key) {
     deletions++;
     return _delegate.delete(key);
+  }
+
+  @override
+  Future<String?> quarantine(String key) {
+    quarantines++;
+    return _delegate.quarantine(key);
   }
 
   @override
@@ -261,6 +307,65 @@ void main() {
     expect(shared.closes, 1);
     expect(shared.ioCalls, 0);
   });
+
+  test(
+    'discarding an unreadable payment journal sets it aside, not deletes it',
+    () async {
+      final journal = _CountingStore();
+      final environment = AppEnvironment(
+        cache: MemoryCacheStore(),
+        journal: journal,
+      );
+      addTearDown(environment.dispose);
+      await journal.write('pending_payment', {'value': 'not json'});
+      final store = environment.checkout.pendingStore;
+      await expectLater(
+        store.load(),
+        throwsA(
+          isA<PaymentFailure>().having(
+            (failure) => failure.code,
+            'code',
+            PaymentFailureCode.journalUnreadable,
+          ),
+        ),
+      );
+      await store.clear();
+      expect(journal.quarantines, 1);
+      expect(journal.deletions, 0);
+      expect(await store.load(), isNull);
+    },
+  );
+
+  test('reporting periods use the ledger demo calendar, not the device', () {
+    final environment = AppEnvironment(
+      cache: MemoryCacheStore(),
+      journal: MemoryCacheStore(),
+    );
+    addTearDown(environment.dispose);
+    expect(environment.now(), DemoApi.businessNow);
+    final month = ReportingPeriod.month(environment.now());
+    // Rows created during a session are dated seconds after businessNow.
+    expect(
+      month.to!.isAfter(DemoApi.businessNow.add(const Duration(hours: 8))),
+      isTrue,
+    );
+  });
+
+  test(
+    'an unreadable simulator state is regenerated instead of breaking startup',
+    () async {
+      final journal = _UnreadableStateJournal();
+      final environment = AppEnvironment(
+        cache: MemoryCacheStore(),
+        journal: journal,
+        profile: _fastProfile,
+      );
+      addTearDown(environment.dispose);
+      final response = await environment.api.get('/v1/accounts');
+      expect(response['accounts'], hasLength(5));
+      expect(journal.corrupt, isFalse);
+    },
+  );
 
   test(
     'two graphs isolate settings, response data, simulator state and payment journals',
