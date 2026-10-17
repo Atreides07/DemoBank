@@ -1,0 +1,13 @@
+name: network_simulation
+description: Reproducible streamed HTTP simulation and shared stateful demo API.
+version: 1.0.0
+publish_to: none
+resolution: workspace
+environment:
+  sdk: '>=3.9.2 <4.0.0'
+dependencies:
+  dio: 5.9.0
+dev_dependencies:
+  network_client:
+    path: ../network_client
+  test: 1.26.2

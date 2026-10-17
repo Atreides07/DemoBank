@@ -1,0 +1,12 @@
+name: bank_artwork
+description: Optional original artwork for the bank and UI catalog; excluded from standalone fines.
+publish_to: none
+resolution: workspace
+environment:
+  sdk: '>=3.9.2 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+flutter:
+  assets:
+    - assets/art/

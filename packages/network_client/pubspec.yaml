@@ -1,0 +1,11 @@
+name: network_client
+description: Transport-independent JSON API client and typed network failures.
+version: 1.0.0
+publish_to: none
+resolution: workspace
+environment:
+  sdk: '>=3.9.2 <4.0.0'
+dependencies:
+  dio: 5.9.0
+dev_dependencies:
+  test: 1.26.2

@@ -1,0 +1,33 @@
+name: demobank_workspace
+publish_to: none
+environment:
+  sdk: '>=3.9.2 <4.0.0'
+workspace:
+  - apps/bank_app
+  - apps/fines_app
+  - apps/ui_catalog
+  - packages/bank_artwork
+  - packages/bank_core
+  - packages/ledger_data
+  - packages/app_foundation
+  - packages/bank_experience
+  - packages/design_system
+  - packages/network_client
+  - packages/network_simulation
+  - packages/local_storage
+  - packages/payment_domain
+  - packages/checkout
+  - packages/features/accounts
+  - packages/features/transactions
+  - packages/features/spending_analytics
+  - packages/features/fines
+  - packages/features/utilities
+  - packages/features/mobile
+  - packages/features/cinema
+  - services/demo_api
+dev_dependencies:
+  analyzer: 7.7.1
+  flutter_lints: 6.0.0
+  test: 1.26.2
+  flutter_test:
+    sdk: flutter

@@ -1,0 +1,30 @@
+name: bank_experience
+publish_to: none
+resolution: workspace
+environment:
+  sdk: '>=3.9.2 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  flutter_bloc: 8.1.6
+  go_router: 16.2.4
+  app_foundation: any
+  bank_artwork: any
+  bank_core: any
+  design_system: any
+  accounts: any
+  transactions: any
+  spending_analytics: any
+  fines: any
+  utilities: any
+  mobile: any
+  cinema: any
+dev_dependencies:
+  network_simulation: any
+  local_storage: any
+  flutter_test:
+    sdk: flutter
+flutter:
+  uses-material-design: true

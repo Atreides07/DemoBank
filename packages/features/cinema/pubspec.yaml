@@ -1,0 +1,26 @@
+name: cinema
+description: Independent cinema service feature with injected contracts and shared checkout.
+publish_to: none
+version: 1.0.0
+resolution: workspace
+environment:
+  sdk: '>=3.9.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_bloc: 8.1.6
+  bank_core:
+    path: ../../bank_core
+  payment_domain:
+    path: ../../payment_domain
+  checkout:
+    path: ../../checkout
+  design_system:
+    path: ../../design_system
+  network_client:
+    path: ../../network_client
+dev_dependencies:
+  network_simulation:
+    path: ../../network_simulation
+  flutter_test:
+    sdk: flutter

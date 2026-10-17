@@ -1,0 +1,18 @@
+name: transactions
+publish_to: none
+resolution: workspace
+environment:
+  sdk: '>=3.9.2 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_bloc: 8.1.6
+  bank_core: any
+  ledger_data: any
+  design_system: any
+  network_client: any
+  local_storage: any
+dev_dependencies:
+  network_simulation: any
+  flutter_test:
+    sdk: flutter

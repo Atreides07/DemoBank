@@ -1,0 +1,17 @@
+name: local_storage
+description: Lazy persistent cache with freshness and bounded storage.
+version: 1.0.0
+publish_to: none
+resolution: workspace
+environment:
+  sdk: '>=3.9.2 <4.0.0'
+dependencies:
+  drift: 2.28.1
+  flutter:
+    sdk: flutter
+  path_provider: 2.1.5
+  sqlite3: 2.9.0
+  sqlite3_flutter_libs: 0.5.39
+dev_dependencies:
+  flutter_test:
+    sdk: flutter

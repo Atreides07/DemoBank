@@ -1,0 +1,10 @@
+name: ledger_data
+description: Pure Dart codecs for the shared ledger API and cache contract.
+publish_to: none
+resolution: workspace
+environment:
+  sdk: '>=3.9.2 <4.0.0'
+dependencies:
+  bank_core: any
+dev_dependencies:
+  test: 1.26.2
