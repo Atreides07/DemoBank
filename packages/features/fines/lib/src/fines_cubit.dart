@@ -5,21 +5,32 @@ import 'models.dart';
 
 enum FinesPhase { initial, loading, ready, failure }
 
+/// Why the last search produced no bills. The screen chooses the words.
+enum FinesProblem { invalidDocument, requestFailed }
+
 final class FinesState {
   const FinesState({
     this.phase = FinesPhase.initial,
     this.bills = const [],
     this.document = '',
     this.selected,
-    this.error,
+    this.problem,
+    this.failure,
   });
 
   final FinesPhase phase;
   final List<FineBill> bills;
   final String document;
   final FineBill? selected;
-  final String? error;
+  final FinesProblem? problem;
+
+  /// Details of [FinesProblem.requestFailed] when the gateway reported them.
+  final PaymentFailure? failure;
 }
+
+/// Recipient reference of state fines; the server names it in the request
+/// language.
+const finesRecipient = 'state-fines';
 
 final class FinesCubit extends Cubit<FinesState> {
   FinesCubit(this._repository) : super(const FinesState());
@@ -35,8 +46,7 @@ final class FinesCubit extends Cubit<FinesState> {
         FinesState(
           phase: FinesPhase.failure,
           document: normalized,
-          error:
-              'Введите от 10 до 12 цифр СТС или водительского удостоверения.',
+          problem: FinesProblem.invalidDocument,
         ),
       );
       return;
@@ -60,9 +70,8 @@ final class FinesCubit extends Cubit<FinesState> {
           FinesState(
             phase: FinesPhase.failure,
             document: normalized,
-            error: error is PaymentFailure
-                ? error.message
-                : 'Не удалось получить штрафы. Повторите поиск.',
+            problem: FinesProblem.requestFailed,
+            failure: error is PaymentFailure ? error : null,
           ),
         );
       }
@@ -81,15 +90,12 @@ final class FinesCubit extends Cubit<FinesState> {
   PaymentIntent intent(String accountId) {
     final bill = state.selected;
     if (bill == null || bill.paid) {
-      throw const PaymentFailure(
-        PaymentFailureCode.billStale,
-        'Начисление уже оплачено или больше недоступно.',
-      );
+      throw const PaymentFailure(PaymentFailureCode.billStale);
     }
     return PaymentIntent(
       kind: PaymentKind.fines,
       accountId: accountId,
-      recipient: 'Государственные платежи',
+      recipient: finesRecipient,
       referenceIds: [bill.id],
       currency: bill.amount.currency,
       details: {

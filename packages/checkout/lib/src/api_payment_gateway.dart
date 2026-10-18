@@ -18,7 +18,7 @@ PaymentFailure paymentFailureFromApi(ApiFailure error) =>
         ApiFailureKind.unavailable => PaymentFailureCode.network,
         ApiFailureKind.invalidResponse => PaymentFailureCode.unknown,
       },
-    }, error.message);
+    }, error.serverMessage);
 
 /// No retry interceptor is used for POST. Only the coordinator may explicitly
 /// repeat a submission, with the already persisted key.
@@ -55,10 +55,7 @@ final class ApiPaymentGateway implements PaymentGateway {
     } on ApiFailure catch (error) {
       throw paymentFailureFromApi(error);
     } on FormatException {
-      throw const PaymentFailure(
-        PaymentFailureCode.unknown,
-        'Не удалось прочитать условия платежа.',
-      );
+      throw const PaymentFailure(PaymentFailureCode.invalidTerms);
     }
   }
 

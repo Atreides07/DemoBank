@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:bank_core/bank_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/mobile.dart';
-import 'package:payment_domain/payment_domain.dart';
 
 final class _Repository implements MobileRepository {
   Future<OperatorLookup> Function(String)? lookup;
@@ -21,18 +20,21 @@ final class _Repository implements MobileRepository {
 }
 
 void main() {
-  test('money parsing keeps every kopeck and rejects invalid limits', () {
-    expect(parseMobileAmount('100,01'), const Money(10001));
-    expect(parseMobileAmount('15000'), const Money(1500000));
-    for (final amount in [
-      '99.99',
-      '15000.01',
-      '-100',
-      'NaN',
-      '100.001',
-      '1e3',
+  test('amount limits keep every kopeck and reject the rest', () {
+    expect(checkMobileAmount(10001), const Money(10001));
+    expect(checkMobileAmount(1500000), const Money(1500000));
+    for (final (minor, error) in [
+      (9999, MobileInputError.amountRange),
+      (1500001, MobileInputError.amountRange),
+      (-10000, MobileInputError.amountRange),
+      (null, MobileInputError.amountFormat),
     ]) {
-      expect(() => parseMobileAmount(amount), throwsA(isA<PaymentFailure>()));
+      expect(
+        () => checkMobileAmount(minor),
+        throwsA(
+          isA<MobileInputException>().having((e) => e.error, 'error', error),
+        ),
+      );
     }
   });
 
@@ -41,7 +43,23 @@ void main() {
     expect(normalizeMobilePhone('+7 916 123 45 67'), '79161234567');
     expect(
       () => normalizeMobilePhone('x79161234567'),
-      throwsA(isA<PaymentFailure>()),
+      throwsA(
+        isA<MobileInputException>().having(
+          (e) => e.error,
+          'error',
+          MobileInputError.phoneCharacters,
+        ),
+      ),
+    );
+    expect(
+      () => normalizeMobilePhone('+7 916 123'),
+      throwsA(
+        isA<MobileInputException>().having(
+          (e) => e.error,
+          'error',
+          MobileInputError.phoneLength,
+        ),
+      ),
     );
   });
 
@@ -71,14 +89,18 @@ void main() {
       final controller = MobileCubit(repository);
       controller.changePhone('+7 916 123-45-67');
       await controller.lookup();
-      controller.changeAmount('155,55');
+      controller.changeAmount(15555);
       final intent = controller.intent('injected-account');
       expect(intent.amount, const Money(15555));
       expect(intent.accountId, 'injected-account');
+      expect(intent.recipient, 'm1');
       expect(intent.details['phone'], '79161234567');
       expect(repository.requests, ['79161234567']);
-      controller.changeAmount('0');
+      controller.changeAmount(0);
       expect(controller.state.canContinue, isFalse);
+      expect(controller.state.amountError, MobileInputError.amountRange);
+      controller.changeAmount(null);
+      expect(controller.state.amountError, MobileInputError.amountFormat);
       await controller.close();
     },
   );

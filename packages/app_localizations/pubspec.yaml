@@ -1,0 +1,21 @@
+name: app_localizations
+description: User-facing strings (ru, en, uz) and locale-aware formatting for DemoBank.
+version: 1.0.0
+publish_to: none
+resolution: workspace
+environment:
+  sdk: '>=3.9.2 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: 0.20.2
+  bank_core: any
+  network_client: any
+  payment_domain: any
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+flutter:
+  generate: true

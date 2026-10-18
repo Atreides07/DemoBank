@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:app_localizations/app_localizations.dart';
 import 'package:bank_core/bank_core.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
@@ -72,7 +73,7 @@ void main() {
       await request;
       await tester.pumpAndSettle();
 
-      expect(view.cubit.state.error, isNotNull);
+      expect(view.cubit.state.failed, isTrue);
       expect(view.cubit.state.filter, oldFilter);
       expect(view.cubit.state.ids.values, contains(oldAnchor));
       expect(view.controller.offset, greaterThan(0));
@@ -91,6 +92,9 @@ void main() {
       await view.cubit.load();
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('ru'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           theme: DsAppTheme.light(),
           home: Scaffold(
             body: CustomScrollView(
@@ -210,8 +214,8 @@ void main() {
           amount: const Money(65432, currency: 'EUR'),
         ),
       );
-      expect(tile().value, '−654,32 EUR');
-      expect(find.text('−654,32 EUR'), findsOneWidget);
+      expect(tile().value, '−654,32 €');
+      expect(find.text('−654,32 €'), findsOneWidget);
       expect(tile().positive, isFalse);
       await apply(
         _rowEntry(
@@ -221,7 +225,7 @@ void main() {
           kind: EntryKind.refund,
         ),
       );
-      expect(tile().value, '+654,32 EUR');
+      expect(tile().value, '+654,32 €');
       expect(tile().positive, isTrue);
 
       await apply(
@@ -318,6 +322,9 @@ Widget _rowApp(
   ThemeData? theme,
   double textScale = 1,
 }) => MaterialApp(
+  locale: const Locale('ru'),
+  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  supportedLocales: AppLocalizations.supportedLocales,
   theme: theme ?? DsAppTheme.light(),
   builder: (context, child) => MediaQuery(
     data: MediaQuery.of(
@@ -381,6 +388,9 @@ Future<_HistoryView> _mountDeepHistory(WidgetTester tester) async {
   }
   await tester.pumpWidget(
     MaterialApp(
+      locale: const Locale('ru'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       theme: DsAppTheme.light(),
       home: Scaffold(
         body: CustomScrollView(

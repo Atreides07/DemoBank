@@ -51,7 +51,7 @@ void main() {
       expect(cubit.state.filter.category, 'groceries');
       expect(cubit.state.stale, isTrue);
       expect(cubit.state.loading, isFalse);
-      expect(cubit.state.error, isNotNull);
+      expect(cubit.state.failed, isTrue);
     },
   );
 
@@ -101,7 +101,7 @@ void main() {
     older.completeError(StateError('stale request failed'));
     await first;
     expect(cubit.state.summary?.revision, 'newer');
-    expect(cubit.state.error, isNull);
+    expect(cubit.state.failed, isFalse);
   });
 
   test('closing the state scope ignores a late result', () async {

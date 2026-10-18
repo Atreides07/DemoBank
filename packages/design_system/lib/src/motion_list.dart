@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 
 import 'components.dart';
 import 'layout.dart';
+import 'localizations.dart';
 import 'tokens.dart';
 
 /// Lazily built, stable-identity sliver. The same identity must identify the
@@ -569,9 +570,9 @@ class DsPendingUpdates extends StatelessWidget {
   Widget build(BuildContext context) => Semantics(
     liveRegion: true,
     child: DsNotice(
-      message: 'Новых операций: $count. Текущее место чтения сохранено.',
+      message: DsLocalizations.of(context).newItems(count),
       action: DsButton(
-        label: 'Показать обновления',
+        label: DsLocalizations.of(context).showUpdates,
         onPressed: onApply,
         icon: Icons.vertical_align_top_rounded,
         variant: DsButtonVariant.quiet,

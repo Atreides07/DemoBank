@@ -14,6 +14,10 @@ jobs:
           flutter-version: '3.35.7'
           cache: true
       - run: flutter pub get --enforce-lockfile
+      - name: Generated localizations match the ARB files
+        run: |
+          (cd packages/app_localizations && flutter gen-l10n)
+          git diff --exit-code -- packages/app_localizations/lib/src/generated
       - run: dart format --output=none --set-exit-if-changed apps packages services tool test
       - run: flutter analyze --no-pub
       - run: dart run tool/quality_gate.dart

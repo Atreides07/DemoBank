@@ -3,18 +3,42 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 enum AccountOperationStep { restoring, editing, review, submitting, succeeded }
 
+/// What the person needs to know about the operation. The screen chooses the
+/// words.
+enum AccountOperationProblem {
+  /// An unfinished request was restored and must be repeated with its key.
+  restored,
+  journalUnreadable,
+  invalidAmount,
+  insufficientFunds,
+  invalidDestination,
+  invalidRecipient,
+  earlierRequestPending,
+  rejectedJournalStuck,
+  rejected,
+  resultUnknown,
+}
+
 final class AccountOperationState {
   const AccountOperationState({
     this.step = AccountOperationStep.editing,
     this.operation,
     this.result,
-    this.error,
+    this.problem,
+    this.serverMessage,
   });
   final AccountOperationStep step;
   final AccountOperation? operation;
   final AccountOperationResult? result;
-  final String? error;
+  final AccountOperationProblem? problem;
+
+  /// The bank's explanation of [AccountOperationProblem.rejected], in the
+  /// interface language.
+  final String? serverMessage;
 }
+
+/// Largest amount of one operation, in minor units.
+const accountOperationLimit = Money(100000000);
 
 /// Exact minor-unit validation precedes confirmation. A failed submission keeps
 /// its idempotency key; retry can never create a second ledger operation.
@@ -50,8 +74,7 @@ final class AccountOperationCubit extends Cubit<AccountOperationState> {
             : AccountOperationState(
                 step: AccountOperationStep.review,
                 operation: pending,
-                error:
-                    'Восстановлен незавершённый запрос. Повторите его с сохранённым ключом.',
+                problem: AccountOperationProblem.restored,
               ),
       );
     } catch (error, stackTrace) {
@@ -60,7 +83,7 @@ final class AccountOperationCubit extends Cubit<AccountOperationState> {
         emit(
           const AccountOperationState(
             step: AccountOperationStep.restoring,
-            error: 'Не удалось прочитать журнал. Повторите восстановление.',
+            problem: AccountOperationProblem.journalUnreadable,
           ),
         );
       }
@@ -69,27 +92,16 @@ final class AccountOperationCubit extends Cubit<AccountOperationState> {
 
   bool _attempted = false;
 
-  static int? parseMinor(String input) {
-    final value = input
-        .trim()
-        .replaceAll(' ', '')
-        .replaceAll('\u00a0', '')
-        .replaceAll(',', '.');
-    if (!RegExp(r'^\d{1,7}(\.\d{1,2})?$').hasMatch(value)) return null;
-    final parts = value.split('.');
-    return int.parse(parts.first) * 100 +
-        (parts.length == 1 ? 0 : int.parse(parts.last.padRight(2, '0')));
-  }
-
-  void review(String amount, String? destination) {
+  /// [minor] is the amount the screen parsed in the person's language, or
+  /// `null` when the text is not an amount.
+  void review(int? minor, String? destination) {
     if (state.step != AccountOperationStep.editing) return;
-    final minor = parseMinor(amount);
-    String? error;
-    if (minor == null || minor <= 0 || minor > 100000000) {
-      error = 'Введите сумму от 0,01 до 1 000 000 с точностью до копейки';
+    AccountOperationProblem? error;
+    if (minor == null || minor <= 0 || minor > accountOperationLimit.minor) {
+      error = AccountOperationProblem.invalidAmount;
     } else if (kind != AccountOperationKind.topUp &&
         minor > account.available.minor) {
-      error = 'Недостаточно средств на счёте';
+      error = AccountOperationProblem.insufficientFunds;
     } else if (kind == AccountOperationKind.transfer &&
         !accounts.any(
           (a) =>
@@ -97,13 +109,13 @@ final class AccountOperationCubit extends Cubit<AccountOperationState> {
               a.id != account.id &&
               a.balance.currency == account.balance.currency,
         )) {
-      error = 'Выберите другой счёт в той же валюте';
+      error = AccountOperationProblem.invalidDestination;
     } else if (kind == AccountOperationKind.phoneTransfer &&
         !recipients.any((r) => r.id == destination)) {
-      error = 'Выберите учебного получателя';
+      error = AccountOperationProblem.invalidRecipient;
     }
     if (error != null) {
-      emit(AccountOperationState(error: error));
+      emit(AccountOperationState(problem: error));
       return;
     }
     emit(
@@ -150,7 +162,7 @@ final class AccountOperationCubit extends Cubit<AccountOperationState> {
           AccountOperationState(
             step: AccountOperationStep.review,
             operation: reserved,
-            error: 'Сначала завершите ранее сохранённый запрос.',
+            problem: AccountOperationProblem.earlierRequestPending,
           ),
         );
         return false;
@@ -176,15 +188,21 @@ final class AccountOperationCubit extends Cubit<AccountOperationState> {
             AccountOperationState(
               step: AccountOperationStep.review,
               operation: operation,
-              error:
-                  'Запрос отклонён. Не удалось очистить журнал; повторите восстановление.',
+              problem: AccountOperationProblem.rejectedJournalStuck,
             ),
           );
         }
         return false;
       }
       _attempted = false;
-      if (!isClosed) emit(AccountOperationState(error: error.message));
+      if (!isClosed) {
+        emit(
+          AccountOperationState(
+            problem: AccountOperationProblem.rejected,
+            serverMessage: error.serverMessage,
+          ),
+        );
+      }
       return false;
     } catch (error, stackTrace) {
       addError(error, stackTrace);
@@ -193,8 +211,7 @@ final class AccountOperationCubit extends Cubit<AccountOperationState> {
           AccountOperationState(
             step: AccountOperationStep.review,
             operation: operation,
-            error:
-                'Результат пока не получен. Повторите запрос: сумма и ключ операции сохранены.',
+            problem: AccountOperationProblem.resultUnknown,
           ),
         );
       }

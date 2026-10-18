@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:ui';
 import 'package:app_foundation/app_foundation.dart';
+import 'package:app_localizations/app_localizations.dart';
 import 'package:bank_experience/bank_experience.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
@@ -46,8 +47,8 @@ bool _historyReady(WidgetTester tester) {
     return false;
   }
   final state = _history(tester).state;
-  if (state.rowCount == 0 && state.error != null) {
-    throw StateError('History request failed: ${state.error}');
+  if (state.rowCount == 0 && state.failed) {
+    throw StateError('History request failed');
   }
   return state.rowCount > 0;
 }
@@ -62,6 +63,8 @@ void main() {
     int? firstPageCompletedUs;
     double? firstPageRequestMs;
     final environment = AppEnvironment.fromDefines(
+      // Probes find screens by their Russian text.
+      language: AppLanguage.ru,
       onApiEvent: (event) {
         if (startup.isRunning &&
             firstPageCompletedUs == null &&

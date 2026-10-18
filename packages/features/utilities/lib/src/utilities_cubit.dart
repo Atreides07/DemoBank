@@ -6,20 +6,31 @@ import 'models.dart';
 
 enum UtilitiesPhase { initial, loading, ready, failure }
 
+/// Why the last request produced no bills. The screen chooses the words.
+enum UtilitiesProblem { invalidAccount, requestFailed }
+
+/// Recipient reference of utility providers; the server names them in the
+/// request language.
+const utilitiesRecipient = 'utilities';
+
 final class UtilitiesState {
   const UtilitiesState({
     this.phase = UtilitiesPhase.initial,
     this.account = '',
     this.bills = const [],
     this.selectedIds = const {},
-    this.error,
+    this.problem,
+    this.failure,
   });
 
   final UtilitiesPhase phase;
   final String account;
   final List<UtilityBill> bills;
   final Set<String> selectedIds;
-  final String? error;
+  final UtilitiesProblem? problem;
+
+  /// Details of [UtilitiesProblem.requestFailed] when they are known.
+  final PaymentFailure? failure;
 
   List<UtilityBill> get selectedBills => bills
       .where((bill) => !bill.paid && selectedIds.contains(bill.id))
@@ -43,7 +54,7 @@ final class UtilitiesCubit extends Cubit<UtilitiesState> {
         UtilitiesState(
           phase: UtilitiesPhase.failure,
           account: normalized,
-          error: 'Лицевой счёт должен содержать от 6 до 12 цифр.',
+          problem: UtilitiesProblem.invalidAccount,
         ),
       );
       return;
@@ -67,9 +78,8 @@ final class UtilitiesCubit extends Cubit<UtilitiesState> {
           UtilitiesState(
             phase: UtilitiesPhase.failure,
             account: normalized,
-            error: error is PaymentFailure
-                ? error.message
-                : 'Не удалось получить начисления. Повторите запрос.',
+            problem: UtilitiesProblem.requestFailed,
+            failure: error is PaymentFailure ? error : null,
           ),
         );
       }
@@ -93,15 +103,12 @@ final class UtilitiesCubit extends Cubit<UtilitiesState> {
   PaymentIntent intent(String accountId) {
     final bills = state.selectedBills;
     if (bills.isEmpty) {
-      throw const PaymentFailure(
-        PaymentFailureCode.validation,
-        'Выберите хотя бы один неоплаченный счёт.',
-      );
+      throw const PaymentFailure(PaymentFailureCode.validation);
     }
     return PaymentIntent(
       kind: PaymentKind.utilities,
       accountId: accountId,
-      recipient: 'Коммунальные услуги',
+      recipient: utilitiesRecipient,
       referenceIds: bills.map((bill) => bill.id).toList(growable: false),
       details: {
         'billVersions': {for (final bill in bills) bill.id: bill.version},

@@ -24,29 +24,22 @@ extension _AccountFixtures on DemoApi {
     if (parts.length != 3 || parts.first != 'accounts') return null;
     final id = parts[1];
     if (_findAccount(id) == null) {
-      return _error(404, 'account_not_found', 'Счёт не найден');
+      return _error(404, 'account_not_found', 'error.accountNotFound');
     }
     if (request.method == 'GET' && parts.last == 'recipients') {
-      return const SimulatedResponse({
+      return SimulatedResponse({
         'items': [
-          {
-            'id': 'demo-anna',
-            'name': 'Анна Демо',
-            'bank': 'Учебный банк',
-            'phone': '+7 (000) 000-00-11',
-          },
-          {
-            'id': 'demo-ivan',
-            'name': 'Иван Примеров',
-            'bank': 'Банк примеров',
-            'phone': '+7 (000) 000-00-22',
-          },
-          {
-            'id': 'demo-maria',
-            'name': 'Мария Макетова',
-            'bank': 'Демо Банк',
-            'phone': '+7 (000) 000-00-33',
-          },
+          for (final (recipient, phone) in const [
+            ('demo-anna', '+7 (000) 000-00-11'),
+            ('demo-ivan', '+7 (000) 000-00-22'),
+            ('demo-maria', '+7 (000) 000-00-33'),
+          ])
+            {
+              'id': recipient,
+              'name': _t('recipient.$recipient'),
+              'bank': _t('bank.$recipient'),
+              'phone': phone,
+            },
         ],
       });
     }
@@ -66,13 +59,13 @@ extension _AccountFixtures on DemoApi {
         'linkedServicesEnabled',
       };
       if (request.body.keys.any((key) => !allowed.contains(key))) {
-        return _error(422, 'invalid_preference', 'Неизвестная настройка');
+        return _error(422, 'invalid_preference', 'error.unknownSetting');
       }
       final patch = Map<String, dynamic>.from(request.body);
       if (patch.containsKey('name')) {
         final name = patch['name'];
         if (name is! String || name.trim().isEmpty || name.trim().length > 32) {
-          return _error(422, 'invalid_name', 'Название: от 1 до 32 символов');
+          return _error(422, 'invalid_name', 'error.nameLength');
         }
         patch['name'] = name.trim();
       }
@@ -85,18 +78,14 @@ extension _AccountFixtures on DemoApi {
         'linkedServicesEnabled',
       ]) {
         if (patch.containsKey(key) && patch[key] is! bool) {
-          return _error(422, 'invalid_preference', 'Некорректная настройка');
+          return _error(422, 'invalid_preference', 'error.invalidSetting');
         }
       }
       if (patch.containsKey('cashbackDestination')) {
         final target = _findAccount(patch['cashbackDestination'].toString());
         if (target == null ||
             target['currency'] != _findAccount(id)!['currency']) {
-          return _error(
-            422,
-            'invalid_destination',
-            'Выберите счёт зачисления в той же валюте',
-          );
+          return _error(422, 'invalid_destination', 'error.cashbackCurrency');
         }
       }
       final preferences = _accountPreferences.putIfAbsent(id, () => {});
@@ -105,11 +94,11 @@ extension _AccountFixtures on DemoApi {
         final cards = _accountProfile(id).body['cards'] as List;
         if (!cards.any((c) => (c as Map)['id'] == cardId) ||
             patch['frozen'] is! bool) {
-          return _error(422, 'invalid_card', 'Карта не найдена');
+          return _error(422, 'invalid_card', 'error.cardNotFound');
         }
         preferences['frozen:$cardId'] = patch.remove('frozen');
       } else if (patch.containsKey('frozen')) {
-        return _error(422, 'invalid_card', 'Выберите карту');
+        return _error(422, 'invalid_card', 'error.chooseCard');
       }
       preferences.addAll(patch);
       await _persist();
@@ -131,18 +120,22 @@ extension _AccountFixtures on DemoApi {
     return SimulatedResponse({
       'id': id,
       'name': account['name'],
-      'cashbackMinor': id == 'main' ? 12480 : 3850,
+      'cashbackMinor': switch (id) {
+        'main' => 12480,
+        'uzs' => 1250000,
+        _ => 3850,
+      },
       'currency': account['currency'],
       'cashbackDate': '2026-10-22T00:00:00.000Z',
       'contract': id == 'main' ? 'DEMO-2026-0042' : 'DEMO-2026-0097',
       'requisites': {
-        'Получатель': 'Алексей Демонов',
-        'Банк': 'Демо Банк · учебные реквизиты',
-        'Номер счёта': id == 'main'
+        _t('requisites.recipient'): _t('customer.name'),
+        _t('requisites.bank'): _t('requisites.bankValue'),
+        _t('requisites.account'): id == 'main'
             ? '00000000000000000042'
             : '00000000000000000097',
-        'БИК': '000000000',
-        'Валюта': account['currency'],
+        _t('requisites.bic'): '000000000',
+        _t('requisites.currency'): account['currency'],
       },
       'cards': [
         for (var i = 0; i < digits.length; i++)
@@ -153,24 +146,17 @@ extension _AccountFixtures on DemoApi {
           },
       ],
       'limits': [
-        {
-          'id': 'other_atm',
-          'title': 'Снятие в других банкоматах',
-          'limitMinor': 10000000,
-          'remainingMinor': 7500000,
-        },
-        {
-          'id': 'own_atm',
-          'title': 'Снятие в банкоматах Демо',
-          'limitMinor': 50000000,
-          'remainingMinor': 42000000,
-        },
-        {
-          'id': 'transfers',
-          'title': 'Переводы по номеру телефона',
-          'limitMinor': 100000000,
-          'remainingMinor': 93500000,
-        },
+        for (final (limitId, limit, remaining) in const [
+          ('other_atm', 10000000, 7500000),
+          ('own_atm', 50000000, 42000000),
+          ('transfers', 100000000, 93500000),
+        ])
+          {
+            'id': limitId,
+            'title': _t('limit.$limitId'),
+            'limitMinor': limit,
+            'remainingMinor': remaining,
+          },
       ],
       'autoTopUp': prefs['autoTopUp'] ?? false,
       'roundUp': prefs['roundUp'] ?? false,
@@ -186,7 +172,7 @@ extension _AccountFixtures on DemoApi {
   ) async {
     final key = body['requestId'];
     if (key is! String || key.isEmpty || key.length > 120) {
-      return _error(422, 'missing_request_id', 'Нет ключа операции');
+      return _error(422, 'missing_request_id', 'error.noOperationKey');
     }
     final signature = jsonEncode([
       id,
@@ -199,58 +185,38 @@ extension _AccountFixtures on DemoApi {
     if (previous != null) {
       return previous['_signature'] == signature
           ? SimulatedResponse(_public(previous))
-          : _error(
-              409,
-              'request_conflict',
-              'Ключ уже используется другой операцией',
-            );
+          : _error(409, 'request_conflict', 'error.keyConflict');
     }
     final amount = body['amountMinor'];
     if (amount is! int || amount <= 0 || amount > 100000000) {
-      return _error(
-        422,
-        'invalid_amount',
-        'Сумма должна быть от 0,01 до 1 000 000 ₽',
-      );
+      return _error(422, 'invalid_amount', 'error.operationAmount');
     }
     final account = _findAccount(id)!;
     if (body['currency'] != account['currency']) {
-      return _error(
-        422,
-        'currency_mismatch',
-        'Валюта операции не совпадает со счётом',
-      );
+      return _error(422, 'currency_mismatch', 'error.currencyMismatch');
     }
     final kind = body['kind'];
     if (kind != 'topUp' && kind != 'transfer' && kind != 'phoneTransfer') {
-      return _error(422, 'invalid_operation', 'Операция не поддерживается');
+      return _error(422, 'invalid_operation', 'error.unsupportedOperation');
     }
     final destination = body['destinationId'];
     if (kind == 'phoneTransfer' &&
         (account['currency'] != 'RUB' ||
             !['demo-anna', 'demo-ivan', 'demo-maria'].contains(destination))) {
-      return _error(
-        422,
-        'invalid_recipient',
-        'Выберите учебного получателя для рублёвого перевода',
-      );
+      return _error(422, 'invalid_recipient', 'error.phoneRecipient');
     }
     if (kind != 'topUp' && _spendable(id) < amount) {
-      return _error(422, 'insufficient_funds', 'Недостаточно средств');
+      return _error(422, 'insufficient_funds', 'error.notEnough');
     }
     if (kind == 'transfer') {
       final target = destination is String ? _findAccount(destination) : null;
       if (target == null ||
           destination == id ||
           target['currency'] != account['currency']) {
-        return _error(
-          422,
-          'invalid_destination',
-          'Выберите другой счёт в той же валюте',
-        );
+        return _error(422, 'invalid_destination', 'error.otherAccount');
       }
       if (_spendable(id) < amount) {
-        return _error(422, 'insufficient_funds', 'Недостаточно средств');
+        return _error(422, 'insufficient_funds', 'error.notEnough');
       }
     }
     final operationId = 'account-${_accountOperations.length + 1}';
@@ -261,20 +227,16 @@ extension _AccountFixtures on DemoApi {
       bool incoming,
     ) => {
       'id': '$operationId-$suffix',
-      'title': kind == 'topUp'
-          ? 'Пополнение с демо-карты'
+      '_titleKey': kind == 'topUp'
+          ? 'entry.cardTopUp'
           : kind == 'phoneTransfer'
-          ? const {
-              'demo-anna': 'Анна Демо',
-              'demo-ivan': 'Иван Примеров',
-              'demo-maria': 'Мария Макетова',
-            }[destination]
-          : 'Между своими счетами',
-      'subtitle': kind == 'topUp'
-          ? 'Демонстрационное пополнение'
+          ? 'recipient.$destination'
+          : 'entry.ownTransfer',
+      '_subtitleKey': kind == 'topUp'
+          ? 'entry.demoTopUp'
           : incoming
-          ? 'Входящий перевод'
-          : 'Исходящий перевод',
+          ? 'entry.incoming'
+          : 'entry.outgoing',
       'amountMinor': kind != 'topUp' && !incoming ? -amount : amount,
       'currency': account['currency'],
       'occurredAt': at,

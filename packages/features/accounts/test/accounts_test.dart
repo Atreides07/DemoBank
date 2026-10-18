@@ -84,7 +84,7 @@ void main() {
     addTearDown(cubit.close);
     await cubit.load();
     expect(cubit.state.accounts.single.id, 'main');
-    expect(cubit.state.error, isNull);
+    expect(cubit.state.failed, isFalse);
     expect(cubit.state.loading, isFalse);
   });
 }

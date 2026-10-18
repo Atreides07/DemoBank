@@ -16,6 +16,50 @@ List<String> inspectUiSource(String source, String path) {
   return issues;
 }
 
+/// User-facing words live in catalogues, so every language gets them: the
+/// application ARB files, the design system's own few words, and the demo
+/// backend's server texts. A Cyrillic string literal anywhere else is a
+/// phrase only Russian readers would see.
+const textCatalogues = [
+  '/packages/app_localizations/lib/',
+  '/packages/design_system/lib/src/localizations.dart',
+  '/packages/network_simulation/lib/src/demo_texts.dart',
+];
+
+List<String> inspectUntranslatedText(String source, String path) {
+  if (textCatalogues.any(path.contains)) return const [];
+  final issues = <String>[];
+  parseString(content: source, path: path).unit.accept(_Literals(issues, path));
+  return issues;
+}
+
+final class _Literals extends RecursiveAstVisitor<void> {
+  _Literals(this.issues, this.path);
+  final List<String> issues;
+  final String path;
+  static final _cyrillic = RegExp('[\u0400-\u04ff]');
+
+  @override
+  void visitSimpleStringLiteral(SimpleStringLiteral node) {
+    if (_cyrillic.hasMatch(node.value)) {
+      issues.add(
+        '$path:${node.offset}: untranslated text "${node.value}"; '
+        'add it to a catalogue',
+      );
+    }
+  }
+
+  @override
+  void visitInterpolationString(InterpolationString node) {
+    if (_cyrillic.hasMatch(node.value)) {
+      issues.add(
+        '$path:${node.offset}: untranslated text "${node.value}"; '
+        'add it to a catalogue',
+      );
+    }
+  }
+}
+
 final class _Variables extends RecursiveAstVisitor<void> {
   _Variables(this.values);
   final Map<String, Expression> values;
@@ -241,6 +285,7 @@ Future<void> main() async {
     for (final entity in lib.listSync(recursive: true, followLinks: false)) {
       if (entity is! File || !entity.path.endsWith('.dart')) continue;
       final source = entity.readAsStringSync();
+      failures.addAll(inspectUntranslatedText(source, entity.path));
       final ast = parseString(content: source, path: entity.path).unit;
       for (final directive in ast.directives.whereType<UriBasedDirective>()) {
         final uri = directive.uri.stringValue ?? '';
@@ -297,7 +342,7 @@ Future<void> main() async {
     return;
   }
   stdout.writeln(
-    'Architecture/design gate passed: ${packageDirs.length} packages, $uiFiles UI files; acyclic imports, domain isolation, independent fines, semantic geometry.',
+    'Architecture/design gate passed: ${packageDirs.length} packages, $uiFiles UI files; acyclic imports, domain isolation, independent fines, semantic geometry, translated text.',
   );
 }
 

@@ -26,6 +26,7 @@ final class ApiClient {
     HttpClientAdapter? adapter,
     ApiRequestObserver? onEvent,
     this.persistentConnection = true,
+    String acceptLanguage = 'ru',
   }) : _onEvent = onEvent,
        _dio = Dio(
          BaseOptions(
@@ -36,7 +37,10 @@ final class ApiClient {
            persistentConnection: persistentConnection,
            contentType: Headers.jsonContentType,
            responseType: ResponseType.json,
-           headers: const {'accept': Headers.jsonContentType},
+           headers: {
+             'accept': Headers.jsonContentType,
+             'accept-language': acceptLanguage,
+           },
          ),
        ) {
     if (adapter != null) _dio.httpClientAdapter = adapter;
@@ -54,6 +58,14 @@ final class ApiClient {
   final bool persistentConnection;
   int _requestSequence = 0;
   bool _closed = false;
+
+  /// Language of user-facing content in responses (names, descriptions and
+  /// rejection messages). Changing it affects only requests started later.
+  String get acceptLanguage =>
+      _dio.options.headers['accept-language'] as String? ?? 'ru';
+
+  set acceptLanguage(String value) =>
+      _dio.options.headers['accept-language'] = value;
 
   Future<Map<String, dynamic>> get(
     String path, {
@@ -108,7 +120,6 @@ final class ApiClient {
       if (body is! Map) {
         throw const ApiFailure(
           kind: ApiFailureKind.invalidResponse,
-          message: 'Сервер вернул некорректный ответ',
           retryable: false,
         );
       }
@@ -123,7 +134,6 @@ final class ApiClient {
       trace?.failure(ApiFailureKind.invalidResponse);
       throw const ApiFailure(
         kind: ApiFailureKind.invalidResponse,
-        message: 'Сервер вернул некорректные данные',
         retryable: false,
       );
     } on ApiFailure catch (failure) {
@@ -140,24 +150,15 @@ final class ApiClient {
       case DioExceptionType.cancel:
         return const ApiFailure(
           kind: ApiFailureKind.cancelled,
-          message: 'Запрос отменён',
           retryable: false,
         );
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
-        return const ApiFailure(
-          kind: ApiFailureKind.timeout,
-          message: 'Время ожидания ответа истекло',
-          retryable: true,
-        );
+        return const ApiFailure(kind: ApiFailureKind.timeout, retryable: true);
       case DioExceptionType.connectionError:
       case DioExceptionType.badCertificate:
-        return const ApiFailure(
-          kind: ApiFailureKind.offline,
-          message: 'Не удалось подключиться к серверу',
-          retryable: true,
-        );
+        return const ApiFailure(kind: ApiFailureKind.offline, retryable: true);
       case DioExceptionType.badResponse:
         final status = error.response?.statusCode;
         final body = error.response?.data;
@@ -172,7 +173,7 @@ final class ApiClient {
             409 => ApiFailureKind.conflict,
             _ => ApiFailureKind.unavailable,
           },
-          message: message ?? 'Сервис временно недоступен',
+          serverMessage: message,
           retryable: status == 408 || status == 429 || (status ?? 500) >= 500,
           code: code,
           statusCode: status,
@@ -182,9 +183,6 @@ final class ApiClient {
           kind: error.error is FormatException
               ? ApiFailureKind.invalidResponse
               : ApiFailureKind.offline,
-          message: error.error is FormatException
-              ? 'Сервер вернул некорректные данные'
-              : 'Соединение прервано',
           retryable: error.error is! FormatException,
         );
     }

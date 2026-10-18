@@ -4,6 +4,7 @@ library;
 export 'src/charts.dart';
 export 'src/components.dart';
 export 'src/layout.dart';
+export 'src/localizations.dart';
 export 'src/motion_list.dart';
 export 'src/theme.dart';
 export 'src/tokens.dart';

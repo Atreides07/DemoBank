@@ -1,0 +1,1206 @@
+{
+  "@@locale": "ru",
+  "commonRetry": "Повторить",
+  "commonContinue": "Продолжить",
+  "commonDone": "Готово",
+  "commonCancel": "Отмена",
+  "commonBack": "Вернуться",
+  "commonRefresh": "Обновить",
+  "commonAll": "Все",
+  "commonPaid": "Оплачен",
+  "commonFee": "Комиссия",
+  "commonAmount": "Сумма",
+  "commonAvailable": "Доступно",
+  "commonAvailableAmount": "Доступно {amount}",
+  "@commonAvailableAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "commonLoadingEllipsis": "Загружаем…",
+  "commonOn": "Включено",
+  "commonOff": "Выключено",
+  "commonMoscowTime": "Москва",
+  "@commonMoscowTime": {
+    "description": "Marks dates and times shown in the bank reporting time zone."
+  },
+  "commonAllAccounts": "Все счета",
+  "commonSavedDataStale": "Сохранённые данные · обновляем",
+  "commonOperationsCount": "{count, plural, one{{count} операция} few{{count} операции} many{{count} операций} other{{count} операции}}",
+  "@commonOperationsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "commonCustomerName": "Алексей",
+  "@commonCustomerName": {
+    "description": "First name of the demo customer."
+  },
+  "commonCustomerFullName": "Алексей Демонов",
+  "@commonCustomerFullName": {
+    "description": "Full name of the demo customer."
+  },
+  "commonDemoDisclaimer": "Демонстрационный процессинг · реальные деньги не списываются",
+  "errorCancelled": "Запрос отменён",
+  "errorTimeout": "Время ожидания ответа истекло",
+  "errorOffline": "Не удалось подключиться к серверу",
+  "errorUnavailable": "Сервис временно недоступен",
+  "errorInvalidResponse": "Сервер вернул некорректные данные",
+  "errorRejected": "Запрос отклонён. Проверьте данные и повторите.",
+  "paymentErrorValidation": "Проверьте реквизиты платежа.",
+  "paymentErrorQuoteExpired": "Условия оплаты истекли. Обновите сумму перед подтверждением.",
+  "paymentErrorBillStale": "Начисление изменилось или уже оплачено. Обновите выбор.",
+  "paymentErrorSeatConflict": "Часть выбранных мест уже занята. Выберите другие места.",
+  "paymentErrorInsufficientFunds": "Недостаточно средств на выбранном счёте.",
+  "paymentErrorNetwork": "Нет связи с сервером. Проверьте соединение и статус платежа.",
+  "paymentErrorTimeout": "Сервер не ответил вовремя. Проверьте статус платежа.",
+  "paymentErrorStorage": "Не удалось прочитать сохранённый платёж. Отправка заблокирована, повторите проверку.",
+  "paymentErrorJournalWrite": "Не удалось сохранить операцию. Платёж не отправлен.",
+  "paymentErrorJournalUnreadable": "Сохранённый платёж повреждён и не может быть проверен. Новые оплаты заблокированы, чтобы исключить повторное списание. Если операция уже отправлялась, её результат появится в истории.",
+  "paymentErrorJournalDiscard": "Не удалось удалить повреждённую запись. Повторите действие.",
+  "paymentErrorUnconfirmed": "Сервер пока не подтвердил операцию. Проверьте статус или повторите отправку с сохранённым ключом. Второе списание исключено.",
+  "paymentErrorInconsistent": "Ответ не соответствует сохранённой операции. Проверяем статус.",
+  "paymentErrorInvalidTerms": "Не удалось получить корректные условия платежа. Повторите запрос.",
+  "paymentErrorUnknown": "Не удалось получить подтверждение. Проверьте соединение и статус.",
+  "categoryName": "{category, select, groceries{Продукты} transport{Транспорт} dining{Кафе и рестораны} shopping{Покупки} utilities{Дом и связь} health{Здоровье} entertainment{Развлечения} other{Другое}}",
+  "@categoryName": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "entryStatus": "{status, select, posted{Проведено} pending{В обработке} cancelled{Отменено} other{Неизвестно}}",
+  "@entryStatus": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "spentInMonth": "{month, select, january{Потрачено в январе} february{Потрачено в феврале} march{Потрачено в марте} april{Потрачено в апреле} may{Потрачено в мае} june{Потрачено в июне} july{Потрачено в июле} august{Потрачено в августе} september{Потрачено в сентябре} october{Потрачено в октябре} november{Потрачено в ноябре} december{Потрачено в декабре} other{Потрачено за месяц}}",
+  "@spentInMonth": {
+    "description": "English month name in lower case (january…december).",
+    "placeholders": {
+      "month": {
+        "type": "String"
+      }
+    }
+  },
+  "languageTitle": "Язык",
+  "languageSubtitle": "Интерфейс, суммы, даты и данные банка",
+  "languageSystem": "Как на устройстве · {language}",
+  "@languageSystem": {
+    "placeholders": {
+      "language": {
+        "type": "String"
+      }
+    }
+  },
+  "envTitle": "Среда демонстрации",
+  "envSourceHttp": "Сетевой транспорт · тестовый сервер",
+  "envSourceSimulation": "Локальный симулятор · seed {seed}",
+  "@envSourceSimulation": {
+    "placeholders": {
+      "seed": {
+        "type": "int"
+      }
+    }
+  },
+  "envNetworkTitle": "Сеть",
+  "envNetworkSubtitle": "Профиль меняет транспорт, сохраняя состояние данных",
+  "envNetworkProfile": "{profile, select, normal{Обычная} slow{Медленная} unstable{Нестабильная} offline{Нет связи} other{Особая}}",
+  "@envNetworkProfile": {
+    "placeholders": {
+      "profile": {
+        "type": "String"
+      }
+    }
+  },
+  "envAppearance": "Внешний вид",
+  "envDarkTheme": "Тёмная тема",
+  "envReduceMotion": "Уменьшить движение",
+  "envCompareHistory": "Сравнить историю без перехода",
+  "envCacheTitle": "Состояние кеша",
+  "envCacheAutomatic": "Кеш используется автоматически",
+  "envCacheCleared": "Кеш очищен. Откройте экран заново для холодной загрузки.",
+  "envCacheClearFailed": "Не удалось очистить кеш. Повторите действие.",
+  "envCacheExpired": "Кеш помечен устаревшим.",
+  "envCacheExpireFailed": "Не удалось изменить актуальность кеша. Повторите действие.",
+  "envCacheClear": "Пустой кеш",
+  "envCacheExpire": "Устаревший кеш",
+  "envTestEvents": "Тестовые события",
+  "envTestEventsHint": "Добавьте операцию, вернитесь в историю и обновите её во время чтения. Действие «Есть новые операции» применит изменения с сохранением контекста.",
+  "envAddActivity": "Новая операция и смена статуса",
+  "envActivityAdded": "Операция добавлена. Обновите историю для применения.",
+  "envActivityFailed": "Не удалось добавить операцию. Повторите действие.",
+  "envDiagnostics": "Диагностика",
+  "envDiagnosticsSubtitle": "Без реквизитов и содержимого запросов",
+  "envEventsCount": "Сетевых событий: {count} · профиль {profile}",
+  "@envEventsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      },
+      "profile": {
+        "type": "String"
+      }
+    }
+  },
+  "envShowLog": "Показать журнал",
+  "envLogTitle": "Сетевые события",
+  "envClose": "Закрыть",
+  "envHttpHint": "Для реального HTTPS-стенда приложение запускается с DATA_SOURCE=http и API_BASE_URL. Настройка выполняется в оболочке, код фич остаётся общим.",
+  "paymentErrorDeclined": "Платёж отклонён сервером.",
+  "checkoutDiscardTitle": "Удалить повреждённую запись?",
+  "checkoutDiscardMessage": "Запись будет перенесена в архив для разбора, а новые оплаты разблокируются. Если эта операция уже отправлялась, сначала проверьте историю, чтобы не оплатить её повторно.",
+  "checkoutDiscardConfirm": "Удалить запись",
+  "checkoutDiscard": "Удалить повреждённую запись",
+  "checkoutReceiptTitle": "Квитанция",
+  "checkoutTicketTitle": "Ваш билет",
+  "checkoutStatusTitle": "Статус платежа",
+  "checkoutConfirmTitle": "Подтверждение оплаты",
+  "checkoutPurpose": "Назначение",
+  "checkoutDebitAccount": "Счёт списания",
+  "checkoutAccountFallback": "{account, select, main{Основной счёт} savings{Накопительный счёт} other{Выбранный счёт}}",
+  "@checkoutAccountFallback": {
+    "placeholders": {
+      "account": {
+        "type": "String"
+      }
+    }
+  },
+  "checkoutServerConfirmed": "Сумма и комиссия подтверждены сервером.",
+  "checkoutChangeDetails": "Изменить данные",
+  "checkoutNoPending": "Незавершённых платежей нет",
+  "checkoutLoadingTerms": "Проверяем условия и сохранённые операции…",
+  "checkoutConfirm": "Подтвердить оплату",
+  "checkoutSubmittingTitle": "Получаем подтверждение",
+  "checkoutSubmittingMessage": "Можно покинуть экран. Сохранённый платёж восстановится при следующем открытии.",
+  "checkoutProcessingTitle": "Платёж принят и обрабатывается",
+  "checkoutProcessingMessage": "Это ещё не окончательный результат. Проверяем его по сохранённому идентификатору.",
+  "checkoutCheckStatus": "Проверить статус",
+  "checkoutUncertainTitle": "Ответ пока не получен",
+  "checkoutRetrySameKey": "Повторить с сохранённым ключом",
+  "checkoutSucceeded": "Оплата выполнена",
+  "checkoutReceiptNumber": "Квитанция № {receipt}",
+  "@checkoutReceiptNumber": {
+    "placeholders": {
+      "receipt": {
+        "type": "String"
+      }
+    }
+  },
+  "checkoutFailed": "Оплата не выполнена",
+  "checkoutRefreshSelection": "Обновить выбор",
+  "checkoutRecheck": "Повторить проверку",
+  "checkoutRefreshTerms": "Обновить условия",
+  "checkoutCheckingSaved": "Проверяем сохранённые операции…",
+  "finesTitle": "Штрафы",
+  "finesDetailsTitle": "Подробности штрафа",
+  "finesSubtitle": "Проверка начислений и оплата без комиссии",
+  "finesSearchSection": "Найти по документу",
+  "finesDocumentLabel": "СТС или водительское удостоверение",
+  "finesDocumentHint": "Например, 7712345678",
+  "finesSearch": "Найти штрафы",
+  "finesLoading": "Проверяем государственные начисления…",
+  "finesSearchFailedTitle": "Не удалось выполнить поиск",
+  "finesInvalidDocument": "Введите от 10 до 12 цифр СТС или водительского удостоверения.",
+  "finesSearchFailed": "Не удалось получить штрафы. Повторите поиск.",
+  "finesEmptyTitle": "Штрафов нет",
+  "finesEmptyMessage": "По этому документу начисления не найдены.",
+  "finesBills": "Начисления",
+  "finesHintTitle": "Документ нужен только для поиска",
+  "finesHintMessage": "Демонстрационные начисления: 7712345678. Для пустого результата используйте 0000000000.",
+  "finesBasis": "Основание",
+  "finesUin": "УИН",
+  "finesPayBefore": "Оплатить до",
+  "finesStatus": "Статус",
+  "finesToPay": "К оплате",
+  "finesGoToPayment": "Перейти к оплате",
+  "finesAllBills": "Все начисления",
+  "utilitiesTitle": "Коммунальные услуги",
+  "utilitiesSubtitle": "Проверяйте начисления и оплачивайте выбранные счета вместе",
+  "utilitiesAccountSection": "Ваш лицевой счёт",
+  "utilitiesAccountLabel": "Лицевой счёт",
+  "utilitiesAccountHint": "Демонстрационный: 1234567890",
+  "utilitiesLoad": "Получить начисления",
+  "utilitiesLoading": "Запрашиваем счета у поставщиков…",
+  "utilitiesUnavailable": "Начисления недоступны",
+  "utilitiesInvalidAccount": "Лицевой счёт должен содержать от 6 до 12 цифр.",
+  "utilitiesLoadFailed": "Не удалось получить начисления. Повторите запрос.",
+  "utilitiesEmptyTitle": "Начислений нет",
+  "utilitiesEmptyMessage": "Уточните лицевой счёт или проверьте позже.",
+  "utilitiesDueDate": "До {date}",
+  "@utilitiesDueDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "utilitiesInclude": "Включить в оплату",
+  "utilitiesSelected": "Выбрано к оплате",
+  "utilitiesFeeNotice": "Точная комиссия будет показана перед подтверждением.",
+  "mobileTitle": "Мобильная связь",
+  "mobileSubtitle": "Пополните свой номер или номер близкого человека",
+  "mobilePhoneSection": "Номер телефона",
+  "mobilePhoneLabel": "Телефон",
+  "mobileLookup": "Определить оператора",
+  "mobileLookingUp": "Уточняем оператора по номеру…",
+  "mobileNoOperatorsTitle": "Для этого номера нет доступных операторов",
+  "mobileNoOperatorsMessage": "Проверьте номер или повторите запрос позже.",
+  "mobileOperator": "Оператор",
+  "mobileAmountSection": "Сумма пополнения",
+  "mobileAmountLabel": "Сумма в рублях",
+  "mobileLimits": "От {minimum} до {maximum}. Комиссия — {fee}.",
+  "@mobileLimits": {
+    "placeholders": {
+      "minimum": {
+        "type": "String"
+      },
+      "maximum": {
+        "type": "String"
+      },
+      "fee": {
+        "type": "String"
+      }
+    }
+  },
+  "mobileAmountFormat": "Введите сумму с точностью до копейки.",
+  "mobileAmountRange": "Допустимая сумма: от {minimum} до {maximum}.",
+  "@mobileAmountRange": {
+    "placeholders": {
+      "minimum": {
+        "type": "String"
+      },
+      "maximum": {
+        "type": "String"
+      }
+    }
+  },
+  "mobilePhoneCharacters": "Введите российский номер телефона, например +7 916 123-45-67.",
+  "mobilePhoneLength": "Номер должен содержать 11 цифр и начинаться с +7 или 8.",
+  "mobileLookupFailed": "Не удалось определить оператора. Повторите запрос.",
+  "mobileCheckTitle": "Проверьте номер перед оплатой",
+  "mobileCheckMessage": "После подтверждения зачисление выполняет оператор связи.",
+  "cinemaTitle": "Кино",
+  "cinemaSubtitle": "Фильм, удобный сеанс и ваши места",
+  "cinemaMovieDetails": "{minutes} мин · {description}",
+  "@cinemaMovieDetails": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      },
+      "description": {
+        "type": "String"
+      }
+    }
+  },
+  "cinemaOtherMovie": "Выбрать другой фильм",
+  "cinemaLoading": "Уточняем расписание и доступность…",
+  "cinemaUnavailable": "Кинотеатр временно недоступен",
+  "cinemaLoadFailed": "Не удалось получить данные кинотеатра. Повторите запрос.",
+  "cinemaSeatsChangedTitle": "Доступность мест изменилась",
+  "cinemaNoMovies": "Афиша пока пуста",
+  "cinemaChooseSession": "Выберите сеанс",
+  "cinemaSessionTime": "{date} · {time} МСК",
+  "@cinemaSessionTime": {
+    "description": "Showtime in Moscow time.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "cinemaNoSessions": "Для этого фильма сеансов нет",
+  "cinemaSeats": "Места в зале",
+  "cinemaSessionPlace": "{cinema} · {time}",
+  "@cinemaSessionPlace": {
+    "placeholders": {
+      "cinema": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "cinemaOtherSession": "Другой сеанс",
+  "cinemaScreenHint": "Экран · выберите свободные места",
+  "cinemaSeatTaken": "{seat} · занято",
+  "@cinemaSeatTaken": {
+    "placeholders": {
+      "seat": {
+        "type": "String"
+      }
+    }
+  },
+  "cinemaNoSeatsTitle": "Свободных мест нет",
+  "cinemaNoSeatsMessage": "Выберите другой сеанс.",
+  "cinemaRefreshSeats": "Обновить доступность",
+  "cinemaYourChoice": "Ваш выбор",
+  "cinemaSeatsLabel": "Места",
+  "cinemaSeatsNotice": "Места закрепляются при подтверждении оплаты. Если их займут, вы сможете изменить выбор.",
+  "cinemaToPayment": "Перейти к оплате",
+  "accountTopUp": "Пополнить",
+  "accountPayOrTransfer": "Оплатить или перевести",
+  "accountOperations": "Операции",
+  "accountLoadingSpending": "Загружаем расходы…",
+  "accountCashback": "Кэшбэк",
+  "accountCashbackCredit": "Зачислим {date}",
+  "@accountCashbackCredit": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "accountPurchaseBonuses": "Бонусы за покупки",
+  "accountYourBonuses": "Ваши бонусы",
+  "accountChooseGift": "Выберите подарок",
+  "accountBonusesOf": "Бонусы {account}",
+  "@accountBonusesOf": {
+    "placeholders": {
+      "account": {
+        "type": "String"
+      }
+    }
+  },
+  "accountPartnerDiscount": "До {percent} у партнёров",
+  "@accountPartnerDiscount": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "accountMonthCashback": "Кэшбэк месяца",
+  "accountAutoTopUp": "Автопополнение",
+  "accountAutoTopUpHint": "На счёте всегда будут деньги для важных платежей",
+  "accountConfiguredChange": "Настроено · изменить",
+  "accountConfigure": "Настроить",
+  "accountReceiveMoney": "Получать деньги на счёт",
+  "accountSalary": "Зарплата",
+  "accountPension": "Пенсия",
+  "accountBenefits": "Пособия",
+  "accountCreditTo": "Куда зачислять",
+  "accountCashbackCharity": "В помощь фонду «Добрый день»",
+  "accountCashbackToAccount": "На выбранный счёт",
+  "accountRoundUp": "Округление покупок",
+  "accountRoundUpHint": "Откладывайте разницу до {amount} в накопления",
+  "@accountRoundUpHint": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "accountEnabledChange": "Включено · изменить",
+  "accountConfigureRoundUp": "Настроить округление",
+  "accountFamilyCard": "Карта для близких",
+  "accountFamilyCardHint": "Оплачивайте общие покупки и получайте кэшбэк вместе",
+  "accountAddCard": "Добавить карту",
+  "accountLimits": "Лимиты переводов и снятия",
+  "accountLimitRemaining": "Ещё {amount} без комиссии",
+  "@accountLimitRemaining": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "accountAllLimits": "Все лимиты счёта",
+  "accountRequisites": "Реквизиты",
+  "accountContract": "Договор {contract}",
+  "@accountContract": {
+    "placeholders": {
+      "contract": {
+        "type": "String"
+      }
+    }
+  },
+  "accountQrCode": "QR-код",
+  "accountForTopUp": "Для пополнения",
+  "accountLink": "Ссылка",
+  "accountShare": "Поделиться счётом",
+  "accountAbout": "О счёте",
+  "accountLinkedServices": "Привязанные сервисы",
+  "accountNoLinkedServices": "Подключений нет",
+  "accountLinkedServicesSummary": "Демо Маркет, Музыка и ещё {count}",
+  "@accountLinkedServicesSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "accountPlan": "Тариф",
+  "accountStatement": "Выписка по счёту",
+  "accountCertificate": "Заказать справку",
+  "accountServices": "Услуги",
+  "accountFreezeCard": "Заморозить карту",
+  "analyticsTitle": "Аналитика трат",
+  "analyticsThisMonth": "Этот месяц",
+  "analyticsLastMonth": "Прошлый месяц",
+  "analyticsYear": "Год",
+  "analyticsChooseDates": "Выбрать даты",
+  "analyticsAllTime": "За всё время",
+  "analyticsScope": "{period} · {currency} · {zone}",
+  "@analyticsScope": {
+    "placeholders": {
+      "period": {
+        "type": "String"
+      },
+      "currency": {
+        "type": "String"
+      },
+      "zone": {
+        "type": "String"
+      }
+    }
+  },
+  "analyticsLoadingTitle": "Собираем аналитику",
+  "analyticsUpdatingTitle": "Обновляем выбранный период",
+  "analyticsLoadingMessage": "Графики появятся по мере получения данных.",
+  "analyticsUpdatingMessage": "Сейчас показан предыдущий согласованный результат.",
+  "analyticsRequested": "Запрошено: {period} · {accounts}",
+  "@analyticsRequested": {
+    "placeholders": {
+      "period": {
+        "type": "String"
+      },
+      "accounts": {
+        "type": "String"
+      }
+    }
+  },
+  "analyticsFailed": "Аналитика временно недоступна. Повторите загрузку.",
+  "analyticsStale": "Сохранённые данные · актуальность проверяется",
+  "analyticsEmptyTitle": "Нет расходов в этом периоде",
+  "analyticsEmptyMessage": "Проведённых списаний по выбранным фильтрам не найдено.",
+  "analyticsTotal": "Расходы за период",
+  "analyticsChange": "{amount} · {percent}",
+  "@analyticsChange": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "analyticsNoPercentBase": "нет базы для процента",
+  "analyticsComparison": "Сравнение: {period} · {amount}",
+  "@analyticsComparison": {
+    "placeholders": {
+      "period": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "analyticsRefunds": "Возвраты отдельно",
+  "analyticsRefundsDetail": "Не включены в показатель расходов",
+  "analyticsTrend": "Динамика расходов",
+  "analyticsTrendHint": "Нажмите на столбец, чтобы увидеть операции",
+  "analyticsTrendLabel": "Расходы по времени",
+  "analyticsCategories": "На что потрачено",
+  "analyticsCategoriesSubtitle": "Полная выборка · {operations}",
+  "@analyticsCategoriesSubtitle": {
+    "placeholders": {
+      "operations": {
+        "type": "String"
+      }
+    }
+  },
+  "analyticsCategoriesLabel": "Категории расходов",
+  "analyticsShareDetail": "{share} · {operations}",
+  "@analyticsShareDetail": {
+    "placeholders": {
+      "share": {
+        "type": "String"
+      },
+      "operations": {
+        "type": "String"
+      }
+    }
+  },
+  "analyticsMerchants": "Получатели",
+  "analyticsMerchantsHint": "Откройте детализацию по торговой точке",
+  "analyticsRuleTitle": "Как считаем расходы",
+  "analyticsRule": "Только проведённые списания. Доходы, переводы между своими счетами, отмены и ожидающие операции исключены. Возвраты показываются отдельно. Комиссия учитывается один раз. Дни определяются по московскому времени.",
+  "analyticsForAccount": "Аналитика выбранного счёта",
+  "historyTitle": "История операций",
+  "historyUpdatingTitle": "Обновляем выборку",
+  "historyUpdatingMessage": "Пока показаны операции предыдущего фильтра.",
+  "historyShowNew": "Есть новые операции · показать",
+  "historyFailed": "Не удалось загрузить операции. Повторите запрос.",
+  "historyLoading": "Загружаем операции",
+  "historyEmptyTitle": "Операций пока нет",
+  "historyEmptyMessage": "Попробуйте другой период или категорию.",
+  "historyShowMore": "Показать ещё",
+  "historyEnd": "Вы просмотрели все операции",
+  "historyEntry": "{category} · {status}",
+  "@historyEntry": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      },
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "historyUpdatedEntry": "Обновлено · {category} · {status}",
+  "@historyUpdatedEntry": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      },
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "historyRetryPage": "Повторить загрузку страницы",
+  "detailsTitle": "Детали операции",
+  "detailsCategory": "Категория",
+  "detailsDateTime": "Дата и время",
+  "detailsDateTimeValue": "{date} · {time} · {zone}",
+  "@detailsDateTimeValue": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      },
+      "zone": {
+        "type": "String"
+      }
+    }
+  },
+  "detailsStatus": "Статус",
+  "detailsAccount": "Счёт",
+  "detailsDefaultAccount": "Банковский счёт",
+  "detailsNumber": "Номер операции",
+  "appTitle": "DemoBank",
+  "navHome": "Главная",
+  "navAnalytics": "Аналитика",
+  "navPayments": "Платежи",
+  "navProfile": "Профиль",
+  "profileTitle": "Ваше пространство",
+  "profileDemoSettings": "Настройки демонстрации",
+  "profileDemoSettingsHint": "Сеть, темы, кеш и движение",
+  "profileDesignSystem": "Дизайн-система",
+  "profileDesignSystemHint": "Компоненты и отдельный просмотр экранов",
+  "transactionMissingTitle": "Операция не выбрана",
+  "transactionMissingMessage": "Откройте операцию из истории.",
+  "servicesSubtitle": "Повседневные дела в одном месте",
+  "servicesUtilities": "ЖКХ",
+  "servicesUtilitiesHint": "Счета за дом",
+  "servicesMobileHint": "Пополнить номер",
+  "servicesFines": "Штрафы",
+  "servicesFinesHint": "Проверить и оплатить",
+  "servicesCinemaHint": "Билеты на сеанс",
+  "servicesNotice": "Все платежи используют общий процесс подтверждения. Комиссия и итоговая сумма видны до оплаты.",
+  "drillTitle": "Детализация расходов",
+  "drillComposition": "Состав расходов",
+  "drillScope": "{currency} · {zone} · {accounts}",
+  "@drillScope": {
+    "placeholders": {
+      "currency": {
+        "type": "String"
+      },
+      "zone": {
+        "type": "String"
+      },
+      "accounts": {
+        "type": "String"
+      }
+    }
+  },
+  "drillMerchant": "Получатель: {merchant}",
+  "@drillMerchant": {
+    "placeholders": {
+      "merchant": {
+        "type": "String"
+      }
+    }
+  },
+  "drillTotal": "Всего по выбранным условиям",
+  "drillTotalDetail": "{operations} · полная выборка",
+  "@drillTotalDetail": {
+    "placeholders": {
+      "operations": {
+        "type": "String"
+      }
+    }
+  },
+  "drillReset": "Сбросить уточнение",
+  "catalogSubtitle": "Компоненты, состояния и рабочие экраны",
+  "catalogSetUp": "Настроить тему и сеть",
+  "catalogOpenBank": "Открыть банк",
+  "catalogTypography": "Типографика",
+  "catalogDisplay": "Деньги под контролем",
+  "catalogHeadline": "Интерфейс с понятной иерархией",
+  "catalogBody": "Основной текст и доступные подписи",
+  "catalogCaption": "Описание · метаданные · подсказки",
+  "catalogActions": "Действия",
+  "catalogDisabled": "Недоступно",
+  "catalogInput": "Ввод",
+  "catalogEnterNumber": "Введите номер",
+  "catalogInputError": "Ошибка ввода",
+  "catalogStates": "Состояния",
+  "catalogScenarios": "Рабочие сценарии",
+  "catalogScenarioHistory": "История и мотивированная анимация",
+  "catalogScenarioAccount": "Счёт и управление картами",
+  "catalogScenarioShop": "Витрина и корзина",
+  "catalogScenarioAnalytics": "Инфографика и детализация",
+  "catalogCards": "Карточки нового интерфейса",
+  "catalogExample": "Учебный пример",
+  "catalogDemoCard": "Демо-карта",
+  "catalogTransfer": "Перевести",
+  "catalogLimit": "Учебный лимит",
+  "catalogGifts": "Подарки за покупки",
+  "catalogBanner": "Пример баннера",
+  "catalogTokens": "Компоненты используют семантические токены. Размеры, отступы, цвета и движение задаются внутри дизайн-системы; экраны описывают структуру и данные.",
+  "discoveryTitle": "{id, select, daily_cashback{Кэшбэк дня} gift{Подарки за покупки} books{Осень с хорошей книгой} education{Первый шаг в мир технологий} insurance{Скидка 10% на защиту дома} borrow{Взять деньги} saving{Накопить} goal{Подарок для друга} investments{Инвестиции} card{Выпустить карту} home{Мой дом} travel{Билетами шуршим} coast{К морю с кэшбэком до 10%} hotel{Отель «Лазурный берег»} shopping{Яркие дни покупок} electronics{Электроника} cosmetics{Красота} clothes{Одежда} appliances{Техника} phone{Смартфон Nova Mini} pillow{Подушки Soft Dream · 2 шт.} shoes{Кеды для долгих прогулок} perfume{Парфюм Lavender · 50 мл} washer{Стиральная машина Compact} airfryer{Аэрогриль Home Air · 4 л} other{Предложение}}",
+  "@discoveryTitle": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "discoveryDescription": "{id, select, daily_cashback{Выберите категории и получайте больше бонусов за обычные покупки.} gift{В октябре меняйте накопленные бонусы на подарки партнёров.} saving{Выберите цель и настройте регулярное пополнение накопительного счёта.} card{Дополнительная демонстрационная карта к вашему счёту.} home{Оплачивайте счета за дом и храните всё важное в одном месте.} coast{Тихая бухта, прогулки и новые места. Даты и цены демонстрационные.} hotel{Две ночи у моря · завтрак включён. Демонстрационный вариант бронирования.} shopping{Всё для дома, отдыха и себя. Скидки и бонусы в демонстрационной витрине.} electronics{Устройства для каждого дня} cosmetics{Маленькие приятные открытия} clothes{Удобные вещи для прогулок} appliances{Больше времени для себя} phone{Компактный смартфон, 128 ГБ, мятный. Модель и характеристики вымышлены.} pillow{Две мягкие подушки 50 × 70 см. Гипоаллергенный наполнитель, съёмные чехлы.} shoes{Мягкая подошва, лёгкая ткань. Цвет светлая лаванда.} perfume{Лёгкий цветочный аромат. Демонстрационный товар без реального бренда.} washer{Учебная модель: загрузка 6 кг, 12 программ, тихий режим.} airfryer{Для любимых блюд: регулировка температуры, таймер, съёмная чаша.} other{Демонстрационное предложение.}}",
+  "@discoveryDescription": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "discoveryOption": "{id, select, gift_coffee{Кофе с собой} gift_book{Книга} gift_cinema{Билет в кино} book_sea{Город у моря} book_warm{Тёплые истории} book_home{Путешествие домой} course_code{Основы программирования} course_design{Дизайн и творчество} policy_basic{Базовый} policy_family{Семейный} goal_travel{На путешествие} goal_safety{Подушка безопасности} goal_purchase{На большую покупку} remind_week{Напомнить за неделю} remind_day{Напомнить за день} portfolio{Посмотреть состав портфеля} portfolio_reminder{Настроить напоминание} card_self{Для себя} card_family{Для близкого} home_flat{Квартира · Лесная, 12} home_add{Добавить второй дом} trip_kazan{Москва → Казань} trip_spb{Москва → Санкт-Петербург} room_standard{Стандарт} room_family{Семейный} other{Вариант}}",
+  "@discoveryOption": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "discoveryPair": "{first} · {second}",
+  "@discoveryPair": {
+    "placeholders": {
+      "first": {
+        "type": "String"
+      },
+      "second": {
+        "type": "String"
+      }
+    }
+  },
+  "discoveryCashbackOption": "{percent} · {category}",
+  "@discoveryCashbackOption": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      },
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "discoveryBooksCategory": "Книги",
+  "bonusPoints": "{count, plural, one{{count} бонус} few{{count} бонуса} many{{count} бонусов} other{{count} бонуса}}",
+  "@bonusPoints": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "monthsCount": "{count, plural, one{{count} месяц} few{{count} месяца} many{{count} месяцев} other{{count} месяца}}",
+  "@monthsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "daysCount": "{count, plural, one{{count} день} few{{count} дня} many{{count} дней} other{{count} дня}}",
+  "@daysCount": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "nightsCount": "{count, plural, one{{count} ночь} few{{count} ночи} many{{count} ночей} other{{count} ночи}}",
+  "@nightsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "discoveryPerYear": "{plan} · {price} в год",
+  "@discoveryPerYear": {
+    "placeholders": {
+      "plan": {
+        "type": "String"
+      },
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "discoveryTrip": "{route} · {date} · {price}",
+  "@discoveryTrip": {
+    "placeholders": {
+      "route": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      },
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "discoveryFrom": "от {price}",
+  "@discoveryFrom": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "discoveryPerNight": "{room} · {price} за ночь",
+  "@discoveryPerNight": {
+    "placeholders": {
+      "room": {
+        "type": "String"
+      },
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "discoveryBooksDescription": "Подборка вымышленных книг и до {percent} кэшбэка в демо-магазине.",
+  "@discoveryBooksDescription": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "discoveryEducationDescription": "Курс для детей с кэшбэком до {amount}",
+  "@discoveryEducationDescription": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "discoveryInsuranceDescription": "Выберите демонстрационный полис для своей квартиры со скидкой {percent}",
+  "@discoveryInsuranceDescription": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "discoveryBorrowDescription": "Посмотрите пример расчёта: {amount} на {term}, платёж {payment}. Условия вымышлены.",
+  "@discoveryBorrowDescription": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "term": {
+        "type": "String"
+      },
+      "payment": {
+        "type": "String"
+      }
+    }
+  },
+  "discoveryGoalDescription": "Собрано {saved} из {target}. До дня рождения ещё {days}.",
+  "@discoveryGoalDescription": {
+    "placeholders": {
+      "saved": {
+        "type": "String"
+      },
+      "target": {
+        "type": "String"
+      },
+      "days": {
+        "type": "String"
+      }
+    }
+  },
+  "discoveryInvestmentsDescription": "Учебный портфель: {amount}. За год {change}. Данные демонстрационные.",
+  "@discoveryInvestmentsDescription": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "change": {
+        "type": "String"
+      }
+    }
+  },
+  "discoveryTravelDescription": "Осенние путешествия на поезде с кэшбэком до {percent}",
+  "@discoveryTravelDescription": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "discoveryQuantity": "{count} шт.",
+  "@discoveryQuantity": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "discoveryDelivery": "Доставка в демо: 2–3 дня · бесплатно",
+  "discoveryAddedOpenCart": "Добавлено · открыть корзину",
+  "discoveryAddToCart": "В корзину",
+  "discoveryConfirm": "Подтвердить выбор",
+  "discoverySaved": "Выбор сохранён",
+  "discoveryPayUtilities": "Оплатить ЖКХ",
+  "discoveryAddCard": "Добавить карту к счёту",
+  "discoveryOpenSavings": "Открыть накопительный счёт",
+  "discoveryBonds": "Облигации",
+  "discoveryFunds": "Фонды",
+  "discoveryDisclaimer": "Демонстрационная витрина: данные вымышлены, реальные заказы и заявки не отправляются.",
+  "cartTitle": "Корзина",
+  "cartOrderCreated": "Демонстрационный заказ создан",
+  "cartOrderCreatedMessage": "Сумма {amount}. Деньги не списывались.",
+  "@cartOrderCreatedMessage": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "cartEmptyTitle": "Корзина пока пуста",
+  "cartEmptyMessage": "Выберите товар на главной или в поиске.",
+  "cartQuantity": "Количество",
+  "cartUnitPrice": "Цена за штуку",
+  "cartRemove": "Убрать",
+  "cartTotal": "Итого",
+  "cartReview": "Получатель: {name}. Доставка: учебный адрес, Лесная, 12. Реальный заказ не отправляется.",
+  "@cartReview": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "cartCreateOrder": "Создать демо-заказ",
+  "cartCheckout": "Оформить",
+  "searchField": "Счёт, услуга или покупка",
+  "searchHistoryKeywords": "операции история",
+  "@searchHistoryKeywords": {
+    "description": "Words that find the transaction history; matched as a substring."
+  },
+  "searchPaymentsKeywords": "платежи жкх связь штрафы кино",
+  "@searchPaymentsKeywords": {
+    "description": "Words that find the payments section; matched as a substring."
+  },
+  "searchPayments": "Платежи и услуги",
+  "searchNothing": "По этому запросу ничего не найдено. Попробуйте другое название.",
+  "homeView": "Посмотреть",
+  "homeRetryInHistory": "Повторите в истории",
+  "homeUpTo": "До {value}",
+  "@homeUpTo": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "homeOffersCount": "{count, plural, one{{count} предложение} few{{count} предложения} many{{count} предложений} other{{count} предложения}}",
+  "@homeOffersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "homeScan": "Сканировать",
+  "homeAccountsFailed": "Не удалось обновить счета. Доступны сохранённые данные.",
+  "homeAccountsLoading": "Загружаем счета",
+  "homeGiftGoal": "Собираем на подарок",
+  "homeGoalProgress": "{saved} из {target}",
+  "@homeGoalProgress": {
+    "placeholders": {
+      "saved": {
+        "type": "String"
+      },
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "homeYearChange": "{change} за год",
+  "@homeYearChange": {
+    "placeholders": {
+      "change": {
+        "type": "String"
+      }
+    }
+  },
+  "homeAnyGoal": "На любые цели",
+  "homeHome": "Дом",
+  "homeTravel": "Путешествия",
+  "homeGoTravel": "В путешествие",
+  "homeCategories": "Категории",
+  "homePopular": "Популярное",
+  "homeWeekOffer": "Предложение недели",
+  "homeViewAll": "Посмотреть все",
+  "homeGoShopping": "За покупками",
+  "homeHistoryUpdated": "История обновилась. Место чтения сохранено.",
+  "accountActionTitle": "{action, select, rename{Название счёта} pay{Оплатить или перевести} rewards{Бонусы по счёту} autoTopUp{Автопополнение} salary{Зарплата на счёт} pension{Пенсия на счёт} social{Социальные выплаты} cashback{Зачисление кэшбэка} roundUp{Округление покупок} addCard{Дополнительная карта} limits{Лимиты счёта} requisites{Реквизиты} qr{QR для пополнения} link{Ссылка на пополнение} linkedServices{Привязанные сервисы} plan{Тариф} statement{Выписка по счёту} certificate{Справка о счёте} services{Услуги счёта} freezeCard{Управление картой} other{Действие со счётом}}",
+  "@accountActionTitle": {
+    "placeholders": {
+      "action": {
+        "type": "String"
+      }
+    }
+  },
+  "accountLinkedService": "{service, select, market{Демо Маркет} music{Музыка} homeCinema{Кино Дома} parking{Город Паркинг} coffee{Кофе Клуб} delivery{Доставка} other{Сервис}}",
+  "@accountLinkedService": {
+    "placeholders": {
+      "service": {
+        "type": "String"
+      }
+    }
+  },
+  "accountLoading": "Загружаем данные счёта",
+  "accountNotFound": "Счёт не найден",
+  "accountLoadFailed": "Не удалось обновить счёт. Проверьте сеть и повторите.",
+  "accountSaveFailed": "Настройка не сохранена. Повторите.",
+  "accountSaving": "Сохраняем настройку",
+  "accountSaved": "Изменения сохранены",
+  "accountLoadingSettings": "Загружаем настройки",
+  "accountBetweenOwn": "Между своими счетами",
+  "accountByPhone": "По номеру телефона",
+  "accountPayService": "Оплатить услугу",
+  "accountTopUpAccount": "Пополнить счёт",
+  "accountNewName": "Новое название",
+  "accountNameLength": "От {minimum} до {maximum} символов",
+  "@accountNameLength": {
+    "placeholders": {
+      "minimum": {
+        "type": "String"
+      },
+      "maximum": {
+        "type": "String"
+      }
+    }
+  },
+  "accountSaveName": "Сохранить название",
+  "accountAutoTopUpRule": "Учебное правило: пополнять на {amount}, когда остаток ниже {threshold}. Источник — демонстрационная внешняя карта.",
+  "@accountAutoTopUpRule": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "threshold": {
+        "type": "String"
+      }
+    }
+  },
+  "accountRoundUpRule": "Округлять будущие покупки до {amount}. Разница будет отмечаться в демонстрационных накоплениях.",
+  "@accountRoundUpRule": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "accountRoundUpSwitch": "Округлять покупки",
+  "accountChooseCashbackAccount": "Выберите счёт для зачисления бонусов",
+  "accountCharity": "Помогать фонду «Добрый день»",
+  "accountCharityHint": "Учебный фонд · демонстрационный выбор",
+  "accountExtraCardHint": "Виртуальная карта для общих покупок. Выпуск и обслуживание в демо бесплатны.",
+  "accountCardAdded": "Карта •• {digits} уже добавлена",
+  "@accountCardAdded": {
+    "placeholders": {
+      "digits": {
+        "type": "String"
+      }
+    }
+  },
+  "accountIssueCard": "Выпустить демо-карту",
+  "accountCard": "Карта •• {digits}",
+  "@accountCard": {
+    "placeholders": {
+      "digits": {
+        "type": "String"
+      }
+    }
+  },
+  "accountCardFrozen": "Заморожена",
+  "accountCardActive": "Активна",
+  "accountFreezeHint": "Заморозка обратима и относится только к выбранной демонстрационной карте.",
+  "accountUnfreeze": "Разморозить карту",
+  "accountConfirmFreeze": "Подтвердить заморозку",
+  "accountMonthlyLimit": "Лимит в месяц",
+  "accountRequisitesHint": "Учебные реквизиты. Не используйте для настоящих переводов.",
+  "accountCopied": "Скопировано",
+  "accountCopyRequisites": "Скопировать реквизиты",
+  "accountLinkHint": "Учебная ссылка работает только внутри DemoBank. Настоящие переводы недоступны.",
+  "accountLinkLabel": "Ссылка на счёт",
+  "accountLinkCopied": "Ссылка скопирована",
+  "accountCopyLink": "Скопировать ссылку",
+  "accountLinkedServicesHint": "Разрешение сохранённых привязок демонстрационных сервисов.",
+  "accountAllowLinkedServices": "Разрешить привязанные сервисы",
+  "accountPlanName": "Демо Плюс",
+  "accountPlanService": "Обслуживание",
+  "accountPlanFree": "Бесплатно",
+  "accountPlanCashback": "До {percent} у учебных партнёров",
+  "@accountPlanCashback": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "accountPlanTransfers": "Переводы между своими счетами",
+  "accountPlanNoFee": "Без комиссии",
+  "accountStatementHint": "Все операции выбранного счёта, включая поступления и переводы. Можно открыть любую запись.",
+  "accountOpenStatement": "Открыть выписку",
+  "accountCertificateText": "ДЕМО-СПРАВКА\nВладелец: {owner}\nСчёт: {account}\nОстаток: {balance}\nДоговор: {contract}\nУчебный документ, юридической силы не имеет.",
+  "@accountCertificateText": {
+    "placeholders": {
+      "owner": {
+        "type": "String"
+      },
+      "account": {
+        "type": "String"
+      },
+      "balance": {
+        "type": "String"
+      },
+      "contract": {
+        "type": "String"
+      }
+    }
+  },
+  "accountCertificateHint": "Справка об остатке на выбранном счёте. Данные и документ учебные.",
+  "accountCertificateCopied": "Справка скопирована",
+  "accountCopyCertificate": "Скопировать справку",
+  "accountMakeCertificate": "Сформировать справку",
+  "accountCashbackPending": "Ожидает зачисления {date}",
+  "@accountCashbackPending": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "accountChooseCashbackCategories": "Выбрать категории кэшбэка",
+  "accountGiftsForBonuses": "Подарки за бонусы",
+  "accountChooseAction": "Выберите действие на странице счёта.",
+  "operationTo": "Зачислим на счёт",
+  "operationFrom": "Со счёта",
+  "operationRestoring": "Восстанавливаем журнал операций",
+  "operationRetryRestore": "Повторить восстановление",
+  "operationTopUpSource": "Источник: внешняя демонстрационная карта •• 0000. Настоящего списания не будет.",
+  "operationChooseContact": "Выберите демонстрационный контакт. Номера учебные.",
+  "operationRecipient": "{name} · {bank} · {phone}",
+  "@operationRecipient": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "bank": {
+        "type": "String"
+      },
+      "phone": {
+        "type": "String"
+      }
+    }
+  },
+  "operationToOwn": "На свой счёт",
+  "operationNoSecondAccount": "Нет второго счёта в этой валюте",
+  "operationAmount": "Сумма, {currency}",
+  "@operationAmount": {
+    "placeholders": {
+      "currency": {
+        "type": "String"
+      }
+    }
+  },
+  "operationRecipientLabel": "Получатель",
+  "operationToAccount": "На счёт",
+  "operationSampleContact": "Учебный контакт",
+  "operationToppedUp": "Счёт пополнен",
+  "operationTransferred": "Перевод выполнен",
+  "operationSaved": "Операция {id} сохранена в истории.",
+  "@operationSaved": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "operationConfirm": "Подтвердить",
+  "operationRunning": "Выполняем…",
+  "operationRetry": "Повторить запрос",
+  "operationChangeAmount": "Изменить сумму",
+  "operationToAccountPage": "К счёту",
+  "operationRestored": "Восстановлен незавершённый запрос. Повторите его с сохранённым ключом.",
+  "operationJournalUnreadable": "Не удалось прочитать журнал. Повторите восстановление.",
+  "operationInvalidAmount": "Введите сумму от {minimum} до {maximum} с точностью до копейки",
+  "@operationInvalidAmount": {
+    "placeholders": {
+      "minimum": {
+        "type": "String"
+      },
+      "maximum": {
+        "type": "String"
+      }
+    }
+  },
+  "operationInvalidDestination": "Выберите другой счёт в той же валюте",
+  "operationInvalidRecipient": "Выберите учебного получателя",
+  "operationEarlierPending": "Сначала завершите ранее сохранённый запрос.",
+  "operationRejectedStuck": "Запрос отклонён. Не удалось очистить журнал; повторите восстановление.",
+  "operationResultUnknown": "Результат пока не получен. Повторите запрос: сумма и ключ операции сохранены.",
+  "qrTitle": "Сканировать QR",
+  "qrHint": "Выберите учебный QR-код или вставьте ссылку DemoBank.",
+  "qrField": "Ссылка из QR-кода",
+  "qrInvalid": "Вставьте учебную ссылку DemoBank или выберите пример ниже.",
+  "qrUnsupported": "Этот учебный код не поддерживается. Выберите доступный пример.",
+  "qrOpen": "Открыть код",
+  "qrSampleUtilities": "Пример · оплата ЖКХ",
+  "qrSampleTopUp": "Пример · пополнение счёта"
+}

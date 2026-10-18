@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:app_foundation/app_foundation.dart';
+import 'package:app_localizations/app_localizations.dart';
 import 'package:bank_core/bank_core.dart';
 import 'package:design_system/design_system.dart';
 import 'package:fines_app/fines_application.dart';
@@ -174,10 +175,10 @@ void main() {
         final summary = tester.widget<DsPaymentSummary>(
           find.byType(DsPaymentSummary),
         );
-        expect(summary.amount, const Money(75000).format());
+        expect(summary.amount, AppFormats('ru').money(const Money(75000)));
         expect(
           summary.details.singleWhere((item) => item.label == 'Комиссия').value,
-          const Money(0).format(),
+          AppFormats('ru').money(const Money(0)),
         );
         await _press(tester, find.text('Подтвердить оплату'));
         await _waitFor(tester, find.text('Оплата выполнена'));

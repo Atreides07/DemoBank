@@ -21,7 +21,7 @@ final class HistoryState {
     Map<int, String?> cursors = const {0: null},
     Set<int> loadingPages = const {},
     Set<String> updatedIds = const {},
-    Map<int, String> errors = const {},
+    Set<int> failedPages = const {},
     this.rowCount = 0,
     this.total = 0,
     this.revision = '',
@@ -34,7 +34,7 @@ final class HistoryState {
        cursors = Map.unmodifiable(cursors),
        loadingPages = Set.unmodifiable(loadingPages),
        updatedIds = Set.unmodifiable(updatedIds),
-       errors = Map.unmodifiable(errors);
+       failedPages = Set.unmodifiable(failedPages);
   final LedgerFilter filter;
   final LedgerFilter? pendingFilter;
   final Map<int, LedgerPage> pages;
@@ -43,7 +43,9 @@ final class HistoryState {
   final Map<int, String?> cursors;
   final Set<int> loadingPages;
   final Set<String> updatedIds;
-  final Map<int, String> errors;
+
+  /// Pages whose last request failed; page 0 is the initial load.
+  final Set<int> failedPages;
   final int rowCount;
   final int total;
   final String revision;
@@ -70,7 +72,9 @@ final class HistoryState {
     ),
   );
   bool get hasMore => rowCount < total;
-  String? get error => errors[0];
+
+  /// The initial load failed.
+  bool get failed => failedPages.contains(0);
 }
 
 /// Only bounded model pages are retained. Identity metadata and revision-scoped
@@ -100,7 +104,7 @@ final class HistoryCubit extends Cubit<HistoryState> {
         pendingFilter: target,
         clearPendingUpdate: true,
         loadingPages: {},
-        errors: {},
+        failedPages: {},
       ),
     );
     try {
@@ -139,7 +143,7 @@ final class HistoryCubit extends Cubit<HistoryState> {
             stale: false,
             clearPendingFilter: true,
             clearPendingUpdate: true,
-            errors: {},
+            failedPages: {},
           ),
         );
         return;
@@ -153,7 +157,7 @@ final class HistoryCubit extends Cubit<HistoryState> {
             loading: false,
             clearPendingFilter: true,
             pendingUpdate: first,
-            errors: {},
+            failedPages: {},
           ),
         );
       } else {
@@ -162,13 +166,7 @@ final class HistoryCubit extends Cubit<HistoryState> {
     } catch (error, stackTrace) {
       addError(error, stackTrace);
       if (_current(epoch)) {
-        emit(
-          _copy(
-            loading: false,
-            clearPendingFilter: true,
-            errors: {0: 'Не удалось загрузить операции. Повторите запрос.'},
-          ),
-        );
+        emit(_copy(loading: false, clearPendingFilter: true, failedPages: {0}));
       }
     }
   }
@@ -375,7 +373,7 @@ final class HistoryCubit extends Cubit<HistoryState> {
     emit(
       _copy(
         loadingPages: {...state.loadingPages, index},
-        errors: {...state.errors}..remove(index),
+        failedPages: {...state.failedPages}..remove(index),
       ),
     );
     try {
@@ -429,10 +427,7 @@ final class HistoryCubit extends Cubit<HistoryState> {
         emit(
           _copy(
             loadingPages: {...state.loadingPages}..remove(index),
-            errors: {
-              ...state.errors,
-              index: 'Не удалось загрузить страницу. Повторить',
-            },
+            failedPages: {...state.failedPages, index},
           ),
         );
       }
@@ -451,7 +446,7 @@ final class HistoryCubit extends Cubit<HistoryState> {
     Map<int, String>? days,
     Map<int, String?>? cursors,
     Set<int>? loadingPages,
-    Map<int, String>? errors,
+    Set<int>? failedPages,
     int? rowCount,
   }) => HistoryState(
     filter: state.filter,
@@ -464,7 +459,7 @@ final class HistoryCubit extends Cubit<HistoryState> {
     cursors: cursors ?? state.cursors,
     loadingPages: loadingPages ?? state.loadingPages,
     updatedIds: state.updatedIds,
-    errors: errors ?? state.errors,
+    failedPages: failedPages ?? state.failedPages,
     rowCount: rowCount ?? state.rowCount,
     total: state.total,
     revision: state.revision,

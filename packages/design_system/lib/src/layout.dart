@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'amount.dart';
 import 'components.dart';
+import 'localizations.dart';
 import 'theme.dart';
 import 'tokens.dart';
 
@@ -117,7 +118,7 @@ class DsScaffold extends StatelessWidget {
               leading: canGoBack
                   ? DsIconButton(
                       icon: DsIcons.back,
-                      label: 'Назад',
+                      label: DsLocalizations.of(context).back,
                       onPressed: backEnabled
                           ? onBack ?? () => Navigator.of(context).maybePop()
                           : null,
@@ -490,7 +491,7 @@ class DsCollapsingHeader extends StatelessWidget {
     required this.title,
     required this.balance,
     this.subtitle,
-    this.label = 'Общий баланс',
+    this.label,
     this.child,
     this.action,
     this.density = DsDensity.comfortable,
@@ -498,7 +499,7 @@ class DsCollapsingHeader extends StatelessWidget {
   final String title;
   final String balance;
   final String? subtitle;
-  final String label;
+  final String? label;
   final Widget? child;
   final Widget? action;
   final DsDensity density;
@@ -545,7 +546,7 @@ class _BalanceHeaderDelegate extends SliverPersistentHeaderDelegate {
   _BalanceHeaderDelegate({
     required this.title,
     required this.balance,
-    required this.label,
+    this.label,
     required this.scale,
     required this.compact,
     this.subtitle,
@@ -554,7 +555,7 @@ class _BalanceHeaderDelegate extends SliverPersistentHeaderDelegate {
   });
   final String title;
   final String balance;
-  final String label;
+  final String? label;
   final String? subtitle;
   final Widget? child;
   final Widget? action;
@@ -583,6 +584,7 @@ class _BalanceHeaderDelegate extends SliverPersistentHeaderDelegate {
     final t = (shrinkOffset / (maxExtent - minExtent)).clamp(0.0, 1.0);
     final colors = context.dsPalette;
     final inset = DsTokens.pagePadding(context);
+    final label = this.label ?? DsLocalizations.of(context).totalBalance;
     return RepaintBoundary(
       child: ColoredBox(
         color: colors.background,

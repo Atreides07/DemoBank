@@ -45,4 +45,25 @@ void main() {
       3,
     );
   });
+
+  test('rejects user-facing words outside the catalogues', () {
+    const source = r"""
+      const title = 'Платежи';
+      String greet(String name) => 'Привет, $name';
+      const id = 'payments';
+    """;
+    final issues = inspectUntranslatedText(
+      source,
+      '/repo/packages/features/demo/lib/src/demo_view.dart',
+    );
+    expect(issues, hasLength(2));
+    expect(issues.first, contains('untranslated text'));
+    expect(
+      inspectUntranslatedText(
+        source,
+        '/repo/packages/app_localizations/lib/src/language.dart',
+      ),
+      isEmpty,
+    );
+  });
 }

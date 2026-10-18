@@ -66,7 +66,7 @@ final class ApiAccountManagement implements AccountManagement {
       );
     } on ApiFailure catch (error) {
       if (error.statusCode == 422) {
-        throw AccountOperationRejected(error.message);
+        throw AccountOperationRejected(error.serverMessage);
       }
       rethrow;
     }
@@ -95,19 +95,26 @@ final class ApiAccountManagement implements AccountManagement {
   void close() => _cancellation.cancel();
 }
 
+/// What went wrong with the account settings. The screen chooses the words.
+enum AccountManagementProblem { loadFailed, saveFailed }
+
 final class AccountManagementState {
   const AccountManagementState({
     this.profile,
     this.loading = false,
     this.saving = false,
     this.stale = false,
-    this.error,
+    this.problem,
+    this.failure,
   });
   final AccountProfile? profile;
   final bool loading;
   final bool saving;
   final bool stale;
-  final String? error;
+  final AccountManagementProblem? problem;
+
+  /// Details of the failed request when the server explained it.
+  final ApiFailure? failure;
 }
 
 final class AccountManagementCubit extends Cubit<AccountManagementState> {
@@ -140,7 +147,7 @@ final class AccountManagementCubit extends Cubit<AccountManagementState> {
           AccountManagementState(
             profile: state.profile,
             stale: state.profile != null,
-            error: 'Не удалось обновить счёт. Проверьте сеть и повторите.',
+            problem: AccountManagementProblem.loadFailed,
           ),
         );
       }
@@ -162,9 +169,8 @@ final class AccountManagementCubit extends Cubit<AccountManagementState> {
         emit(
           AccountManagementState(
             profile: state.profile,
-            error: error is ApiFailure
-                ? error.message
-                : 'Настройка не сохранена. Повторите.',
+            problem: AccountManagementProblem.saveFailed,
+            failure: error is ApiFailure ? error : null,
           ),
         );
       }

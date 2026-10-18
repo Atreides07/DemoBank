@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'amount.dart';
 import 'layout.dart';
+import 'localizations.dart';
 import 'theme.dart';
 import 'tokens.dart';
 
@@ -676,7 +677,8 @@ class DsTransactionTile extends StatelessWidget {
     final largeText =
         MediaQuery.textScalerOf(context).scale(1) > DsTokens.largeTextThreshold;
     return Semantics(
-      label: '$title, $subtitle, $value${changed ? ', обновлено' : ''}',
+      label:
+          '$title, $subtitle, $value${changed ? ', ${DsLocalizations.of(context).updated}' : ''}',
       button: onTap != null,
       excludeSemantics: true,
       child: SizedBox(
@@ -754,12 +756,12 @@ class DsTransactionTile extends StatelessWidget {
 }
 
 class DsTransactionPlaceholder extends StatelessWidget {
-  const DsTransactionPlaceholder({super.key, this.label = 'Загрузка операции'});
-  final String label;
+  const DsTransactionPlaceholder({super.key, this.label});
+  final String? label;
 
   @override
   Widget build(BuildContext context) => Semantics(
-    label: label,
+    label: label ?? DsLocalizations.of(context).loadingTransaction,
     child: SizedBox(
       height: DsTokens.transactionExtent(context),
       child: const Center(child: DsSkeleton()),
@@ -798,12 +800,14 @@ class DsSkeleton extends StatelessWidget {
 }
 
 class DsLoading extends StatelessWidget {
-  const DsLoading({super.key, this.label = 'Загрузка данных'});
-  final String label;
+  const DsLoading({super.key, this.label});
+  final String? label;
 
   @override
-  Widget build(BuildContext context) =>
-      DsStatus(title: label, kind: DsStatusKind.loading);
+  Widget build(BuildContext context) => DsStatus(
+    title: label ?? DsLocalizations.of(context).loadingData,
+    kind: DsStatusKind.loading,
+  );
 }
 
 class DsStatus extends StatelessWidget {
@@ -1143,13 +1147,16 @@ class DsSeatPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) => DsColumn(
     children: [
-      const DsNotice(message: 'Экран • выберите свободные места'),
+      DsNotice(message: DsLocalizations.of(context).seatScreen),
       DsFlow(
         children: [
           for (final seat in seats)
             Semantics(
-              label:
-                  'Место ${seat.label}, ${seat.available ? (seat.selected ? 'выбрано' : 'свободно') : 'занято'}',
+              label: DsLocalizations.of(context).seat(
+                seat.label,
+                available: seat.available,
+                selected: seat.selected,
+              ),
               selected: seat.selected,
               child: ChoiceChip(
                 label: Text(seat.label),

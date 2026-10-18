@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:bank_core/bank_core.dart';
+import 'package:app_localizations/app_localizations.dart';
 import 'package:checkout/checkout.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
@@ -95,109 +95,128 @@ final class _FinesScreenState extends State<_FinesScreen> {
     }
     return BlocBuilder<FinesCubit, FinesState>(
       bloc: _controller,
-      builder: (context, state) => DsPage(
-        title: state.selected == null ? 'Штрафы' : 'Подробности штрафа',
-        actions: widget.actions,
-        onBack: state.selected == null ? null : () => _controller.select(null),
-        subtitle: 'Проверка начислений и оплата без комиссии',
-        children: [
-          if (state.selected == null)
-            DsSection(
-              title: 'Найти по документу',
-              child: DsColumn(
-                children: [
-                  DsField(
-                    label: 'СТС или водительское удостоверение',
-                    hint: 'Например, 7712345678',
-                    controller: _document,
-                    keyboardType: TextInputType.number,
-                  ),
-                  DsButton(
-                    label: 'Найти штрафы',
-                    loading: state.phase == FinesPhase.loading,
-                    onPressed: state.phase == FinesPhase.loading
-                        ? null
-                        : () => _controller.search(_document.text),
-                    icon: DsIcons.search,
-                  ),
-                ],
-              ),
-            ),
-          if (state.phase == FinesPhase.loading)
-            const DsLoading(label: 'Проверяем государственные начисления…'),
-          if (state.error != null)
-            DsStatus(
-              title: 'Не удалось выполнить поиск',
-              message: state.error,
-              kind: DsStatusKind.error,
-              action: DsButton(
-                label: 'Повторить',
-                onPressed: () => _controller.search(_document.text),
-              ),
-            ),
-          if (state.phase == FinesPhase.ready && state.bills.isEmpty)
-            const DsStatus(
-              title: 'Штрафов нет',
-              message: 'По этому документу начисления не найдены.',
-              kind: DsStatusKind.empty,
-            ),
-          if (state.selected case final bill?) _detail(bill),
-          if (state.bills.isNotEmpty && state.selected == null)
-            DsSection(
-              title: 'Начисления',
-              child: DsColumn(
-                children: [
-                  for (final bill in state.bills)
-                    DsListTile(
-                      title: bill.title,
-                      subtitle: bill.paid ? 'Оплачен' : bill.description,
-                      trailing: DsMoneyText(
-                        bill.amount.format(),
-                        prominent: false,
-                      ),
-                      icon: bill.paid ? DsIcons.success : DsIcons.receipt,
-                      onTap: () => _controller.select(bill),
+      builder: (context, state) {
+        final l10n = context.l10n;
+        final formats = context.formats;
+        return DsPage(
+          title: state.selected == null
+              ? l10n.finesTitle
+              : l10n.finesDetailsTitle,
+          actions: widget.actions,
+          onBack: state.selected == null
+              ? null
+              : () => _controller.select(null),
+          subtitle: l10n.finesSubtitle,
+          children: [
+            if (state.selected == null)
+              DsSection(
+                title: l10n.finesSearchSection,
+                child: DsColumn(
+                  children: [
+                    DsField(
+                      label: l10n.finesDocumentLabel,
+                      hint: l10n.finesDocumentHint,
+                      controller: _document,
+                      keyboardType: TextInputType.number,
                     ),
-                ],
+                    DsButton(
+                      label: l10n.finesSearch,
+                      loading: state.phase == FinesPhase.loading,
+                      onPressed: state.phase == FinesPhase.loading
+                          ? null
+                          : () => _controller.search(_document.text),
+                      icon: DsIcons.search,
+                    ),
+                  ],
+                ),
               ),
-            ),
-          if (state.phase == FinesPhase.initial)
-            const DsStatus(
-              title: 'Документ нужен только для поиска',
-              message:
-                  'Демонстрационные начисления: 7712345678. '
-                  'Для пустого результата используйте 0000000000.',
-            ),
-        ],
-      ),
+            if (state.phase == FinesPhase.loading)
+              DsLoading(label: l10n.finesLoading),
+            if (state.problem case final problem?)
+              DsStatus(
+                title: l10n.finesSearchFailedTitle,
+                message: switch (problem) {
+                  FinesProblem.invalidDocument => l10n.finesInvalidDocument,
+                  FinesProblem.requestFailed => switch (state.failure) {
+                    final failure? => l10n.paymentFailure(failure),
+                    null => l10n.finesSearchFailed,
+                  },
+                },
+                kind: DsStatusKind.error,
+                action: DsButton(
+                  label: l10n.commonRetry,
+                  onPressed: () => _controller.search(_document.text),
+                ),
+              ),
+            if (state.phase == FinesPhase.ready && state.bills.isEmpty)
+              DsStatus(
+                title: l10n.finesEmptyTitle,
+                message: l10n.finesEmptyMessage,
+                kind: DsStatusKind.empty,
+              ),
+            if (state.selected case final bill?) _detail(context, bill),
+            if (state.bills.isNotEmpty && state.selected == null)
+              DsSection(
+                title: l10n.finesBills,
+                child: DsColumn(
+                  children: [
+                    for (final bill in state.bills)
+                      DsListTile(
+                        title: bill.title,
+                        subtitle: bill.paid
+                            ? l10n.commonPaid
+                            : bill.description,
+                        trailing: DsMoneyText(
+                          formats.money(bill.amount),
+                          prominent: false,
+                        ),
+                        icon: bill.paid ? DsIcons.success : DsIcons.receipt,
+                        onTap: () => _controller.select(bill),
+                      ),
+                  ],
+                ),
+              ),
+            if (state.phase == FinesPhase.initial)
+              DsStatus(
+                title: l10n.finesHintTitle,
+                message: l10n.finesHintMessage,
+              ),
+          ],
+        );
+      },
     );
   }
 
-  Widget _detail(FineBill bill) => DsColumn(
-    children: [
-      DsPaymentSummary(
-        title: bill.title,
-        amount: bill.amount.format(),
-        details: [
-          DsDetail('Основание', bill.description),
-          DsDetail('УИН', bill.id),
-          DsDetail('Оплатить до', _date(bill.dueDate)),
-          DsDetail('Статус', bill.paid ? 'Оплачен' : 'К оплате'),
-        ],
-      ),
-      if (!bill.paid)
-        DsButton(
-          label: 'Перейти к оплате',
-          onPressed: () =>
-              setState(() => _intent = _controller.intent(widget.accountId)),
+  Widget _detail(BuildContext context, FineBill bill) {
+    final l10n = context.l10n;
+    final formats = context.formats;
+    return DsColumn(
+      children: [
+        DsPaymentSummary(
+          title: bill.title,
+          amount: formats.money(bill.amount),
+          details: [
+            DsDetail(l10n.finesBasis, bill.description),
+            DsDetail(l10n.finesUin, bill.id),
+            DsDetail(l10n.finesPayBefore, formats.date(bill.dueDate)),
+            DsDetail(
+              l10n.finesStatus,
+              bill.paid ? l10n.commonPaid : l10n.finesToPay,
+            ),
+          ],
         ),
-      DsButton(
-        label: 'Все начисления',
-        onPressed: () => _controller.select(null),
-        variant: DsButtonVariant.quiet,
-      ),
-    ],
-  );
-
-  String _date(DateTime date) => ReportingPeriod.date(date);
+        if (!bill.paid)
+          DsButton(
+            label: l10n.finesGoToPayment,
+            onPressed: () =>
+                setState(() => _intent = _controller.intent(widget.accountId)),
+          ),
+        DsButton(
+          label: l10n.finesAllBills,
+          onPressed: () => _controller.select(null),
+          variant: DsButtonVariant.quiet,
+        ),
+      ],
+    );
+  }
 }

@@ -60,6 +60,8 @@ abstract final class DsIcons {
   static const currencyUsd = Icons.attach_money_rounded;
   static const currencyGbp = Icons.currency_pound_rounded;
   static const ruble = Icons.currency_ruble_rounded;
+  static const wallet = Icons.account_balance_wallet_outlined;
+  static const language = Icons.translate_rounded;
 }
 
 /// The base scale is intentionally private to the package's presentation code.

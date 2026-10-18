@@ -1,3 +1,4 @@
+import 'package:app_localizations/app_localizations.dart';
 import 'package:checkout/checkout.dart';
 import 'package:design_system/design_system.dart';
 import 'package:fines/fines.dart';
@@ -47,6 +48,9 @@ void main() {
     final changes = <PaymentRecord>[];
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('ru'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: DsAppTheme.light(brand: DsBrand.fines),
         home: Scaffold(
           body: FinesFeature(
@@ -136,6 +140,9 @@ void main() {
       );
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('ru'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           theme: DsAppTheme.dark(brand: DsBrand.fines),
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(

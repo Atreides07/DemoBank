@@ -45,12 +45,6 @@ final class LedgerEntry {
   final String accountId;
   final EntryKind kind;
   final EntryStatus status;
-  String get displayAmount =>
-      '${amount.minor < 0
-          ? ''
-          : kind == EntryKind.expense
-          ? '−'
-          : '+'}${amount.format()}';
 }
 
 /// Half-open [from,to), interpreted in the reporting timezone (+03).

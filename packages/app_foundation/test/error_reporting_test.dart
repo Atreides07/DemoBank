@@ -23,16 +23,8 @@ void main() {
     addTearDown(cubit.close);
 
     cubit
-      ..report(
-        const ApiFailure(
-          kind: ApiFailureKind.offline,
-          message: 'Нет связи',
-          retryable: true,
-        ),
-      )
-      ..report(
-        const PaymentFailure(PaymentFailureCode.validation, 'Неверная сумма'),
-      )
+      ..report(const ApiFailure(kind: ApiFailureKind.offline, retryable: true))
+      ..report(const PaymentFailure(PaymentFailureCode.validation))
       ..report(StateError('defect'));
 
     expect(reports, [

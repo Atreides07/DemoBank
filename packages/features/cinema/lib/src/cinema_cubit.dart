@@ -15,8 +15,9 @@ final class CinemaState {
     this.seatVersion,
     this.loading = false,
     this.loaded = false,
-    this.error,
-    this.notice,
+    this.failed = false,
+    this.failure,
+    this.seatsChanged = false,
   });
   final List<Movie> movies;
   final List<CinemaSession> sessions;
@@ -27,8 +28,13 @@ final class CinemaState {
   final String? seatVersion;
   final bool loading;
   final bool loaded;
-  final String? error;
-  final String? notice;
+
+  /// The last request failed; [failure] carries the gateway's details.
+  final bool failed;
+  final PaymentFailure? failure;
+
+  /// Some previously selected seats were taken while the person was choosing.
+  final bool seatsChanged;
 
   List<CinemaSeat> get selectedSeats => seats
       .where((seat) => seat.available && selectedIds.contains(seat.id))
@@ -53,7 +59,7 @@ final class CinemaCubit extends Cubit<CinemaState> {
     } catch (error, stackTrace) {
       addError(error, stackTrace);
       if (!isClosed && generation == _generation) {
-        emit(CinemaState(loaded: true, error: _message(error)));
+        emit(CinemaState(loaded: true, failed: true, failure: _failure(error)));
       }
     }
   }
@@ -82,7 +88,8 @@ final class CinemaCubit extends Cubit<CinemaState> {
             movies: movies,
             movie: movie,
             loaded: true,
-            error: _message(error),
+            failed: true,
+            failure: _failure(error),
           ),
         );
       }
@@ -122,9 +129,7 @@ final class CinemaCubit extends Cubit<CinemaState> {
             seatVersion: available.version,
             selectedIds: Set.unmodifiable(selected),
             loaded: true,
-            notice: oldSelection.difference(availableIds).isEmpty
-                ? null
-                : 'Часть выбранных мест уже занята. Выберите другие места.',
+            seatsChanged: oldSelection.difference(availableIds).isNotEmpty,
           ),
         );
       }
@@ -138,7 +143,8 @@ final class CinemaCubit extends Cubit<CinemaState> {
             sessions: previous.sessions,
             session: session,
             loaded: true,
-            error: _message(error),
+            failed: true,
+            failure: _failure(error),
           ),
         );
       }
@@ -182,15 +188,13 @@ final class CinemaCubit extends Cubit<CinemaState> {
         movie == null ||
         state.selectedSeats.isEmpty ||
         state.seatVersion == null) {
-      throw const PaymentFailure(
-        PaymentFailureCode.validation,
-        'Выберите фильм, сеанс и свободные места.',
-      );
+      throw const PaymentFailure(PaymentFailureCode.validation);
     }
     return PaymentIntent(
       kind: PaymentKind.cinema,
       accountId: accountId,
-      recipient: '${session.cinema} · ${movie.title}',
+      // The server names the cinema and film in the language of the request.
+      recipient: session.id,
       referenceIds: state.selectedSeats
           .map((seat) => seat.id)
           .toList(growable: false),
@@ -210,7 +214,6 @@ final class CinemaCubit extends Cubit<CinemaState> {
     }
   }
 
-  String _message(Object error) => error is PaymentFailure
-      ? error.message
-      : 'Не удалось получить данные кинотеатра. Повторите запрос.';
+  static PaymentFailure? _failure(Object error) =>
+      error is PaymentFailure ? error : null;
 }

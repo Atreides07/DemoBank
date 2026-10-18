@@ -12,25 +12,52 @@ enum PaymentFailureCode {
   insufficientFunds,
   network,
   timeout,
+
+  /// The recovery journal could not be read; nothing is discarded.
   storage,
+
+  /// The journal could not be written before sending, so nothing was sent.
+  journalWriteFailed,
 
   /// The recovery journal holds an entry that cannot be decoded. Submission is
   /// blocked until the user explicitly discards it; a transient read failure
   /// is [storage] instead and is never discarded.
   journalUnreadable,
+
+  /// Setting an unreadable journal entry aside failed; it is still blocking.
+  journalDiscardFailed,
+
+  /// The server has not seen the saved key yet.
+  unconfirmed,
+
+  /// A server record does not match the saved operation.
+  inconsistentResponse,
+
+  /// The server returned payment terms that cannot be used.
+  invalidTerms,
+
+  /// Processing rejected the payment; [PaymentFailure.serverMessage] says why.
+  declined,
   unknown,
 }
 
 /// A transport-independent failure. A missing response never proves rejection.
+///
+/// It carries a code, not display text: screens choose the words for the
+/// current language. [serverMessage] is the server's own explanation, already
+/// in the requested language, for rejections the client cannot describe more
+/// precisely (such as a specific validation rule).
 final class PaymentFailure implements Exception {
-  const PaymentFailure(this.code, this.message);
+  const PaymentFailure(this.code, [this.serverMessage]);
 
   final PaymentFailureCode code;
-  final String message;
+  final String? serverMessage;
 
   bool get outcomeUnknown =>
       code == PaymentFailureCode.network ||
       code == PaymentFailureCode.timeout ||
+      code == PaymentFailureCode.unconfirmed ||
+      code == PaymentFailureCode.inconsistentResponse ||
       code == PaymentFailureCode.unknown;
 
   @override
@@ -53,23 +80,14 @@ final class PaymentIntent {
          details.map((key, value) => MapEntry(key, _snapshot(value))),
        ) {
     if (accountId.isEmpty || recipient.isEmpty || currency.isEmpty) {
-      throw const PaymentFailure(
-        PaymentFailureCode.validation,
-        'Проверьте счёт списания и получателя.',
-      );
+      throw const PaymentFailure(PaymentFailureCode.validation);
     }
     if (amount != null &&
         (amount!.minor <= 0 || amount!.currency != currency)) {
-      throw const PaymentFailure(
-        PaymentFailureCode.validation,
-        'Сумма должна быть положительной и соответствовать валюте платежа.',
-      );
+      throw const PaymentFailure(PaymentFailureCode.validation);
     }
     if (kind != PaymentKind.mobile && referenceIds.isEmpty) {
-      throw const PaymentFailure(
-        PaymentFailureCode.validation,
-        'Выберите начисления или места.',
-      );
+      throw const PaymentFailure(PaymentFailureCode.validation);
     }
   }
 
@@ -105,10 +123,7 @@ final class PaymentQuote {
         fee.minor < 0 ||
         amount.currency != fee.currency ||
         amount.currency != intent.currency) {
-      throw const PaymentFailure(
-        PaymentFailureCode.validation,
-        'Сервер вернул некорректные условия платежа.',
-      );
+      throw const PaymentFailure(PaymentFailureCode.invalidTerms);
     }
   }
 

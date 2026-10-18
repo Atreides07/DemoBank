@@ -3,6 +3,7 @@ import 'package:accounts/accounts.dart';
 import 'dart:convert';
 
 import 'package:app_foundation/app_foundation.dart';
+import 'package:app_localizations/app_localizations.dart';
 import 'package:bank_core/bank_core.dart';
 import 'package:bank_experience/bank_experience.dart';
 import 'package:design_system/design_system.dart';
@@ -652,10 +653,10 @@ final class _Journey {
     final summary = tester.widget<DsPaymentSummary>(
       find.byType(DsPaymentSummary),
     );
-    expect(summary.amount, total.format());
+    expect(summary.amount, AppFormats('ru').money(total));
     expect(
       summary.details.singleWhere((item) => item.label == 'Комиссия').value,
-      fee.format(),
+      AppFormats('ru').money(fee),
     );
     await pressText('Подтвердить оплату');
     await waitFor(find.text('Оплата выполнена'));

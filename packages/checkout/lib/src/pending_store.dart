@@ -26,9 +26,6 @@ final class CallbackPendingPaymentStore implements PendingPaymentStore {
 
   static const _unreadable = PaymentFailure(
     PaymentFailureCode.journalUnreadable,
-    'Сохранённый платёж повреждён и не может быть проверен. Новые оплаты '
-    'заблокированы, чтобы исключить повторное списание. Если операция уже '
-    'отправлялась, её результат появится в истории.',
   );
 
   @override
@@ -39,11 +36,7 @@ final class CallbackPendingPaymentStore implements PendingPaymentStore {
     } on FormatException {
       throw _unreadable;
     } catch (_) {
-      throw const PaymentFailure(
-        PaymentFailureCode.storage,
-        'Не удалось прочитать сохранённый платёж. Отправка заблокирована, '
-        'повторите проверку.',
-      );
+      throw const PaymentFailure(PaymentFailureCode.storage);
     }
     if (value == null) return null;
     try {

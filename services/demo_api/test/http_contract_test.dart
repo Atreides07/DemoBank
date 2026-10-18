@@ -256,4 +256,41 @@ void main() {
       }
     },
   );
+
+  test('HTTP and local adapter answer in the requested language', () async {
+    final server = await startDemoServer(
+      transport: SimulatedTransport(profile: _fast),
+      port: 0,
+    );
+    final http = ApiClient(
+      baseUri: Uri.parse('http://127.0.0.1:${server.port}'),
+      acceptLanguage: 'uz',
+    );
+    final local = ApiClient(
+      baseUri: Uri.parse('https://demo.invalid'),
+      adapter: SimulationAdapter(profile: _fast),
+      acceptLanguage: 'uz',
+    );
+    try {
+      for (final path in [
+        '/v1/accounts',
+        '/v1/transactions?limit=30&accounts=uzs&currency=UZS',
+        '/services/movies',
+      ]) {
+        expect(await http.get(path), await local.get(path), reason: path);
+      }
+      final accounts = (await http.get('/v1/accounts'))['accounts'] as List;
+      expect(
+        accounts.map((account) => (account as Map)['name']),
+        contains('Soʻm hisobi'),
+      );
+      http.acceptLanguage = 'en';
+      final movies = (await http.get('/services/movies'))['items'] as List;
+      expect((movies.first as Map)['title'], 'Orbit of Light');
+    } finally {
+      http.close();
+      local.close();
+      await server.close(force: true);
+    }
+  });
 }

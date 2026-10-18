@@ -1,161 +1,219 @@
 part of '../bank_experience.dart';
 
+typedef _Label = String Function(AppLocalizations l10n, AppFormats formats);
+
+/// A choice on a showcase page. The id is what the basket keeps, so a choice
+/// made in one language reads correctly after the language changes.
+@immutable
+class _Option {
+  const _Option(this.id, this.label);
+  final String id;
+  final _Label label;
+}
+
+/// Showcase content. Words come from the catalogue by [id]; amounts and dates
+/// are data, formatted for the reader.
 @immutable
 class _Discovery {
   const _Discovery(
     this.id,
-    this.title,
-    this.description,
     this.art, {
     this.options = const [],
     this.price,
     this.oldPrice,
     this.category,
-  });
-  final String id, title, description;
+    _Label? description,
+  }) : _description = description;
+  final String id;
   final DsArt art;
-  final List<String> options;
+  final List<_Option> options;
   final Money? price, oldPrice;
   final String? category;
+  final _Label? _description;
+
+  /// Catalogue select cases are identifiers, so `daily-cashback` is looked up
+  /// as `daily_cashback`.
+  String get _key => id.replaceAll('-', '_');
+
+  String title(AppLocalizations l10n) => l10n.discoveryTitle(_key);
+  String description(AppLocalizations l10n, AppFormats formats) =>
+      _description?.call(l10n, formats) ?? l10n.discoveryDescription(_key);
+  String? optionLabel(String? optionId, AppLocalizations l10n, AppFormats f) {
+    for (final option in options) {
+      if (option.id == optionId) return option.label(l10n, f);
+    }
+    return null;
+  }
 }
 
-const _discoveries = [
+String _option(AppLocalizations l10n, String id) =>
+    l10n.discoveryOption(id.replaceAll('-', '_'));
+
+_Option _plain(String id) => _Option(id, (l10n, _) => _option(l10n, id));
+
+_Option _cashback(String id, int percent, String category) => _Option(
+  id,
+  (l10n, f) => l10n.discoveryCashbackOption(
+    f.percent(percent, fractionDigits: 0),
+    category == 'books' ? l10n.discoveryBooksCategory : l10n.category(category),
+  ),
+);
+
+_Option _reward(String id, int points) => _Option(
+  id,
+  (l10n, _) => l10n.discoveryPair(_option(l10n, id), l10n.bonusPoints(points)),
+);
+
+_Option _yearly(String id, int minor) => _Option(
+  id,
+  (l10n, f) => l10n.discoveryPerYear(_option(l10n, id), f.money(Money(minor))),
+);
+
+_Option _loan(String id, int minor, int months) => _Option(
+  id,
+  (l10n, f) =>
+      l10n.discoveryPair(f.money(Money(minor)), l10n.monthsCount(months)),
+);
+
+_Option _trip(String id, DateTime date, int minor) => _Option(
+  id,
+  (l10n, f) => l10n.discoveryTrip(
+    _option(l10n, id),
+    f.dayMonthLong(date),
+    f.money(Money(minor)),
+  ),
+);
+
+_Option _stay(String id, int nights, int minor) => _Option(
+  id,
+  (l10n, f) => l10n.discoveryPair(
+    l10n.nightsCount(nights),
+    l10n.discoveryFrom(f.money(Money(minor))),
+  ),
+);
+
+_Option _room(String id, int minor) => _Option(
+  id,
+  (l10n, f) => l10n.discoveryPerNight(_option(l10n, id), f.money(Money(minor))),
+);
+
+final _discoveries = [
   _Discovery(
     'daily-cashback',
-    'Кэшбэк дня',
-    'Выберите категории и получайте больше бонусов за обычные покупки.',
     DsArt.cashback,
-    options: ['5% · Кафе и рестораны', '7% · Книги', '3% · Транспорт'],
+    options: [
+      _cashback('cashback-dining', 5, 'dining'),
+      _cashback('cashback-books', 7, 'books'),
+      _cashback('cashback-transport', 3, 'transport'),
+    ],
   ),
   _Discovery(
     'gift',
-    'Подарки за покупки',
-    'В октябре меняйте накопленные бонусы на подарки партнёров.',
     DsArt.gift,
     options: [
-      'Кофе с собой · 100 бонусов',
-      'Книга · 300 бонусов',
-      'Билет в кино · 500 бонусов',
+      _reward('gift-coffee', 100),
+      _reward('gift-book', 300),
+      _reward('gift-cinema', 500),
     ],
   ),
   _Discovery(
     'books',
-    'Осень с хорошей книгой',
-    'Подборка вымышленных книг и до 7% кэшбэка в демо-магазине.',
     DsArt.books,
-    options: ['Город у моря', 'Тёплые истории', 'Путешествие домой'],
+    description: (l10n, f) =>
+        l10n.discoveryBooksDescription(f.percent(7, fractionDigits: 0)),
+    options: [_plain('book-sea'), _plain('book-warm'), _plain('book-home')],
   ),
   _Discovery(
     'education',
-    'Первый шаг в мир технологий',
-    'Курс для детей с кэшбэком до 4 500 ₽',
     DsArt.books,
-    options: ['Основы программирования', 'Дизайн и творчество'],
+    description: (l10n, f) =>
+        l10n.discoveryEducationDescription(f.money(const Money(450000))),
+    options: [_plain('course-code'), _plain('course-design')],
   ),
   _Discovery(
     'insurance',
-    'Скидка 10% на защиту дома',
-    'Выберите демонстрационный полис для своей квартиры',
     DsArt.insurance,
-    options: ['Базовый · 990 ₽ в год', 'Семейный · 1 990 ₽ в год'],
+    description: (l10n, f) =>
+        l10n.discoveryInsuranceDescription(f.percent(10, fractionDigits: 0)),
+    options: [_yearly('policy-basic', 99000), _yearly('policy-family', 199000)],
   ),
   _Discovery(
     'borrow',
-    'Взять деньги',
-    'Посмотрите пример расчёта: 100 000 ₽ на 12 месяцев, платёж 9 500 ₽. Условия вымышлены.',
     DsArt.borrow,
-    options: ['100 000 ₽ · 12 месяцев', '200 000 ₽ · 24 месяца'],
+    description: (l10n, f) => l10n.discoveryBorrowDescription(
+      f.money(const Money(10000000)),
+      l10n.monthsCount(12),
+      f.money(const Money(950000)),
+    ),
+    options: [_loan('loan-12', 10000000, 12), _loan('loan-24', 20000000, 24)],
   ),
   _Discovery(
     'saving',
-    'Накопить',
-    'Выберите цель и настройте регулярное пополнение накопительного счёта.',
     DsArt.saving,
-    options: ['На путешествие', 'Подушка безопасности', 'На большую покупку'],
+    options: [
+      _plain('goal-travel'),
+      _plain('goal-safety'),
+      _plain('goal-purchase'),
+    ],
   ),
   _Discovery(
     'goal',
-    'Подарок для друга',
-    'Собрано 1 750 ₽ из 5 000 ₽. До дня рождения ещё 24 дня.',
     DsArt.gift,
-    options: ['Напомнить за неделю', 'Напомнить за день'],
+    description: (l10n, f) => l10n.discoveryGoalDescription(
+      f.money(const Money(175000)),
+      f.money(const Money(500000)),
+      l10n.daysCount(24),
+    ),
+    options: [_plain('remind-week'), _plain('remind-day')],
   ),
   _Discovery(
     'investments',
-    'Инвестиции от 5 ₽',
-    'Учебный портфель: 28 640,52 ₽. За год +12,4%. Данные демонстрационные.',
     DsArt.investments,
-    options: ['Посмотреть состав портфеля', 'Настроить напоминание'],
+    description: (l10n, f) => l10n.discoveryInvestmentsDescription(
+      f.money(const Money(2864052)),
+      f.percent(12.4, signed: true),
+    ),
+    options: [_plain('portfolio'), _plain('portfolio-reminder')],
   ),
   _Discovery(
     'card',
-    'Выпустить карту',
-    'Дополнительная демонстрационная карта к вашему счёту.',
     DsArt.cardPromo,
-    options: ['Для себя', 'Для близкого'],
+    options: [_plain('card-self'), _plain('card-family')],
   ),
   _Discovery(
     'home',
-    'Мой дом',
-    'Оплачивайте счета за дом и храните всё важное в одном месте.',
     DsArt.home,
-    options: ['Квартира · Лесная, 12', 'Добавить второй дом'],
+    options: [_plain('home-flat'), _plain('home-add')],
   ),
   _Discovery(
     'travel',
-    'Билетами шуршим',
-    'Осенние путешествия на поезде с кэшбэком до 5%',
     DsArt.travelTrain,
+    description: (l10n, f) =>
+        l10n.discoveryTravelDescription(f.percent(5, fractionDigits: 0)),
     options: [
-      'Москва → Казань · 24 октября · 3 490 ₽',
-      'Москва → Санкт-Петербург · 26 октября · 4 290 ₽',
+      _trip('trip-kazan', DateTime(2026, 10, 24), 349000),
+      _trip('trip-spb', DateTime(2026, 10, 26), 429000),
     ],
   ),
   _Discovery(
     'coast',
-    'К морю с кэшбэком до 10%',
-    'Тихая бухта, прогулки и новые места. Даты и цены демонстрационные.',
     DsArt.coast,
-    options: ['3 ночи · от 12 900 ₽', '7 ночей · от 24 900 ₽'],
+    options: [_stay('stay-3', 3, 1290000), _stay('stay-7', 7, 2490000)],
   ),
   _Discovery(
     'hotel',
-    'Отель «Лазурный берег»',
-    'Две ночи у моря · завтрак включён. Демонстрационный вариант бронирования.',
     DsArt.coast,
-    options: ['Стандарт · 7 490 ₽ за ночь', 'Семейный · 9 490 ₽ за ночь'],
+    options: [_room('room-standard', 749000), _room('room-family', 949000)],
   ),
-  _Discovery(
-    'shopping',
-    'Яркие дни покупок',
-    'Всё для дома, отдыха и себя. Скидки и бонусы в демонстрационной витрине.',
-    DsArt.shopping,
-  ),
-  _Discovery(
-    'electronics',
-    'Электроника',
-    'Устройства для каждого дня',
-    DsArt.electronics,
-  ),
-  _Discovery(
-    'cosmetics',
-    'Красота',
-    'Маленькие приятные открытия',
-    DsArt.cosmetics,
-  ),
-  _Discovery('clothes', 'Одежда', 'Удобные вещи для прогулок', DsArt.clothes),
-  _Discovery(
-    'appliances',
-    'Техника',
-    'Больше времени для себя',
-    DsArt.appliances,
-  ),
+  const _Discovery('shopping', DsArt.shopping),
+  const _Discovery('electronics', DsArt.electronics),
+  const _Discovery('cosmetics', DsArt.cosmetics),
+  const _Discovery('clothes', DsArt.clothes),
+  const _Discovery('appliances', DsArt.appliances),
 ];
 const _products = [
   _Discovery(
     'phone',
-    'Смартфон Nova Mini',
-    'Компактный смартфон, 128 ГБ, мятный. Модель и характеристики вымышлены.',
     DsArt.electronics,
     price: Money(2499000),
     oldPrice: Money(2999000),
@@ -163,8 +221,6 @@ const _products = [
   ),
   _Discovery(
     'pillow',
-    'Подушки Soft Dream · 2 шт.',
-    'Две мягкие подушки 50 × 70 см. Гипоаллергенный наполнитель, съёмные чехлы.',
     DsArt.pillow,
     price: Money(159900),
     oldPrice: Money(219900),
@@ -172,8 +228,6 @@ const _products = [
   ),
   _Discovery(
     'shoes',
-    'Кеды для долгих прогулок',
-    'Мягкая подошва, лёгкая ткань. Цвет светлая лаванда.',
     DsArt.clothes,
     price: Money(499000),
     oldPrice: Money(799000),
@@ -181,8 +235,6 @@ const _products = [
   ),
   _Discovery(
     'perfume',
-    'Парфюм Lavender · 50 мл',
-    'Лёгкий цветочный аромат. Демонстрационный товар без реального бренда.',
     DsArt.cosmetics,
     price: Money(150500),
     oldPrice: Money(195700),
@@ -190,8 +242,6 @@ const _products = [
   ),
   _Discovery(
     'washer',
-    'Стиральная машина Compact',
-    'Учебная модель: загрузка 6 кг, 12 программ, тихий режим.',
     DsArt.appliances,
     price: Money(2849000),
     oldPrice: Money(3299000),
@@ -199,8 +249,6 @@ const _products = [
   ),
   _Discovery(
     'airfryer',
-    'Аэрогриль Home Air · 4 л',
-    'Для любимых блюд: регулировка температуры, таймер, съёмная чаша.',
     DsArt.airfryer,
     price: Money(379900),
     oldPrice: Money(699900),
@@ -233,6 +281,7 @@ class _DemoCart extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// [option] is an option id; see [_Discovery.optionLabel].
   void select(String id, String option) {
     selections[id] = option;
     notifyListeners();
@@ -258,43 +307,48 @@ class _DiscoveryPageState extends State<_DiscoveryPage> {
   int _quantity = 1;
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final formats = context.formats;
     final item = _discoveryById(widget.id);
     final products = _products
         .where((p) => item.id == 'shopping' || p.category == item.id)
         .toList();
+    final selected = _selected ?? widget.cart.selections[item.id];
     return DsPage(
-      title: item.title,
+      title: item.title(l10n),
       actions: [
         DsIconButton(
-          label: 'Корзина',
+          label: l10n.cartTitle,
           icon: DsIcons.shopping,
           onPressed: () => context.push('/cart'),
         ),
       ],
       children: [
         DsFeatureArtwork(item.art),
-        DsText(item.title, style: DsTextStyle.headline),
-        DsText(item.description),
+        DsText(item.title(l10n), style: DsTextStyle.headline),
+        DsText(item.description(l10n, formats)),
         if (products.isNotEmpty)
           DsActionGrid(
             children: [
               for (final p in products)
                 DsProductTile(
-                  title: p.title,
-                  price: p.price!.format(),
-                  oldPrice: p.oldPrice?.format(),
+                  title: p.title(l10n),
+                  price: formats.money(p.price!),
+                  oldPrice: p.oldPrice == null
+                      ? null
+                      : formats.money(p.oldPrice!),
                   art: p.art,
                   onTap: () => context.push('/discover/${p.id}'),
                 ),
             ],
           ),
         if (item.price != null) ...[
-          DsMoneyText(item.price!.format()),
+          DsMoneyText(formats.money(item.price!)),
           DsFlow(
             children: [
               for (final n in [1, 2, 3])
                 DsChoice(
-                  label: '$n шт.',
+                  label: l10n.discoveryQuantity(n),
                   selected: _quantity == n,
                   onSelected: _confirmed
                       ? null
@@ -302,12 +356,11 @@ class _DiscoveryPageState extends State<_DiscoveryPage> {
                 ),
             ],
           ),
-          const DsText(
-            'Доставка в демо: 2–3 дня · бесплатно',
-            tone: DsTone.muted,
-          ),
+          DsText(l10n.discoveryDelivery, tone: DsTone.muted),
           DsButton(
-            label: _confirmed ? 'Добавлено · открыть корзину' : 'В корзину',
+            label: _confirmed
+                ? l10n.discoveryAddedOpenCart
+                : l10n.discoveryAddToCart,
             onPressed: () {
               if (_confirmed) {
                 context.push('/cart');
@@ -321,57 +374,69 @@ class _DiscoveryPageState extends State<_DiscoveryPage> {
         if (item.options.isNotEmpty && !_confirmed) ...[
           for (final option in item.options)
             DsChoice(
-              label: option,
-              selected:
-                  (_selected ?? widget.cart.selections[item.id]) == option,
-              onSelected: (_) => setState(() => _selected = option),
+              label: option.label(l10n, formats),
+              selected: selected == option.id,
+              onSelected: (_) => setState(() => _selected = option.id),
             ),
           DsButton(
-            label: 'Подтвердить выбор',
-            onPressed: (_selected ?? widget.cart.selections[item.id]) == null
+            label: l10n.discoveryConfirm,
+            onPressed: selected == null
                 ? null
                 : () {
-                    widget.cart.select(
-                      item.id,
-                      _selected ?? widget.cart.selections[item.id]!,
-                    );
+                    widget.cart.select(item.id, selected);
                     setState(() => _confirmed = true);
                   },
           ),
         ],
         if (_confirmed && item.price == null)
           DsStatus(
-            title: 'Выбор сохранён',
-            message: widget.cart.selections[item.id],
+            title: l10n.discoverySaved,
+            message: item.optionLabel(
+              widget.cart.selections[item.id],
+              l10n,
+              formats,
+            ),
             kind: DsStatusKind.success,
           ),
         if (item.id == 'home')
           DsButton(
-            label: 'Оплатить ЖКХ',
+            label: l10n.discoveryPayUtilities,
             icon: DsIcons.home,
             onPressed: () => context.push('/pay/utilities?account=main'),
           ),
         if (item.id == 'card')
           DsButton(
-            label: 'Добавить карту к счёту',
+            label: l10n.discoveryAddCard,
             onPressed: () => context.push('/account/main/addCard'),
           ),
         if (item.id == 'saving')
           DsButton(
-            label: 'Открыть накопительный счёт',
+            label: l10n.discoveryOpenSavings,
             onPressed: () => context.push('/account/savings'),
           ),
         if (item.id == 'investments')
-          const DsPanel(
+          DsPanel(
             child: DsColumn(
               children: [
-                DsKeyValue(label: 'Облигации', value: '18 900 ₽ · 66%'),
-                DsKeyValue(label: 'Фонды', value: '9 740,52 ₽ · 34%'),
+                DsKeyValue(
+                  label: l10n.discoveryBonds,
+                  value: l10n.discoveryPair(
+                    formats.money(const Money(1890000)),
+                    formats.percent(66, fractionDigits: 0),
+                  ),
+                ),
+                DsKeyValue(
+                  label: l10n.discoveryFunds,
+                  value: l10n.discoveryPair(
+                    formats.money(const Money(974052)),
+                    formats.percent(34, fractionDigits: 0),
+                  ),
+                ),
               ],
             ),
           ),
-        const DsText(
-          'Демонстрационная витрина: данные вымышлены, реальные заказы и заявки не отправляются.',
+        DsText(
+          l10n.discoveryDisclaimer,
           style: DsTextStyle.caption,
           tone: DsTone.muted,
         ),
@@ -393,65 +458,73 @@ class _CartPageState extends State<_CartPage> {
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: widget.cart,
-    builder: (context, _) => DsPage(
-      title: 'Корзина',
-      children: [
-        if (_completedTotal != null)
-          DsStatus(
-            title: 'Демонстрационный заказ создан',
-            message:
-                'Сумма ${_completedTotal!.format()}. Деньги не списывались.',
-            kind: DsStatusKind.success,
-          )
-        else if (widget.cart.count == 0)
-          const DsStatus(
-            title: 'Корзина пока пуста',
-            message: 'Выберите товар на главной или в поиске.',
-            kind: DsStatusKind.empty,
-          )
-        else ...[
-          for (final line in widget.cart.lines)
-            DsPanel(
-              child: DsColumn(
-                children: [
-                  DsText(
-                    _discoveryById(line.key).title,
-                    style: DsTextStyle.title,
-                  ),
-                  DsKeyValue(label: 'Количество', value: '${line.value}'),
-                  DsKeyValue(
-                    label: 'Цена за штуку',
-                    value: _discoveryById(line.key).price!.format(),
-                  ),
-                  if (!_review)
-                    DsButton(
-                      label: 'Убрать',
-                      variant: DsButtonVariant.quiet,
-                      onPressed: () => widget.cart.remove(line.key),
-                    ),
-                ],
+    builder: (context, _) {
+      final l10n = context.l10n;
+      final formats = context.formats;
+      return DsPage(
+        title: l10n.cartTitle,
+        children: [
+          if (_completedTotal != null)
+            DsStatus(
+              title: l10n.cartOrderCreated,
+              message: l10n.cartOrderCreatedMessage(
+                formats.money(_completedTotal!),
               ),
+              kind: DsStatusKind.success,
+            )
+          else if (widget.cart.count == 0)
+            DsStatus(
+              title: l10n.cartEmptyTitle,
+              message: l10n.cartEmptyMessage,
+              kind: DsStatusKind.empty,
+            )
+          else ...[
+            for (final line in widget.cart.lines)
+              DsPanel(
+                child: DsColumn(
+                  children: [
+                    DsText(
+                      _discoveryById(line.key).title(l10n),
+                      style: DsTextStyle.title,
+                    ),
+                    DsKeyValue(
+                      label: l10n.cartQuantity,
+                      value: formats.number(line.value),
+                    ),
+                    DsKeyValue(
+                      label: l10n.cartUnitPrice,
+                      value: formats.money(_discoveryById(line.key).price!),
+                    ),
+                    if (!_review)
+                      DsButton(
+                        label: l10n.cartRemove,
+                        variant: DsButtonVariant.quiet,
+                        onPressed: () => widget.cart.remove(line.key),
+                      ),
+                  ],
+                ),
+              ),
+            DsKeyValue(
+              label: l10n.cartTotal,
+              value: formats.money(widget.cart.total),
             ),
-          DsKeyValue(label: 'Итого', value: widget.cart.total.format()),
-          if (_review)
-            const DsText(
-              'Получатель: Алексей Демонов. Доставка: учебный адрес, Лесная, 12. Реальный заказ не отправляется.',
+            if (_review) DsText(l10n.cartReview(l10n.commonCustomerFullName)),
+            DsButton(
+              label: _review ? l10n.cartCreateOrder : l10n.cartCheckout,
+              onPressed: () {
+                if (_review) {
+                  final total = widget.cart.total;
+                  setState(() => _completedTotal = total);
+                  widget.cart.clear();
+                } else {
+                  setState(() => _review = true);
+                }
+              },
             ),
-          DsButton(
-            label: _review ? 'Создать демо-заказ' : 'Оформить',
-            onPressed: () {
-              if (_review) {
-                final total = widget.cart.total;
-                setState(() => _completedTotal = total);
-                widget.cart.clear();
-              } else {
-                setState(() => _review = true);
-              }
-            },
-          ),
+          ],
         ],
-      ],
-    ),
+      );
+    },
   );
 }
 
@@ -466,50 +539,52 @@ class _SearchPageState extends State<_SearchPage> {
   String _query = '';
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final formats = context.formats;
     final query = _query.toLowerCase().trim();
-    final items = [
-      ..._discoveries,
-      ..._products,
-    ].where((i) => '${i.title} ${i.description}'.toLowerCase().contains(query));
+    final items = [..._discoveries, ..._products].where(
+      (i) => '${i.title(l10n)} ${i.description(l10n, formats)}'
+          .toLowerCase()
+          .contains(query),
+    );
     final accounts = widget.accounts.where(
       (a) => a.name.toLowerCase().contains(query),
     );
     return DsPage(
-      title: 'Поиск',
+      title: DsLocalizations.of(context).search,
       children: [
         DsField(
-          label: 'Счёт, услуга или покупка',
+          label: l10n.searchField,
           onChanged: (v) => setState(() => _query = v),
         ),
         for (final a in accounts)
           DsListTile(
             title: a.name,
-            subtitle: a.balance.format(),
+            subtitle: formats.money(a.balance),
             icon: DsIcons.card,
             onTap: () => context.push('/account/${a.id}'),
           ),
-        if ('операции история'.contains(query))
+        if (l10n.searchHistoryKeywords.toLowerCase().contains(query))
           DsListTile(
-            title: 'История операций',
+            title: l10n.historyTitle,
             icon: DsIcons.receipt,
             onTap: () => context.push('/history'),
           ),
-        if ('платежи жкх связь штрафы кино'.contains(query))
+        if (l10n.searchPaymentsKeywords.toLowerCase().contains(query))
           DsListTile(
-            title: 'Платежи и услуги',
+            title: l10n.searchPayments,
             icon: DsIcons.services,
             onTap: () => context.go('/services'),
           ),
         for (final item in items)
           DsListTile(
-            title: item.title,
-            subtitle: item.price?.format() ?? item.description,
+            title: item.title(l10n),
+            subtitle: item.price == null
+                ? item.description(l10n, formats)
+                : formats.money(item.price!),
             onTap: () => context.push('/discover/${item.id}'),
           ),
-        if (items.isEmpty && accounts.isEmpty)
-          const DsText(
-            'По этому запросу ничего не найдено. Попробуйте другое название.',
-          ),
+        if (items.isEmpty && accounts.isEmpty) DsText(l10n.searchNothing),
       ],
     );
   }

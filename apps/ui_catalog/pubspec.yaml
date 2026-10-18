@@ -7,13 +7,12 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_localizations:
-    sdk: flutter
   flutter_bloc: 8.1.6
   go_router: 16.2.4
   cupertino_icons: 1.0.8
   bank_core: any
   app_foundation: any
+  app_localizations: any
   bank_experience: any
   design_system: any
   network_client: any

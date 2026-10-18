@@ -1,3 +1,4 @@
+import 'package:app_localizations/app_localizations.dart';
 import 'package:checkout/checkout.dart';
 import 'package:cinema/cinema.dart';
 import 'package:design_system/design_system.dart';
@@ -42,6 +43,9 @@ void main() {
     final completed = <PaymentRecord>[];
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('ru'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: DsAppTheme.light(),
         home: Scaffold(
           body: CinemaFeature(
@@ -128,7 +132,7 @@ void main() {
       );
       await controller.retry();
       expect(controller.state.selectedIds, isEmpty);
-      expect(controller.state.notice, isNotNull);
+      expect(controller.state.seatsChanged, isTrue);
       expect(() => controller.intent('main'), throwsA(isA<PaymentFailure>()));
       await controller.close();
       client.close();

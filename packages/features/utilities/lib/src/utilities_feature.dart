@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:bank_core/bank_core.dart';
+import 'package:app_localizations/app_localizations.dart';
 import 'package:checkout/checkout.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
@@ -90,102 +90,115 @@ final class _UtilitiesScreenState extends State<_UtilitiesScreen> {
     }
     return BlocBuilder<UtilitiesCubit, UtilitiesState>(
       bloc: _controller,
-      builder: (context, state) => DsPage(
-        title: 'Коммунальные услуги',
-        subtitle: 'Проверяйте начисления и оплачивайте выбранные счета вместе',
-        children: [
-          DsSection(
-            title: 'Ваш лицевой счёт',
-            child: DsColumn(
-              children: [
-                DsField(
-                  label: 'Лицевой счёт',
-                  controller: _account,
-                  hint: 'Демонстрационный: 1234567890',
-                  keyboardType: TextInputType.number,
-                ),
-                DsButton(
-                  label: 'Получить начисления',
-                  loading: state.phase == UtilitiesPhase.loading,
-                  onPressed: state.phase == UtilitiesPhase.loading
-                      ? null
-                      : () => _controller.load(_account.text),
-                ),
-              ],
-            ),
-          ),
-          if (state.phase == UtilitiesPhase.loading)
-            const DsLoading(label: 'Запрашиваем счета у поставщиков…'),
-          if (state.error != null)
-            DsStatus(
-              title: 'Начисления недоступны',
-              message: state.error,
-              kind: DsStatusKind.error,
-              action: DsButton(
-                label: 'Повторить',
-                onPressed: () => _controller.load(_account.text),
-              ),
-            ),
-          if (state.phase == UtilitiesPhase.ready && state.bills.isEmpty)
-            const DsStatus(
-              title: 'Начислений нет',
-              message: 'Уточните лицевой счёт или проверьте позже.',
-              kind: DsStatusKind.empty,
-            ),
-          for (final bill in state.bills)
-            DsCard(
-              child: DsColumn(
-                children: [
-                  DsListTile(
-                    title: bill.title,
-                    subtitle: '${bill.provider} · ${bill.description}',
-                    trailing: DsMoneyText(
-                      bill.amount.format(),
-                      prominent: false,
-                    ),
-                    icon: bill.paid ? DsIcons.success : DsIcons.home,
-                  ),
-                  DsText(
-                    'До ${ReportingPeriod.date(bill.dueDate)}',
-                    style: DsTextStyle.caption,
-                    tone: DsTone.muted,
-                  ),
-                  if (bill.paid)
-                    const DsText('Оплачен', tone: DsTone.success)
-                  else
-                    DsCheckbox(
-                      label: 'Включить в оплату',
-                      value: state.selectedIds.contains(bill.id),
-                      onChanged: (value) => _controller.toggle(bill.id, value),
-                    ),
-                ],
-              ),
-            ),
-          if (state.bills.isNotEmpty)
+      builder: (context, state) {
+        final l10n = context.l10n;
+        final formats = context.formats;
+        return DsPage(
+          title: l10n.utilitiesTitle,
+          subtitle: l10n.utilitiesSubtitle,
+          children: [
             DsSection(
-              title: 'Выбрано к оплате',
+              title: l10n.utilitiesAccountSection,
               child: DsColumn(
                 children: [
-                  DsMoneyText(state.selectedTotal.format()),
-                  const DsText(
-                    'Точная комиссия будет показана перед подтверждением.',
-                    style: DsTextStyle.caption,
-                    tone: DsTone.muted,
+                  DsField(
+                    label: l10n.utilitiesAccountLabel,
+                    controller: _account,
+                    hint: l10n.utilitiesAccountHint,
+                    keyboardType: TextInputType.number,
                   ),
                   DsButton(
-                    label: 'Продолжить',
-                    onPressed: state.selectedBills.isEmpty
+                    label: l10n.utilitiesLoad,
+                    loading: state.phase == UtilitiesPhase.loading,
+                    onPressed: state.phase == UtilitiesPhase.loading
                         ? null
-                        : () => setState(
-                            () =>
-                                _intent = _controller.intent(widget.accountId),
-                          ),
+                        : () => _controller.load(_account.text),
                   ),
                 ],
               ),
             ),
-        ],
-      ),
+            if (state.phase == UtilitiesPhase.loading)
+              DsLoading(label: l10n.utilitiesLoading),
+            if (state.problem case final problem?)
+              DsStatus(
+                title: l10n.utilitiesUnavailable,
+                message: switch (problem) {
+                  UtilitiesProblem.invalidAccount =>
+                    l10n.utilitiesInvalidAccount,
+                  UtilitiesProblem.requestFailed => switch (state.failure) {
+                    final failure? => l10n.paymentFailure(failure),
+                    null => l10n.utilitiesLoadFailed,
+                  },
+                },
+                kind: DsStatusKind.error,
+                action: DsButton(
+                  label: l10n.commonRetry,
+                  onPressed: () => _controller.load(_account.text),
+                ),
+              ),
+            if (state.phase == UtilitiesPhase.ready && state.bills.isEmpty)
+              DsStatus(
+                title: l10n.utilitiesEmptyTitle,
+                message: l10n.utilitiesEmptyMessage,
+                kind: DsStatusKind.empty,
+              ),
+            for (final bill in state.bills)
+              DsCard(
+                child: DsColumn(
+                  children: [
+                    DsListTile(
+                      title: bill.title,
+                      subtitle: '${bill.provider} · ${bill.description}',
+                      trailing: DsMoneyText(
+                        formats.money(bill.amount),
+                        prominent: false,
+                      ),
+                      icon: bill.paid ? DsIcons.success : DsIcons.home,
+                    ),
+                    DsText(
+                      l10n.utilitiesDueDate(formats.date(bill.dueDate)),
+                      style: DsTextStyle.caption,
+                      tone: DsTone.muted,
+                    ),
+                    if (bill.paid)
+                      DsText(l10n.commonPaid, tone: DsTone.success)
+                    else
+                      DsCheckbox(
+                        label: l10n.utilitiesInclude,
+                        value: state.selectedIds.contains(bill.id),
+                        onChanged: (value) =>
+                            _controller.toggle(bill.id, value),
+                      ),
+                  ],
+                ),
+              ),
+            if (state.bills.isNotEmpty)
+              DsSection(
+                title: l10n.utilitiesSelected,
+                child: DsColumn(
+                  children: [
+                    DsMoneyText(formats.money(state.selectedTotal)),
+                    DsText(
+                      l10n.utilitiesFeeNotice,
+                      style: DsTextStyle.caption,
+                      tone: DsTone.muted,
+                    ),
+                    DsButton(
+                      label: l10n.commonContinue,
+                      onPressed: state.selectedBills.isEmpty
+                          ? null
+                          : () => setState(
+                              () => _intent = _controller.intent(
+                                widget.accountId,
+                              ),
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

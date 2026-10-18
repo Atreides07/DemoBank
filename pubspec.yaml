@@ -6,6 +6,7 @@ workspace:
   - apps/bank_app
   - apps/fines_app
   - apps/ui_catalog
+  - packages/app_localizations
   - packages/bank_artwork
   - packages/bank_core
   - packages/ledger_data

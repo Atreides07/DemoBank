@@ -255,7 +255,10 @@ void main() {
       await controller.begin(_intent());
       await controller.confirm();
       expect(gateway.posts, 0);
-      expect(controller.state.failure!.code, PaymentFailureCode.storage);
+      expect(
+        controller.state.failure!.code,
+        PaymentFailureCode.journalWriteFailed,
+      );
     },
   );
 

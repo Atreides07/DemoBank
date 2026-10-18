@@ -1,5 +1,6 @@
 import 'package:accounts/accounts.dart';
 import 'package:app_foundation/app_foundation.dart';
+import 'package:app_localizations/app_localizations.dart';
 import 'package:bank_core/bank_core.dart';
 import 'package:bank_experience/bank_experience.dart';
 import 'package:flutter/material.dart';
@@ -32,7 +33,7 @@ void main() {
     );
     expect(find.byType(DsTransactionTile).evaluate().length, lessThan(30));
     final history = tester.widget<HistorySliver>(any).cubit;
-    expect(history.state.error, isNull);
+    expect(history.state.failed, isFalse);
     expect(history.state.rowCount, 30);
     expect(history.state.total, 12000);
     expect(history.state.pages.length, 1);
@@ -202,6 +203,9 @@ void main() {
     addTearDown(controller.dispose);
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('ru'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: DsAppTheme.light(),
         home: Scaffold(
           body: CustomScrollView(
@@ -298,7 +302,7 @@ void main() {
       final oldEntry = history.state.pages.values
           .expand((page) => page.items)
           .singleWhere((entry) => entry.id == anchor);
-      final category = categoryLabels.keys.firstWhere(
+      final category = spendingCategories.firstWhere(
         (id) => id != oldEntry.categoryId,
       );
 
@@ -307,7 +311,7 @@ void main() {
       await loading;
       await tester.pumpAndSettle();
 
-      expect(history.state.error, isNull);
+      expect(history.state.failed, isFalse);
       expect(history.state.filter.category, category);
       expect(history.state.ids.values, isNot(contains(anchor)));
       // The full reference feed precedes history. A changed filter must reveal
@@ -318,7 +322,10 @@ void main() {
             .byWidgetPredicate(
               (widget) =>
                   widget is DsChoice &&
-                  widget.label == categoryLabels[category] &&
+                  widget.label ==
+                      lookupAppLocalizations(
+                        const Locale('ru'),
+                      ).categoryName(category) &&
                   widget.selected,
             )
             .hitTestable(),

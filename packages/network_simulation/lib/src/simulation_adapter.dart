@@ -81,10 +81,13 @@ final class SimulatedTransport {
         throw const SimulatedTimeout();
       }
       final response = fault == SimulatedFault.httpError
-          ? const SimulatedResponse({
+          ? SimulatedResponse({
               'error': {
                 'code': 'temporarily_unavailable',
-                'message': 'Сервис временно недоступен. Повторите запрос',
+                'message': DemoTexts.text(
+                  request.language,
+                  'error.unavailable',
+                ),
               },
             }, statusCode: 503)
           : await api.handle(request);
@@ -265,7 +268,12 @@ final class SimulationAdapter implements HttpClientAdapter {
           ? Map<String, dynamic>.from(decoded)
           : const <String, dynamic>{};
       final exchange = await transport.open(
-        SimulatedRequest(method: options.method, uri: options.uri, body: body),
+        SimulatedRequest(
+          method: options.method,
+          uri: options.uri,
+          body: body,
+          acceptLanguage: options.headers['accept-language'] as String?,
+        ),
         cancellation,
       );
       return ResponseBody(

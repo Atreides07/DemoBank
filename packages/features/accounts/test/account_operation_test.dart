@@ -52,13 +52,6 @@ class _Reader implements AccountManagement {
 }
 
 void main() {
-  test('decimal input never uses floating point or rounds user money', () {
-    expect(AccountOperationCubit.parseMinor('1 234,05'), 123405);
-    expect(AccountOperationCubit.parseMinor('0.01'), 1);
-    for (final value in ['1.001', '-3', 'NaN', '1e3', '', '1,2,3']) {
-      expect(AccountOperationCubit.parseMinor(value), isNull);
-    }
-  });
   test(
     'lost response restores same key after route and process restart',
     () async {
@@ -74,7 +67,7 @@ void main() {
         journal: CachedAccountOperationJournal(cache),
       );
       await first.restore();
-      first.review('125,37', 'savings');
+      first.review(12537, 'savings');
       expect(first.state.step, AccountOperationStep.review);
       expect(await first.submit(), isFalse);
       expect(first.canEdit, isFalse);
@@ -113,7 +106,7 @@ void main() {
         journal: journal,
       );
       await cubit.restore();
-      cubit.review('1', null);
+      cubit.review(100, null);
       final submitted = cubit.submit();
       expect(await cubit.submit(), isFalse);
       for (var n = 0; n < 5; n++) {
@@ -148,10 +141,11 @@ void main() {
         journal: journal,
       );
       await cubit.restore();
-      cubit.review('1', 'savings');
+      cubit.review(100, 'savings');
       expect(await cubit.submit(), isFalse);
       expect(cubit.state.step, AccountOperationStep.editing);
-      expect(cubit.state.error, 'Недостаточно средств');
+      expect(cubit.state.problem, AccountOperationProblem.rejected);
+      expect(cubit.state.serverMessage, 'Недостаточно средств');
       expect(await journal.load('main'), isNull);
       await cubit.close();
     },
@@ -205,8 +199,8 @@ void main() {
       );
       await cubit.restore();
       expect(cubit.state.step, AccountOperationStep.restoring);
-      expect(cubit.state.error, isNotNull);
-      cubit.review('1', null);
+      expect(cubit.state.problem, AccountOperationProblem.journalUnreadable);
+      cubit.review(100, null);
       expect(await cubit.submit(), isFalse);
       expect(reader.sent, isEmpty);
       await cubit.close();
@@ -225,15 +219,15 @@ void main() {
       journal: CachedAccountOperationJournal(cache),
     );
     await cubit.restore();
-    for (final pair in [
-      ('0', 'savings'),
-      ('1001', 'savings'),
-      ('1.001', 'savings'),
-      ('1', 'main'),
+    for (final (minor, destination, problem) in [
+      (0, 'savings', AccountOperationProblem.invalidAmount),
+      (null, 'savings', AccountOperationProblem.invalidAmount),
+      (100100, 'savings', AccountOperationProblem.insufficientFunds),
+      (100, 'main', AccountOperationProblem.invalidDestination),
     ]) {
-      cubit.review(pair.$1, pair.$2);
+      cubit.review(minor, destination);
       expect(cubit.state.step, AccountOperationStep.editing);
-      expect(cubit.state.error, isNotNull);
+      expect(cubit.state.problem, problem);
     }
     expect(reader.sent, isEmpty);
     await cubit.close();

@@ -92,9 +92,14 @@ final class AccountRecipient {
   final String id, name, bank, phone;
 }
 
+/// The bank refused the operation. [serverMessage] is its explanation in the
+/// language of the request, when it gave one.
 final class AccountOperationRejected implements Exception {
-  const AccountOperationRejected(this.message);
-  final String message;
+  const AccountOperationRejected([this.serverMessage]);
+  final String? serverMessage;
+
+  @override
+  String toString() => 'AccountOperationRejected';
 }
 
 final class AccountOperation {

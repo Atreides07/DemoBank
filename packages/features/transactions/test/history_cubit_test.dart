@@ -68,7 +68,7 @@ void main() {
     await cubit.load();
     expect(reader.requests, hasLength(1));
     expect(cubit.state.at(0)?.id, 'txn-0');
-    expect(cubit.state.error, isNull);
+    expect(cubit.state.failed, isFalse);
     expect(cubit.state.stale, isFalse);
   });
 
@@ -95,7 +95,7 @@ void main() {
     await cubit.load();
     expect(cubit.state.at(0)?.id, 'cached-0');
     expect(cubit.state.stale, isTrue);
-    expect(cubit.state.error, isNotNull);
+    expect(cubit.state.failed, isTrue);
     expect(cubit.state.loading, isFalse);
   });
 
@@ -148,11 +148,11 @@ void main() {
       await cubit.loadNext();
       expect(cubit.state.rowCount, 30);
       expect(cubit.state.ids, firstIds);
-      expect(cubit.state.errors[1], isNotNull);
-      expect(cubit.state.error, isNull);
+      expect(cubit.state.failedPages, contains(1));
+      expect(cubit.state.failed, isFalse);
       await cubit.loadNext();
       expect(cubit.state.rowCount, 60);
-      expect(cubit.state.errors[1], isNull);
+      expect(cubit.state.failedPages, isNot(contains(1)));
       expect(cubit.state.ids.values.toSet().length, 60);
       expect(
         reader.requests.where((request) => request.cursor == 'cursor-30'),

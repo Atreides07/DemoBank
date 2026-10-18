@@ -1,3 +1,4 @@
+import 'package:app_localizations/app_localizations.dart';
 import 'package:bank_core/bank_core.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
@@ -40,6 +41,7 @@ class AccountDashboard extends StatelessWidget {
     required this.onCard,
     required this.onRefresh,
     this.summary,
+    this.spendingMonth,
     this.spendingPoints = const [],
     this.error,
     this.loading = false,
@@ -54,7 +56,12 @@ class AccountDashboard extends StatelessWidget {
   final ValueChanged<String> onCard;
   final Future<void> Function() onRefresh;
   final SpendingSummary? summary;
+
+  /// Start of the reporting month [summary] covers.
+  final DateTime? spendingMonth;
   final List<DsChartPoint> spendingPoints;
+
+  /// Text of a failed refresh, already in the interface language.
   final String? error;
   final bool loading;
   final bool couponVisible;
@@ -62,7 +69,11 @@ class AccountDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final formats = context.formats;
     void open(AccountAction action) => onAction(action);
+    final name = profile?.name ?? account.name;
+    final month = spendingMonth;
     final cards =
         profile?.cards
             .map((c) => DsBankCardData(c.id, c.lastDigits, frozen: c.frozen))
@@ -86,8 +97,8 @@ class AccountDashboard extends StatelessWidget {
       onRefresh: onRefresh,
       slivers: [
         DsAccountHeader(
-          name: profile?.name ?? account.name,
-          balance: account.balance.format(),
+          name: name,
+          balance: formats.money(account.balance),
           cards: cards,
           onBack: onBack,
           onRename: () => open(AccountAction.rename),
@@ -100,12 +111,12 @@ class AccountDashboard extends StatelessWidget {
               panel: true,
               actions: [
                 DsShortcut(
-                  'Пополнить',
+                  l10n.accountTopUp,
                   DsIcons.add,
                   () => open(AccountAction.topUp),
                 ),
                 DsShortcut(
-                  'Оплатить или перевести',
+                  l10n.accountPayOrTransfer,
                   DsIcons.transfer,
                   () => open(AccountAction.pay),
                 ),
@@ -115,130 +126,142 @@ class AccountDashboard extends StatelessWidget {
               DsStatus(
                 title: error!,
                 kind: DsStatusKind.error,
-                action: DsButton(label: 'Повторить', onPressed: onRefresh),
+                action: DsButton(label: l10n.commonRetry, onPressed: onRefresh),
               ),
             DsActionGrid(
               children: [
                 DsOverviewCard(
-                  title: 'Операции',
+                  title: l10n.accountOperations,
                   value: summary == null
-                      ? 'Загружаем расходы…'
-                      : summary!.total.format(),
-                  detail: 'Потрачено в октябре',
+                      ? l10n.accountLoadingSpending
+                      : formats.money(summary!.total),
+                  detail: l10n.spentInMonth(
+                    month == null
+                        ? 'other'
+                        : AppFormats.monthKey(formats.reporting(month).month),
+                  ),
                   footer: summary == null
                       ? null
                       : DsSpendingStrip(points: spendingPoints),
                   onTap: () => open(AccountAction.activity),
                 ),
                 DsOverviewCard(
-                  title: 'Кэшбэк',
-                  value: profile?.cashback.format() ?? '—',
-                  detail: 'Зачислим 22 октября',
-                  footer: const DsBadge('Бонусы за покупки'),
+                  title: l10n.accountCashback,
+                  value: profile == null
+                      ? '—'
+                      : formats.money(profile!.cashback),
+                  detail: profile == null
+                      ? null
+                      : l10n.accountCashbackCredit(
+                          formats.dayMonthLong(profile!.cashbackDate),
+                        ),
+                  footer: DsBadge(l10n.accountPurchaseBonuses),
                   onTap: () => open(AccountAction.rewards),
                 ),
               ],
             ),
             if (couponVisible)
               DsOfferBanner(
-                title: 'Ваши бонусы',
-                detail: 'Выберите подарок',
+                title: l10n.accountYourBonuses,
+                detail: l10n.accountChooseGift,
                 art: DsArt.gift,
                 onTap: () => open(AccountAction.rewards),
                 onDismiss: onDismissCoupon,
               ),
-            panel('Бонусы ${profile?.name ?? account.name}', [
+            panel(l10n.accountBonusesOf(name), [
               DsActionGrid(
                 children: [
                   DsArtTile(
-                    title: 'До 30% у партнёров',
+                    title: l10n.accountPartnerDiscount(
+                      formats.percent(30, fractionDigits: 0),
+                    ),
                     art: DsArt.gift,
                     onTap: () => open(AccountAction.rewards),
                   ),
                   DsArtTile(
-                    title: 'Кэшбэк октября',
+                    title: l10n.accountMonthCashback,
                     art: DsArt.cashback,
                     onTap: () => open(AccountAction.rewards),
                   ),
                 ],
               ),
             ]),
-            panel('Автопополнение', [
-              const DsText(
-                'На счёте всегда будут деньги для важных платежей',
-                tone: DsTone.muted,
-              ),
+            panel(l10n.accountAutoTopUp, [
+              DsText(l10n.accountAutoTopUpHint, tone: DsTone.muted),
               DsButton(
                 label: profile?.autoTopUp == true
-                    ? 'Настроено · изменить'
-                    : 'Настроить',
+                    ? l10n.accountConfiguredChange
+                    : l10n.accountConfigure,
                 variant: DsButtonVariant.secondary,
                 onPressed: () => open(AccountAction.autoTopUp),
               ),
             ]),
-            panel('Получать деньги на счёт', [
+            panel(l10n.accountReceiveMoney, [
               DsShortcutBar(
                 actions: [
                   DsShortcut(
-                    'Зарплата',
+                    l10n.accountSalary,
                     DsIcons.salary,
                     () => open(AccountAction.salary),
                   ),
                   DsShortcut(
-                    'Пенсия',
+                    l10n.accountPension,
                     DsIcons.pension,
                     () => open(AccountAction.pension),
                   ),
                   DsShortcut(
-                    'Пособия',
+                    l10n.accountBenefits,
                     DsIcons.document,
                     () => open(AccountAction.social),
                   ),
                 ],
               ),
             ]),
-            panel('Куда зачислять', [
+            panel(l10n.accountCreditTo, [
               tile(
-                'Кэшбэк',
+                l10n.accountCashback,
                 AccountAction.cashback,
                 subtitle: profile?.charity == true
-                    ? 'В помощь фонду «Добрый день»'
-                    : 'На выбранный счёт',
+                    ? l10n.accountCashbackCharity
+                    : l10n.accountCashbackToAccount,
               ),
             ]),
-            panel('Округление покупок', [
-              const DsText(
-                'Откладывайте разницу до 100 ₽ в накопления',
+            panel(l10n.accountRoundUp, [
+              DsText(
+                l10n.accountRoundUpHint(
+                  formats.money(
+                    Money(10000, currency: account.balance.currency),
+                  ),
+                ),
                 tone: DsTone.muted,
               ),
               DsButton(
                 label: profile?.roundUp == true
-                    ? 'Включено · изменить'
-                    : 'Настроить округление',
+                    ? l10n.accountEnabledChange
+                    : l10n.accountConfigureRoundUp,
                 variant: DsButtonVariant.secondary,
                 onPressed: () => open(AccountAction.roundUp),
               ),
             ]),
-            panel('Карта для близких', [
-              const DsText(
-                'Оплачивайте общие покупки и получайте кэшбэк вместе',
-                tone: DsTone.muted,
-              ),
+            panel(l10n.accountFamilyCard, [
+              DsText(l10n.accountFamilyCardHint, tone: DsTone.muted),
               DsButton(
-                label: 'Добавить карту',
+                label: l10n.accountAddCard,
                 variant: DsButtonVariant.secondary,
                 onPressed: () => open(AccountAction.addCard),
               ),
             ]),
-            panel('Лимиты переводов и снятия', [
+            panel(l10n.accountLimits, [
               for (final limit in profile?.limits.take(2) ?? <AccountLimit>[])
                 DsLimitRow(
                   title: limit.title,
-                  detail: 'Ещё ${limit.remaining.format()} без комиссии',
+                  detail: l10n.accountLimitRemaining(
+                    formats.money(limit.remaining),
+                  ),
                   fraction: limit.remaining.minor / limit.limit.minor,
                 ),
               DsButton(
-                label: 'Все лимиты счёта',
+                label: l10n.accountAllLimits,
                 variant: DsButtonVariant.secondary,
                 onPressed: () => open(AccountAction.limits),
               ),
@@ -248,9 +271,9 @@ class AccountDashboard extends StatelessWidget {
               child: DsColumn(
                 gap: DsSpace.compact,
                 children: [
-                  const DsText('Реквизиты', style: DsTextStyle.title),
+                  DsText(l10n.accountRequisites, style: DsTextStyle.title),
                   DsText(
-                    'Договор ${profile?.contract ?? '—'}',
+                    l10n.accountContract(profile?.contract ?? '—'),
                     tone: DsTone.muted,
                   ),
                 ],
@@ -259,13 +282,13 @@ class AccountDashboard extends StatelessWidget {
             DsActionGrid(
               children: [
                 DsOverviewCard(
-                  title: 'QR-код',
-                  value: 'Для пополнения',
+                  title: l10n.accountQrCode,
+                  value: l10n.accountForTopUp,
                   onTap: () => open(AccountAction.qr),
                 ),
                 DsOverviewCard(
-                  title: 'Ссылка',
-                  value: 'Поделиться счётом',
+                  title: l10n.accountLink,
+                  value: l10n.accountShare,
                   onTap: () => open(AccountAction.link),
                 ),
               ],
@@ -274,21 +297,21 @@ class AccountDashboard extends StatelessWidget {
               subtle: true,
               child: DsColumn(
                 children: [
-                  const DsText('О счёте', style: DsTextStyle.title),
-                  tile('Лимиты переводов и снятия', AccountAction.limits),
+                  DsText(l10n.accountAbout, style: DsTextStyle.title),
+                  tile(l10n.accountLimits, AccountAction.limits),
                   tile(
-                    'Привязанные сервисы',
+                    l10n.accountLinkedServices,
                     AccountAction.linkedServices,
                     subtitle: profile?.linkedServicesEnabled == false
-                        ? 'Подключений нет'
-                        : 'Демо Маркет, Музыка и ещё 4',
+                        ? l10n.accountNoLinkedServices
+                        : l10n.accountLinkedServicesSummary(4),
                   ),
-                  tile('Тариф', AccountAction.plan),
-                  tile('Выписка по счёту', AccountAction.statement),
-                  tile('Заказать справку', AccountAction.certificate),
-                  tile('Услуги', AccountAction.services),
+                  tile(l10n.accountPlan, AccountAction.plan),
+                  tile(l10n.accountStatement, AccountAction.statement),
+                  tile(l10n.accountCertificate, AccountAction.certificate),
+                  tile(l10n.accountServices, AccountAction.services),
                   DsButton(
-                    label: 'Заморозить карту',
+                    label: l10n.accountFreezeCard,
                     variant: DsButtonVariant.danger,
                     onPressed: () => open(AccountAction.freezeCard),
                   ),

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:app_localizations/app_localizations.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -53,21 +54,21 @@ final class _CheckoutViewState extends State<CheckoutView> {
   Future<void> _confirmDiscard() async {
     void close(bool confirmed) =>
         Navigator.of(context, rootNavigator: true).pop(confirmed);
+    final l10n = context.l10n;
     final confirmed = await dsShowDialog<bool>(
       context: context,
-      title: 'Удалить повреждённую запись?',
-      child: const DsText(
-        'Запись будет перенесена в архив для разбора, а новые оплаты '
-        'разблокируются. Если эта операция уже отправлялась, сначала '
-        'проверьте историю, чтобы не оплатить её повторно.',
-      ),
+      title: l10n.checkoutDiscardTitle,
+      child: DsText(l10n.checkoutDiscardMessage),
       actions: [
         DsButton(
-          label: 'Отмена',
+          label: l10n.commonCancel,
           onPressed: () => close(false),
           variant: DsButtonVariant.quiet,
         ),
-        DsButton(label: 'Удалить запись', onPressed: () => close(true)),
+        DsButton(
+          label: l10n.checkoutDiscardConfirm,
+          onPressed: () => close(true),
+        ),
       ],
     );
     if (!mounted || confirmed != true) return;
@@ -87,131 +88,141 @@ final class _CheckoutViewState extends State<CheckoutView> {
           widget.onPaymentChanged?.call(payment);
         }
       },
-      builder: (context, state) => DsPage(
-        onBack: switch (state.phase) {
-          CheckoutPhase.loadingQuote ||
-          CheckoutPhase.review => widget.onBack ?? widget.onFinished,
-          _ => widget.onFinished,
-        },
-        title: switch (state.phase) {
-          CheckoutPhase.succeeded =>
-            state.payment?.ticket == null ? 'Квитанция' : 'Ваш билет',
-          CheckoutPhase.processing ||
-          CheckoutPhase.uncertain => 'Статус платежа',
-          _ => 'Подтверждение оплаты',
-        },
-        subtitle:
-            'Демонстрационный процессинг · реальные деньги не списываются',
-        children: [
-          if (state.quote case final quote?)
-            DsPaymentSummary(
-              title: quote.recipient,
-              amount: quote.total.format(),
-              details: [
-                DsDetail('Назначение', quote.description),
-                DsDetail('Сумма', quote.amount.format()),
-                DsDetail('Комиссия', quote.fee.format()),
-                DsDetail(
-                  'Счёт списания',
-                  widget.dependencies.accountLabel?.call(
-                        quote.intent.accountId,
-                      ) ??
-                      (quote.intent.accountId == 'main'
-                          ? 'Основной счёт'
-                          : quote.intent.accountId == 'savings'
-                          ? 'Накопительный счёт'
-                          : 'Выбранный счёт'),
-                ),
-              ],
-              notice: 'Сумма и комиссия подтверждены сервером.',
-            ),
-          ..._content(state),
-          if (widget.onBack != null && state.phase == CheckoutPhase.review)
-            DsButton(
-              label: 'Изменить данные',
-              onPressed: widget.onBack,
-              variant: DsButtonVariant.quiet,
-            ),
-        ],
-      ),
+      builder: (context, state) {
+        final l10n = context.l10n;
+        final formats = context.formats;
+        return DsPage(
+          onBack: switch (state.phase) {
+            CheckoutPhase.loadingQuote ||
+            CheckoutPhase.review => widget.onBack ?? widget.onFinished,
+            _ => widget.onFinished,
+          },
+          title: switch (state.phase) {
+            CheckoutPhase.succeeded =>
+              state.payment?.ticket == null
+                  ? l10n.checkoutReceiptTitle
+                  : l10n.checkoutTicketTitle,
+            CheckoutPhase.processing ||
+            CheckoutPhase.uncertain => l10n.checkoutStatusTitle,
+            _ => l10n.checkoutConfirmTitle,
+          },
+          subtitle: l10n.commonDemoDisclaimer,
+          children: [
+            if (state.quote case final quote?)
+              DsPaymentSummary(
+                title: quote.recipient,
+                amount: formats.money(quote.total),
+                details: [
+                  DsDetail(l10n.checkoutPurpose, quote.description),
+                  DsDetail(l10n.commonAmount, formats.money(quote.amount)),
+                  DsDetail(l10n.commonFee, formats.money(quote.fee)),
+                  DsDetail(
+                    l10n.checkoutDebitAccount,
+                    widget.dependencies.accountLabel?.call(
+                          quote.intent.accountId,
+                        ) ??
+                        l10n.checkoutAccountFallback(quote.intent.accountId),
+                  ),
+                ],
+                notice: l10n.checkoutServerConfirmed,
+              ),
+            ..._content(l10n, state),
+            if (widget.onBack != null && state.phase == CheckoutPhase.review)
+              DsButton(
+                label: l10n.checkoutChangeDetails,
+                onPressed: widget.onBack,
+                variant: DsButtonVariant.quiet,
+              ),
+          ],
+        );
+      },
     ),
   );
 
-  List<Widget> _content(CheckoutState state) => switch (state.phase) {
+  List<Widget> _content(
+    AppLocalizations l10n,
+    CheckoutState state,
+  ) => switch (state.phase) {
     CheckoutPhase.idle => [
       DsStatus(
-        title: 'Незавершённых платежей нет',
+        title: l10n.checkoutNoPending,
         kind: DsStatusKind.empty,
-        action: DsButton(label: 'Готово', onPressed: widget.onFinished),
+        action: DsButton(label: l10n.commonDone, onPressed: widget.onFinished),
       ),
     ],
-    CheckoutPhase.loadingQuote => [
-      const DsLoading(label: 'Проверяем условия и сохранённые операции…'),
-    ],
+    CheckoutPhase.loadingQuote => [DsLoading(label: l10n.checkoutLoadingTerms)],
     CheckoutPhase.review => [
-      DsButton(label: 'Подтвердить оплату', onPressed: _controller.confirm),
+      DsButton(label: l10n.checkoutConfirm, onPressed: _controller.confirm),
     ],
     CheckoutPhase.submitting => [
-      const DsStatus(
-        title: 'Получаем подтверждение',
-        message:
-            'Можно покинуть экран. Сохранённый платёж восстановится '
-            'при следующем открытии.',
+      DsStatus(
+        title: l10n.checkoutSubmittingTitle,
+        message: l10n.checkoutSubmittingMessage,
         kind: DsStatusKind.loading,
       ),
     ],
     CheckoutPhase.processing => [
       DsStatus(
-        title: 'Платёж принят и обрабатывается',
-        message:
-            'Это ещё не окончательный результат. Проверяем его по '
-            'сохранённому идентификатору.',
+        title: l10n.checkoutProcessingTitle,
+        message: l10n.checkoutProcessingMessage,
         action: DsButton(
-          label: 'Проверить статус',
+          label: l10n.checkoutCheckStatus,
           onPressed: _controller.checkStatus,
         ),
       ),
     ],
     CheckoutPhase.uncertain => [
       DsStatus(
-        title: 'Ответ пока не получен',
-        message: state.failure?.message,
+        title: l10n.checkoutUncertainTitle,
+        message: switch (state.failure) {
+          final failure? => l10n.paymentFailure(failure),
+          null => null,
+        },
         action: DsButton(
-          label: 'Проверить статус',
+          label: l10n.checkoutCheckStatus,
           onPressed: _controller.checkStatus,
         ),
       ),
       DsButton(
-        label: 'Повторить с сохранённым ключом',
+        label: l10n.checkoutRetrySameKey,
         onPressed: _controller.retrySamePayment,
         variant: DsButtonVariant.secondary,
       ),
     ],
     CheckoutPhase.succeeded => [
       DsStatus(
-        title: 'Оплата выполнена',
-        message: 'Квитанция № ${state.payment?.receiptId ?? state.payment?.id}',
+        title: l10n.checkoutSucceeded,
+        message: l10n.checkoutReceiptNumber(
+          state.payment?.receiptId ?? state.payment?.id ?? '',
+        ),
         kind: DsStatusKind.success,
       ),
       if (state.payment?.ticket case final ticket?)
         DsCard(child: DsText(ticket, style: DsTextStyle.title)),
-      DsButton(label: 'Готово', onPressed: widget.onFinished),
+      DsButton(label: l10n.commonDone, onPressed: widget.onFinished),
     ],
     CheckoutPhase.failed => [
       DsStatus(
-        title: 'Оплата не выполнена',
-        message: state.failure?.message,
+        title: l10n.checkoutFailed,
+        message: switch (state.failure) {
+          final failure? => l10n.paymentFailure(failure),
+          null => null,
+        },
         kind: DsStatusKind.error,
         action: switch (state.failure?.code) {
-          PaymentFailureCode.seatConflict || PaymentFailureCode.billStale =>
-            DsButton(label: 'Обновить выбор', onPressed: widget.onFinished),
+          PaymentFailureCode.seatConflict ||
+          PaymentFailureCode.billStale => DsButton(
+            label: l10n.checkoutRefreshSelection,
+            onPressed: widget.onFinished,
+          ),
           PaymentFailureCode.storage ||
-          PaymentFailureCode.journalUnreadable => DsButton(
-            label: 'Повторить проверку',
+          PaymentFailureCode.journalUnreadable ||
+          PaymentFailureCode.journalDiscardFailed => DsButton(
+            label: l10n.checkoutRecheck,
             onPressed: _controller.restore,
           ),
           _ => DsButton(
-            label: 'Обновить условия',
+            label: l10n.checkoutRefreshTerms,
             onPressed: widget.intent == null
                 ? _controller.restore
                 : _controller.refreshQuote,
@@ -220,12 +231,12 @@ final class _CheckoutViewState extends State<CheckoutView> {
       ),
       if (state.failure?.code == PaymentFailureCode.journalUnreadable)
         DsButton(
-          label: 'Удалить повреждённую запись',
+          label: l10n.checkoutDiscard,
           onPressed: () => unawaited(_confirmDiscard()),
           variant: DsButtonVariant.secondary,
         ),
       DsButton(
-        label: 'Вернуться',
+        label: l10n.commonBack,
         onPressed: widget.onFinished,
         variant: DsButtonVariant.quiet,
       ),
@@ -281,8 +292,8 @@ final class _RecoverablePaymentFeatureState
   @override
   Widget build(BuildContext context) {
     if (!_checked) {
-      return const DsPage(
-        children: [DsLoading(label: 'Проверяем сохранённые операции…')],
+      return DsPage(
+        children: [DsLoading(label: context.l10n.checkoutCheckingSaved)],
       );
     }
     if (!_recover) return widget.child;

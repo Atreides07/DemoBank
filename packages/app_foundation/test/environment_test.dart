@@ -229,7 +229,7 @@ void main() {
       addTearDown(environment.dispose);
       final response = await environment.api.get('/v1/accounts');
       await Future<void>.delayed(Duration.zero);
-      expect(response['accounts'], hasLength(5));
+      expect(response['accounts'], hasLength(6));
       expect(phases.first, 'started');
       expect(phases.last, 'completed');
       expect(
@@ -362,7 +362,7 @@ void main() {
       );
       addTearDown(environment.dispose);
       final response = await environment.api.get('/v1/accounts');
-      expect(response['accounts'], hasLength(5));
+      expect(response['accounts'], hasLength(6));
       expect(journal.corrupt, isFalse);
     },
   );
@@ -575,7 +575,7 @@ void main() {
 
       expect(phases, [true, false]);
       expect(environment.activityInProgress, false);
-      expect(environment.activityMessage, isNotEmpty);
+      expect(environment.activityOutcome, ActivityOutcome.failed);
       expect(
         environment.simulation.events.any((event) => event.phase == 'failed'),
         true,

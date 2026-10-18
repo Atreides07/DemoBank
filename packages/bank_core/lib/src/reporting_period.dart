@@ -26,20 +26,4 @@ abstract final class ReportingPeriod {
         ),
         kind: EntryKind.expense,
       );
-  static String date(DateTime value) => value
-      .add(const Duration(hours: 3))
-      .toIso8601String()
-      .substring(0, 10)
-      .split('-')
-      .reversed
-      .join('.');
-  static String time(DateTime value) => value
-      .toUtc()
-      .add(const Duration(hours: 3))
-      .toIso8601String()
-      .substring(11, 16);
-  static String label(LedgerFilter filter) =>
-      filter.from == null || filter.to == null
-      ? 'Все операции'
-      : '${date(filter.from!)} — ${date(filter.to!.subtract(const Duration(days: 1)))}';
 }

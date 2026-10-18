@@ -34,11 +34,13 @@ final class AccountsState {
   const AccountsState({
     this.accounts = const [],
     this.loading = true,
-    this.error,
+    this.failed = false,
   });
   final List<Account> accounts;
   final bool loading;
-  final String? error;
+
+  /// The last refresh failed; [accounts] are the saved copy, if any.
+  final bool failed;
 
   /// Compatibility total for the primary RUB header. Other currencies are
   /// deliberately presented separately through [balances].
@@ -84,11 +86,7 @@ final class AccountsCubit extends Cubit<AccountsState> {
       addError(error, stackTrace);
       if (!isClosed && epoch == _epoch) {
         emit(
-          AccountsState(
-            accounts: state.accounts,
-            loading: false,
-            error: 'Не удалось обновить счета. Доступны сохранённые данные.',
-          ),
+          AccountsState(accounts: state.accounts, loading: false, failed: true),
         );
       }
     }

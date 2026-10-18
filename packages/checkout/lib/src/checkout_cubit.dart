@@ -14,8 +14,10 @@ final class CheckoutDependencies {
   final PendingPaymentStore pendingStore;
   final PaymentClock clock;
   final IdempotencyKeyFactory keyFactory;
-  final String Function(String)? accountLabel;
-  CheckoutDependencies withAccountLabel(String Function(String) label) =>
+
+  /// Name of an account for the review, or `null` to use a generic name.
+  final String? Function(String)? accountLabel;
+  CheckoutDependencies withAccountLabel(String? Function(String) label) =>
       CheckoutDependencies(
         gateway: gateway,
         pendingStore: pendingStore,
@@ -111,10 +113,7 @@ final class CheckoutCubit extends Cubit<CheckoutState> {
         CheckoutState(
           phase: CheckoutPhase.failed,
           quote: quote,
-          failure: const PaymentFailure(
-            PaymentFailureCode.quoteExpired,
-            'Условия оплаты истекли. Обновите сумму перед подтверждением.',
-          ),
+          failure: const PaymentFailure(PaymentFailureCode.quoteExpired),
         ),
       );
       return;
@@ -147,10 +146,7 @@ final class CheckoutCubit extends Cubit<CheckoutState> {
         CheckoutState(
           phase: CheckoutPhase.failed,
           quote: quote,
-          failure: const PaymentFailure(
-            PaymentFailureCode.storage,
-            'Не удалось сохранить операцию. Платёж не отправлен.',
-          ),
+          failure: const PaymentFailure(PaymentFailureCode.journalWriteFailed),
         ),
       );
       _working = false;
@@ -204,10 +200,7 @@ final class CheckoutCubit extends Cubit<CheckoutState> {
           phase: CheckoutPhase.failed,
           failure: error is PaymentFailure
               ? error
-              : const PaymentFailure(
-                  PaymentFailureCode.storage,
-                  'Не удалось удалить повреждённую запись. Повторите действие.',
-                ),
+              : const PaymentFailure(PaymentFailureCode.journalDiscardFailed),
         ),
       );
       return;
@@ -271,11 +264,7 @@ final class CheckoutCubit extends Cubit<CheckoutState> {
       if (record == null) {
         _uncertain(
           pending,
-          const PaymentFailure(
-            PaymentFailureCode.unknown,
-            'Сервер пока не подтвердил операцию. Проверьте статус или повторите '
-            'отправку с сохранённым ключом. Второе списание исключено.',
-          ),
+          const PaymentFailure(PaymentFailureCode.unconfirmed),
         );
       } else {
         await _accept(pending, record);
@@ -294,10 +283,7 @@ final class CheckoutCubit extends Cubit<CheckoutState> {
         record.fee.minor != quote.fee.minor ||
         record.amount.currency != quote.amount.currency ||
         record.fee.currency != quote.fee.currency) {
-      throw const PaymentFailure(
-        PaymentFailureCode.unknown,
-        'Ответ не соответствует сохранённой операции. Проверяем статус.',
-      );
+      throw const PaymentFailure(PaymentFailureCode.inconsistentResponse);
     }
     final terminal = record.status != PaymentStatus.pending;
     if (terminal) await _clearQuietly(pending.idempotencyKey);
@@ -312,10 +298,7 @@ final class CheckoutCubit extends Cubit<CheckoutState> {
         pending: terminal ? null : pending,
         payment: record,
         failure: record.status == PaymentStatus.failed
-            ? PaymentFailure(
-                PaymentFailureCode.validation,
-                record.failureMessage ?? 'Платёж отклонён сервером.',
-              )
+            ? PaymentFailure(PaymentFailureCode.declined, record.failureMessage)
             : null,
       ),
     );
@@ -344,10 +327,7 @@ final class CheckoutCubit extends Cubit<CheckoutState> {
 
   PaymentFailure _failure(Object error) => error is PaymentFailure
       ? error
-      : const PaymentFailure(
-          PaymentFailureCode.unknown,
-          'Не удалось получить подтверждение. Проверьте соединение и статус.',
-        );
+      : const PaymentFailure(PaymentFailureCode.unknown);
 
   void _set(CheckoutState value) {
     if (!isClosed) emit(value);

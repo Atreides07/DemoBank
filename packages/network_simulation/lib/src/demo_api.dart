@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
 part 'account_fixtures.dart';
+part 'demo_texts.dart';
 
 typedef DemoRoute =
     Future<SimulatedResponse?> Function(SimulatedRequest request);
@@ -13,11 +15,18 @@ final class SimulatedRequest {
     required this.method,
     required this.uri,
     this.body = const {},
+    this.acceptLanguage,
   });
 
   final String method;
   final Uri uri;
   final Map<String, dynamic> body;
+
+  /// The client's `Accept-Language`; texts in the response follow it.
+  final String? acceptLanguage;
+
+  /// The negotiated response language: `ru`, `en` or `uz`.
+  String get language => DemoTexts.negotiate(acceptLanguage);
   String get path => uri.path.replaceFirst(RegExp(r'^/v1(?=/)'), '');
   Map<String, String> get query => uri.queryParameters;
 }
@@ -47,17 +56,21 @@ final class DemoApi {
   static final businessNow = DateTime.utc(2026, 10, 16, 12);
 
   static const reportTimezone = 'Europe/Moscow';
+
+  /// Rouble ledger rows; the sum account adds [uzsDatasetSize] of its own.
   static const datasetSize = 12000;
-  static const categories = <String, String>{
-    'groceries': 'Продукты',
-    'transport': 'Транспорт',
-    'dining': 'Кафе и рестораны',
-    'shopping': 'Покупки',
-    'utilities': 'Дом и ЖКХ',
-    'health': 'Здоровье',
-    'entertainment': 'Развлечения',
-    'other': 'Прочее',
-  };
+  static const uzsDatasetSize = 600;
+  static const categories = [
+    'groceries',
+    'transport',
+    'dining',
+    'shopping',
+    'utilities',
+    'health',
+    'entertainment',
+    'other',
+  ];
+  static const _languageKey = #demoApiLanguage;
 
   final DateTime Function() _now;
   final List<DemoRoute> routes;
@@ -120,6 +133,9 @@ final class DemoApi {
 
   Future<void> warmUp() => _ensureData();
 
+  /// Rows are stored without display text: titles and subtitles are named in
+  /// the request language from the row's kind, merchant and category (see
+  /// [_entryJson]).
   Future<void> _generateData({bool restoreSavedState = true}) async {
     final random = Random(76129);
     final end = DateTime.utc(2026, 10, 16, 11, 59);
@@ -127,21 +143,10 @@ final class DemoApi {
         .difference(DateTime.utc(2025, 10, 16, 21))
         .inSeconds;
     final result = <Map<String, dynamic>>[];
-    final keys = categories.keys.toList(growable: false);
-    const merchants = <String, List<String>>{
-      'groceries': ['ВкусВилл', 'Перекрёсток', 'Самокат'],
-      'transport': ['Метро', 'Яндекс Go', 'Городской транспорт'],
-      'dining': ['Кофейня у дома', 'Бистро Север', 'Вкусно — и точка'],
-      'shopping': ['Книжный магазин', 'Маркетплейс', 'Магазин техники'],
-      'utilities': ['Городские услуги', 'Интернет', 'Домашний счёт'],
-      'health': ['Аптека', 'Медицинский центр', 'Спортклуб'],
-      'entertainment': ['Кинотеатр', 'Музей', 'Музыкальный сервис'],
-      'other': ['Другие расходы', 'Мастерская', 'Услуги'],
-    };
+    const keys = categories;
     for (var index = 0; index < datasetSize; index++) {
       final category = keys[random.nextInt(keys.length)];
-      final names = merchants[category]!;
-      final merchantIndex = random.nextInt(names.length);
+      final merchantIndex = random.nextInt(3);
       final kind = index % 47 == 0
           ? 'refund'
           : index % 31 == 0
@@ -161,12 +166,6 @@ final class DemoApi {
       _instants[timestamp] = date.microsecondsSinceEpoch;
       result.add({
         'id': 'txn-${(datasetSize - index).toString().padLeft(6, '0')}',
-        'title': kind == 'income'
-            ? 'Пополнение счёта'
-            : kind == 'transfer'
-            ? 'Между своими счетами'
-            : names[merchantIndex],
-        'subtitle': kind == 'refund' ? 'Возврат покупки' : categories[category],
         'amountMinor': 9900 + random.nextInt(480001),
         'currency': 'RUB',
         'occurredAt': timestamp,
@@ -180,6 +179,36 @@ final class DemoApi {
       // never waits for the entire history to be materialized synchronously.
       if (index % 500 == 499) await Future<void>.delayed(Duration.zero);
     }
+    // The sum account has its own generator, so the rouble dataset stays
+    // byte-for-byte what it was before the account existed.
+    final uzs = Random(998);
+    for (var index = 0; index < uzsDatasetSize; index++) {
+      final category = keys[uzs.nextInt(keys.length)];
+      final merchantIndex = uzs.nextInt(3);
+      final kind = index % 37 == 0
+          ? 'refund'
+          : index % 23 == 0
+          ? 'income'
+          : 'expense';
+      final date = end.subtract(
+        Duration(seconds: (index * spanSeconds) ~/ uzsDatasetSize + 1800),
+      );
+      final timestamp = date.toIso8601String();
+      _instants[timestamp] = date.microsecondsSinceEpoch;
+      result.add({
+        'id': 'txn-uzs-${(uzsDatasetSize - index).toString().padLeft(4, '0')}',
+        // 15 000 – 900 000 sum, whole sums as people pay them.
+        'amountMinor': (15000 + uzs.nextInt(885001)) ~/ 1000 * 1000 * 100,
+        'currency': 'UZS',
+        'occurredAt': timestamp,
+        'categoryId': category,
+        'merchantId': 'uzs-$category-$merchantIndex',
+        'accountId': 'uzs',
+        'kind': kind,
+        'status': index % 89 == 0 ? 'pending' : 'posted',
+      });
+    }
+    result.sort(_newestFirst);
     _snapshots[1] = List.unmodifiable(result);
     if (restoreSavedState) {
       final saved = await loadState?.call();
@@ -187,7 +216,27 @@ final class DemoApi {
     }
   }
 
-  Future<SimulatedResponse> handle(SimulatedRequest request) async {
+  int _newestFirst(Map<String, dynamic> a, Map<String, dynamic> b) {
+    final date = _instant(
+      b['occurredAt'] as String,
+    ).compareTo(_instant(a['occurredAt'] as String));
+    return date != 0 ? date : (b['id'] as String).compareTo(a['id'] as String);
+  }
+
+  /// The language of the request being handled.
+  String get _language => Zone.current[_languageKey] as String? ?? 'ru';
+
+  String _t(String key, [Map<String, Object?> args = const {}]) =>
+      DemoTexts.text(_language, key, args);
+
+  /// Handles [request] in its negotiated language. State never depends on
+  /// the language; only the texts of the response do.
+  Future<SimulatedResponse> handle(SimulatedRequest request) => runZoned(
+    () => _handle(request),
+    zoneValues: {_languageKey: request.language},
+  );
+
+  Future<SimulatedResponse> _handle(SimulatedRequest request) async {
     await _ensureData();
     await _persistence;
     try {
@@ -207,12 +256,10 @@ final class DemoApi {
         ('GET', '/transactions') => _transactions(request.query),
         ('GET', '/analytics') => _analytics(request.query),
         ('POST', '/demo/activity') => _demoActivity(request.body),
-        ('GET', '/services') => const SimulatedResponse({
+        ('GET', '/services') => SimulatedResponse({
           'items': [
-            {'id': 'utilities', 'title': 'ЖКХ'},
-            {'id': 'mobile', 'title': 'Связь'},
-            {'id': 'cinema', 'title': 'Кино'},
-            {'id': 'fines', 'title': 'Штрафы'},
+            for (final id in const ['utilities', 'mobile', 'cinema', 'fines'])
+              {'id': id, 'title': _t('service.$id')},
           ],
         }),
         ('GET', '/services/fines') => _bills(
@@ -230,12 +277,12 @@ final class DemoApi {
         ('POST', '/checkout/quotes') => _quote(request.body),
         ('POST', '/checkout/payments') => _pay(request.body),
         ('GET', '/checkout/payments/status') => SimulatedResponse(
-          _public(
-            _payments[request.query['idempotencyKey']] ??
-                {'status': 'not_found'},
-          ),
+          switch (_payments[request.query['idempotencyKey']]) {
+            final payment? => _publicPayment(payment),
+            null => const {'status': 'not_found'},
+          },
         ),
-        _ => _error(404, 'not_found', 'Ресурс не найден'),
+        _ => _error(404, 'not_found', 'error.notFound'),
       };
       if (request.method == 'POST' && response.statusCode == 200) {
         await _persist();
@@ -244,7 +291,7 @@ final class DemoApi {
     } on _ApiProblem catch (error) {
       return _error(error.status, error.code, error.message);
     } on FormatException {
-      return _error(400, 'validation', 'Некорректный формат параметров');
+      return _error(400, 'validation', 'error.badFormat');
     }
   }
 
@@ -263,10 +310,14 @@ final class DemoApi {
               (payment['amountMinor'] as int) +
               (payment['feeMinor'] as int),
         );
+    // A name the customer chose is kept as typed; default names follow the
+    // request language.
+    String name(String id) =>
+        _accountPreferences[id]?['name'] as String? ?? _t('account.$id');
     final accounts = <Map<String, dynamic>>[
       {
         'id': 'main',
-        'name': _accountPreferences['main']?['name'] ?? 'Основной счёт',
+        'name': name('main'),
         'balanceMinor':
             28476580 - spent('main') + (_accountAdjustments['main'] ?? 0),
         'currency': 'RUB',
@@ -275,7 +326,7 @@ final class DemoApi {
       },
       {
         'id': 'savings',
-        'name': _accountPreferences['savings']?['name'] ?? 'Накопительный счёт',
+        'name': name('savings'),
         'balanceMinor':
             125000000 -
             spent('savings') +
@@ -285,19 +336,19 @@ final class DemoApi {
         'kind': 'savings',
       },
       for (final extra in [
-        ('usd', 'Black USD', 'USD', '3518'),
-        ('gbp', 'Black GBP', 'GBP', '6012'),
-        ('business', 'Счёт для бизнеса', 'RUB', '4258'),
+        ('usd', 'USD', '3518', 150025),
+        ('gbp', 'GBP', '6012', 0),
+        ('business', 'RUB', '4258', 0),
+        // 12 750 000 sum: an Uzbek sum account with its own ledger.
+        ('uzs', 'UZS', '2207', 1275000000),
       ])
         {
           'id': extra.$1,
-          'name': _accountPreferences[extra.$1]?['name'] ?? extra.$2,
+          'name': name(extra.$1),
           'balanceMinor':
-              (extra.$1 == 'usd' ? 150025 : 0) -
-              spent(extra.$1) +
-              (_accountAdjustments[extra.$1] ?? 0),
-          'currency': extra.$3,
-          'lastDigits': extra.$4,
+              extra.$4 - spent(extra.$1) + (_accountAdjustments[extra.$1] ?? 0),
+          'currency': extra.$2,
+          'lastDigits': extra.$3,
           'kind': 'debit',
         },
     ];
@@ -313,8 +364,7 @@ final class DemoApi {
     final id = 'txn-live-${++_demoSequence}';
     addTransaction({
       'id': id,
-      'title': 'Кофейня у дома',
-      'subtitle': 'Новая операция',
+      '_subtitleKey': 'entry.new',
       'amountMinor': 38500,
       'currency': 'RUB',
       'occurredAt': _ledgerTime().toIso8601String(),
@@ -326,8 +376,10 @@ final class DemoApi {
     });
     String? changed;
     if (body['changeStatus'] != false) {
+      // The demo event changes a rouble row, the ledger shown on the home
+      // screen.
       final pending = _snapshots[_revision]!.where(
-        (item) => item['status'] == 'pending',
+        (item) => item['status'] == 'pending' && item['currency'] == 'RUB',
       );
       if (pending.isNotEmpty) {
         final item = pending.first;
@@ -350,18 +402,14 @@ final class DemoApi {
         int.tryParse(query['revision'] ?? '') ?? _revision;
     final items = _snapshots[requestedRevision];
     if (items == null) {
-      throw const _ApiProblem(
-        409,
-        'snapshot_expired',
-        'Данные обновились. Обновите список',
-      );
+      throw const _ApiProblem(409, 'snapshot_expired', 'error.snapshotExpired');
     }
     final from = _boundary(query['from']);
     final to = _boundary(query['to'], end: true);
     final fromUs = from?.microsecondsSinceEpoch;
     final toUs = to?.microsecondsSinceEpoch;
     if (from != null && to != null && !from.isBefore(to)) {
-      throw const _ApiProblem(400, 'validation', 'Начало периода позже конца');
+      throw const _ApiProblem(400, 'validation', 'error.periodOrder');
     }
     final accounts = query['accounts']?.split(',').toSet();
     final currency = query['currency'] ?? 'RUB';
@@ -389,11 +437,7 @@ final class DemoApi {
     final query = Map<String, String>.of(originalQuery);
     final rawLimit = int.tryParse(query['limit'] ?? '30');
     if (rawLimit == null || rawLimit < 1 || rawLimit > 100) {
-      throw const _ApiProblem(
-        400,
-        'validation',
-        'Размер страницы: от 1 до 100',
-      );
+      throw const _ApiProblem(400, 'validation', 'error.pageSize');
     }
     final limit = rawLimit;
     var offset = 0;
@@ -401,17 +445,13 @@ final class DemoApi {
     final anchor = query['anchor'];
     final at = query['at'];
     if ([cursor, anchor, at].whereType<String>().length > 1) {
-      throw const _ApiProblem(
-        400,
-        'validation',
-        'Выберите один способ продолжения',
-      );
+      throw const _ApiProblem(400, 'validation', 'error.oneContinuation');
     }
     if ((anchor != null || at != null) && query['revision'] == null) {
       throw const _ApiProblem(
         400,
         'revision_required',
-        'Укажите согласованную версию',
+        'error.revisionRequired',
       );
     }
     if (cursor != null) {
@@ -420,7 +460,7 @@ final class DemoApi {
           decoded['offset'] is! int ||
           decoded['revision'] is! int ||
           decoded['filter'] != _filterKey(query)) {
-        throw const _ApiProblem(400, 'invalid_cursor', 'Некорректный курсор');
+        throw const _ApiProblem(400, 'invalid_cursor', 'error.invalidCursor');
       }
       offset = decoded['offset'] as int;
       final revision = decoded['revision'] as int;
@@ -428,7 +468,7 @@ final class DemoApi {
         throw const _ApiProblem(
           409,
           'revision_mismatch',
-          'Версия не совпадает',
+          'error.revisionMismatch',
         );
       }
       query['revision'] = '$revision';
@@ -440,11 +480,7 @@ final class DemoApi {
       anchorFound = index >= 0;
       final near = int.tryParse(query['near'] ?? '0');
       if (near == null) {
-        throw const _ApiProblem(
-          400,
-          'validation',
-          'Некорректная опорная позиция',
-        );
+        throw const _ApiProblem(400, 'validation', 'error.invalidNear');
       }
       final position = index >= 0
           ? index
@@ -453,16 +489,12 @@ final class DemoApi {
     } else if (at != null) {
       final parsed = int.tryParse(at);
       if (parsed == null || parsed < 0) {
-        throw const _ApiProblem(
-          400,
-          'validation',
-          'Некорректная позиция страницы',
-        );
+        throw const _ApiProblem(400, 'validation', 'error.invalidAt');
       }
       offset = (parsed ~/ limit) * limit;
     }
     if (offset < 0 || offset > selected.items.length) {
-      throw const _ApiProblem(400, 'invalid_cursor', 'Курсор вне диапазона');
+      throw const _ApiProblem(400, 'invalid_cursor', 'error.cursorRange');
     }
     final end = min(offset + limit, selected.items.length);
     String cursorAt(int position) => base64Url.encode(
@@ -476,7 +508,10 @@ final class DemoApi {
     );
     final next = end < selected.items.length ? cursorAt(end) : null;
     return SimulatedResponse({
-      'items': selected.items.sublist(offset, end),
+      'items': [
+        for (final item in selected.items.sublist(offset, end))
+          _entryJson(item),
+      ],
       'nextCursor': next,
       'prevCursor': offset > 0 ? cursorAt(max(0, offset - limit)) : null,
       'startCursor': cursorAt(offset),
@@ -536,11 +571,11 @@ final class DemoApi {
       final merchant = item['merchantId'] as String;
       (categoryGroups[category] ??= _Aggregate(
         category,
-        categories[category] ?? 'Без категории',
+        _categoryName(category),
       )).add(item['amountMinor'] as int);
       (merchantGroups[merchant] ??= _Aggregate(
         merchant,
-        item['title'] as String,
+        _entryTitle(item),
       )).add(item['amountMinor'] as int);
     }
     List<Map<String, dynamic>> ranked(Map<String, _Aggregate> groups) =>
@@ -565,10 +600,7 @@ final class DemoApi {
       'categories': ranked(categoryGroups),
       'merchants': ranked(merchantGroups),
       'timeline': timeline,
-      'metricRule':
-          'Проведённые расходы; возвраты отдельно по дате проведения. '
-          'Комиссия включена один раз в сумму операции. '
-          'Сравнение с непосредственно предыдущим интервалом той же длины.',
+      'metricRule': _t('analytics.metricRule'),
     });
   }
 
@@ -628,6 +660,65 @@ final class DemoApi {
     return result;
   }
 
+  String _categoryName(String id) => DemoTexts.has('category.$id')
+      ? _t('category.$id')
+      : _t('category.unknown');
+
+  /// A ledger row as sent to the client: internal fields removed, title and
+  /// subtitle named in the request language.
+  Map<String, dynamic> _entryJson(Map<String, dynamic> item) => {
+    ..._public(item),
+    'title': _entryTitle(item),
+    'subtitle': _entrySubtitle(item),
+  };
+
+  /// In order: a payment's recipient, a stored text key, a title given by a
+  /// scenario hook (or an older saved state), or the generated merchant.
+  String _entryTitle(Map<String, dynamic> item) {
+    if (item['_recipient'] case final Map<dynamic, dynamic> recipient) {
+      return _recipientName(
+        recipient['kind'] as String,
+        Map<String, dynamic>.from(recipient['details'] as Map? ?? const {}),
+      );
+    }
+    if (item['_titleKey'] case final String key) return _t(key);
+    if (item['title'] case final String title) return title;
+    final merchant = 'merchant.${item['merchantId']}';
+    return switch (item['kind']) {
+      'income' => _t('entry.topUp'),
+      'transfer' => _t('entry.ownTransfer'),
+      _ when DemoTexts.has(merchant) => _t(merchant),
+      _ => '${item['merchantId']}',
+    };
+  }
+
+  String _entrySubtitle(Map<String, dynamic> item) {
+    if (item['_subtitleKey'] case final String key) return _t(key);
+    if (item['subtitle'] case final String subtitle) return subtitle;
+    return item['kind'] == 'refund'
+        ? _t('entry.refund')
+        : _categoryName(item['categoryId'] as String);
+  }
+
+  /// The payee of a service payment, named by the server whatever reference
+  /// the client sent.
+  String _recipientName(String kind, Map<String, dynamic> details) =>
+      switch (kind) {
+        'mobile' => _t('operator.${details['operatorId']}'),
+        'fines' => _t('recipient.fines'),
+        'utilities' => _t('recipient.utilities'),
+        'cinema' => _t('cinema.recipient', {
+          'movie': _t(
+            'movie.${_movieOf(details['sessionId'] as String?)}.title',
+          ),
+        }),
+        _ => kind,
+      };
+
+  /// `movie-001-evening` → `movie-001`.
+  static String _movieOf(String? session) =>
+      (session ?? '').replaceFirst(RegExp(r'-(evening|night)$'), '');
+
   int _sumExpenses(Iterable<Map<String, dynamic>> items) => items
       .where((item) => item['kind'] == 'expense' && item['status'] == 'posted')
       .fold<int>(0, (sum, item) => sum + (item['amountMinor'] as int));
@@ -646,7 +737,7 @@ final class DemoApi {
 
   SimulatedResponse _bills(String kind, String? identifier) {
     if (identifier == null || identifier.trim().length < 5) {
-      return _error(422, 'validation', 'Укажите корректный номер документа');
+      return _error(422, 'validation', 'error.document');
     }
     if (identifier.endsWith('00000')) {
       return const SimulatedResponse({'items': <Object>[]});
@@ -660,84 +751,74 @@ final class DemoApi {
     return SimulatedResponse({'items': bills});
   }
 
-  List<Map<String, dynamic>> _allBills(String kind) => kind == 'fines'
-      ? [
-          {
-            'id': 'fine-001',
-            'title': 'Превышение скорости',
-            'description':
-                'Постановление № 188101772610160001. Москва, Садовая улица',
-            'amountMinor': 75000,
-            'currency': 'RUB',
-            'dueDate': '2026-11-10T21:00:00.000Z',
-          },
-          {
-            'id': 'fine-002',
-            'title': 'Нарушение правил парковки',
-            'description':
-                'Постановление № 188101772610160002. Москва, Лесная улица',
-            'amountMinor': 150000,
-            'currency': 'RUB',
-            'dueDate': '2026-11-15T21:00:00.000Z',
-          },
-        ]
-      : [
-          {
-            'id': 'utility-001',
-            'title': 'Квартира · октябрь',
-            'description': 'Вода, отопление и содержание дома',
-            'provider': 'Городские коммунальные услуги',
-            'amountMinor': 684320,
-            'currency': 'RUB',
-            'dueDate': '2026-11-10T21:00:00.000Z',
-          },
-          {
-            'id': 'utility-002',
-            'title': 'Электроэнергия · октябрь',
-            'description': 'Потребление: 143 кВт·ч',
-            'provider': 'Городская энергосеть',
-            'amountMinor': 125670,
-            'currency': 'RUB',
-            'dueDate': '2026-11-10T21:00:00.000Z',
-          },
-        ];
+  List<Map<String, dynamic>> _allBills(String kind) {
+    Map<String, dynamic> bill(
+      String id,
+      int amountMinor,
+      String dueDate, {
+      bool provider = false,
+    }) => {
+      'id': id,
+      'title': _t('bill.$id.title'),
+      'description': _t('bill.$id.description'),
+      if (provider) 'provider': _t('bill.$id.provider'),
+      'amountMinor': amountMinor,
+      'currency': 'RUB',
+      'dueDate': dueDate,
+    };
+    return kind == 'fines'
+        ? [
+            bill('fine-001', 75000, '2026-11-10T21:00:00.000Z'),
+            bill('fine-002', 150000, '2026-11-15T21:00:00.000Z'),
+          ]
+        : [
+            bill(
+              'utility-001',
+              684320,
+              '2026-11-10T21:00:00.000Z',
+              provider: true,
+            ),
+            bill(
+              'utility-002',
+              125670,
+              '2026-11-10T21:00:00.000Z',
+              provider: true,
+            ),
+          ];
+  }
 
   SimulatedResponse _operators(String? phone) {
     final digits = (phone ?? '').replaceAll(RegExp(r'\D'), '');
     if (digits.length != 11) {
-      return _error(422, 'validation', 'Номер должен содержать 11 цифр');
+      return _error(422, 'validation', 'error.phoneDigits');
     }
-    return const SimulatedResponse({
+    return SimulatedResponse({
       'items': [
-        {'id': 'mts', 'name': 'МТС'},
-        {'id': 'megafon', 'name': 'МегаФон'},
-        {'id': 'beeline', 'name': 'билайн'},
-        {'id': 't2', 'name': 't2'},
+        for (final id in const ['mts', 'megafon', 'beeline', 't2'])
+          {'id': id, 'name': _t('operator.$id')},
       ],
       'suggestedId': 'mts',
     });
   }
 
-  SimulatedResponse _movies() => const SimulatedResponse({
+  SimulatedResponse _movies() => SimulatedResponse({
     'items': [
-      {
-        'id': 'movie-001',
-        'title': 'Орбита света',
-        'description': 'Приключение исследователей на далёкой планете. 12+',
-        'durationMinutes': 118,
-      },
-      {
-        'id': 'movie-002',
-        'title': 'Город в деталях',
-        'description': 'История случайной встречи в большом городе. 12+',
-        'durationMinutes': 102,
-      },
+      for (final (id, minutes) in const [
+        ('movie-001', 118),
+        ('movie-002', 102),
+      ])
+        {
+          'id': id,
+          'title': _t('movie.$id.title'),
+          'description': _t('movie.$id.description'),
+          'durationMinutes': minutes,
+        },
     ],
   });
 
   SimulatedResponse _sessions(String? movie) {
     if (!const ['movie-001', 'movie-002'].contains(movie)) {
-      return _error(404, 'not_found', 'Фильм не найден');
+      return _error(404, 'not_found', 'error.movieNotFound');
     }
     return SimulatedResponse({
       'items': [
@@ -745,7 +826,7 @@ final class DemoApi {
           'id': '$movie-evening',
           'movieId': movie,
           'startsAt': '2026-10-17T16:00:00.000Z',
-          'cinema': 'Кинотеатр «Сфера» · зал 2',
+          'cinema': _t('cinema.hall', {'hall': 2}),
           'priceMinor': 65000,
           'currency': 'RUB',
         },
@@ -753,7 +834,7 @@ final class DemoApi {
           'id': '$movie-night',
           'movieId': movie,
           'startsAt': '2026-10-17T18:30:00.000Z',
-          'cinema': 'Кинотеатр «Сфера» · зал 1',
+          'cinema': _t('cinema.hall', {'hall': 1}),
           'priceMinor': 75000,
           'currency': 'RUB',
         },
@@ -770,7 +851,7 @@ final class DemoApi {
 
   SimulatedResponse _seats(String? session) {
     if (!_validSession(session)) {
-      return _error(404, 'not_found', 'Сеанс не найден');
+      return _error(404, 'not_found', 'error.sessionNotFound');
     }
     return SimulatedResponse({
       'version': '$_seatRevision',
@@ -778,7 +859,10 @@ final class DemoApi {
         final id = 'seat-${index + 1}';
         return {
           'id': id,
-          'label': 'Ряд ${index ~/ 6 + 1} · место ${index % 6 + 1}',
+          'label': _t('cinema.seat', {
+            'row': index ~/ 6 + 1,
+            'seat': index % 6 + 1,
+          }),
           'available':
               !const [1, 8, 14].contains(index) &&
               !_reservedSeats.contains('$session/$id'),
@@ -796,7 +880,7 @@ final class DemoApi {
         (account is! String || _findAccount(account)?['currency'] != 'RUB') ||
         body['currency'] != 'RUB' ||
         (body['recipient'] as String? ?? '').trim().isEmpty) {
-      return _error(422, 'validation', 'Проверьте реквизиты платежа');
+      return _error(422, 'validation', 'error.paymentDetails');
     }
     final details = body['details'] is Map
         ? Map<String, dynamic>.from(body['details'] as Map)
@@ -805,10 +889,9 @@ final class DemoApi {
         ? (body['referenceIds'] as List).cast<String>()
         : <String>[];
     if (references.toSet().length != references.length) {
-      return _error(422, 'validation', 'Начисление выбрано несколько раз');
+      return _error(422, 'validation', 'error.duplicateBill');
     }
     var amount = 0;
-    var description = '';
     switch (kind) {
       case 'mobile':
         final digits = (details['phone'] as String? ?? '').replaceAll(
@@ -826,13 +909,12 @@ final class DemoApi {
             requested is! int ||
             requested < 10000 ||
             requested > 1500000) {
-          return _error(422, 'validation', 'Сумма: от 100 до 15 000 ₽');
+          return _error(422, 'validation', 'error.mobileAmount');
         }
         amount = requested;
-        description = 'Пополнение мобильной связи';
       case 'fines' || 'utilities':
         if (references.isEmpty) {
-          return _error(422, 'validation', 'Выберите начисления');
+          return _error(422, 'validation', 'error.chooseBills');
         }
         final bills = _allBills(kind as String);
         final versions = details['billVersions'] is Map
@@ -841,21 +923,14 @@ final class DemoApi {
         for (final id in references) {
           final matching = bills.where((bill) => bill['id'] == id);
           if (matching.isEmpty) {
-            return _error(422, 'validation', 'Начисление не найдено');
+            return _error(422, 'validation', 'error.billNotFound');
           }
           if (_paidBills.contains(id) ||
               (versions[id] != null && versions[id] != '1')) {
-            return _error(
-              409,
-              'bill_stale',
-              'Начисление изменилось или оплачено',
-            );
+            return _error(409, 'bill_stale', 'error.billChanged');
           }
           amount += matching.single['amountMinor'] as int;
         }
-        description = kind == 'fines'
-            ? 'Оплата штрафов'
-            : 'Коммунальные услуги';
       case 'cinema':
         final conflict = _checkSeats(references, details);
         if (conflict != null) return conflict;
@@ -864,14 +939,9 @@ final class DemoApi {
             ((details['sessionId'] as String).endsWith('night')
                 ? 75000
                 : 65000);
-        description = 'Билеты в кино';
     }
     if (_spendable(account) < amount + (kind == 'utilities' ? 1000 : 0)) {
-      return _error(
-        422,
-        'insufficient_funds',
-        'Недостаточно средств на выбранном счёте',
-      );
+      return _error(422, 'insufficient_funds', 'error.insufficientFunds');
     }
     final quote = <String, dynamic>{
       'id': 'quote-${++_quoteSequence}',
@@ -879,8 +949,9 @@ final class DemoApi {
       'feeMinor': kind == 'utilities' ? 1000 : 0,
       'currency': 'RUB',
       'expiresAt': _now().add(const Duration(minutes: 5)).toIso8601String(),
-      'recipient': body['recipient'],
-      'description': description,
+      // The client's recipient is only a reference; the server names the
+      // payee and the purpose in the language of each response.
+      '_recipientRef': body['recipient'],
       '_kind': kind,
       '_referenceIds': references,
       '_details': details,
@@ -888,7 +959,37 @@ final class DemoApi {
     };
     _pruneQuotes();
     _quotes[quote['id'] as String] = quote;
-    return SimulatedResponse(_public(quote));
+    return SimulatedResponse(_publicQuote(quote));
+  }
+
+  Map<String, dynamic> _publicQuote(Map<String, dynamic> quote) {
+    final kind = quote['_kind'] as String;
+    return {
+      ..._public(quote),
+      'recipient': _recipientName(
+        kind,
+        Map<String, dynamic>.from(quote['_details'] as Map? ?? const {}),
+      ),
+      'description': _t('purpose.$kind'),
+    };
+  }
+
+  /// Ticket and failure texts are built at response time, so a receipt reads
+  /// in the language of whoever asks for it.
+  Map<String, dynamic> _publicPayment(Map<String, dynamic> payment) {
+    final quote = payment['_quote'] as Map<String, dynamic>;
+    final ticket = payment['_ticket'];
+    return {
+      ..._public(payment),
+      'description': _t('purpose.${quote['_kind']}'),
+      if (ticket is Map)
+        'ticket': _t('cinema.ticket', {
+          'session': ticket['session'],
+          'seats': (ticket['seats'] as List).join(', '),
+          'id': payment['id'],
+        }),
+      if (payment['status'] == 'failed') 'failureMessage': _t('error.declined'),
+    };
   }
 
   /// Expired quotes stay for an hour so a late confirmation still receives an
@@ -908,16 +1009,16 @@ final class DemoApi {
   ) {
     final session = details['sessionId'] as String?;
     if (!_validSession(session) || references.isEmpty) {
-      return _error(422, 'validation', 'Выберите сеанс и места');
+      return _error(422, 'validation', 'error.chooseSeats');
     }
     if (details['seatVersion'] != '$_seatRevision') {
-      return _error(409, 'seat_conflict', 'Доступность мест изменилась');
+      return _error(409, 'seat_conflict', 'error.seatsChanged');
     }
     final items = _seats(session).body['items'] as List;
     for (final id in references) {
       final matching = items.where((item) => (item as Map)['id'] == id);
       if (matching.isEmpty || (matching.single as Map)['available'] != true) {
-        return _error(409, 'seat_conflict', 'Выбранное место уже недоступно');
+        return _error(409, 'seat_conflict', 'error.seatTaken');
       }
     }
     return null;
@@ -927,26 +1028,22 @@ final class DemoApi {
     final key = body['idempotencyKey'];
     final quoteId = body['quoteId'];
     if (key is! String || key.length < 8 || quoteId is! String) {
-      return _error(422, 'validation', 'Не указан ключ операции');
+      return _error(422, 'validation', 'error.missingKey');
     }
     final existing = _payments[key];
     if (existing != null) {
       return existing['quoteId'] == quoteId
-          ? SimulatedResponse(_public(existing))
-          : _error(409, 'idempotency_conflict', 'Ключ уже использован');
+          ? SimulatedResponse(_publicPayment(existing))
+          : _error(409, 'idempotency_conflict', 'error.keyUsed');
     }
     final quote = _quotes[quoteId];
-    if (quote == null) return _error(404, 'not_found', 'Расчёт не найден');
+    if (quote == null) return _error(404, 'not_found', 'error.quoteNotFound');
     if (!_now().isBefore(DateTime.parse(quote['expiresAt'] as String))) {
-      return _error(409, 'quote_expired', 'Расчёт устарел. Подтвердите сумму');
+      return _error(409, 'quote_expired', 'error.quoteExpired');
     }
     if (_spendable(quote['_accountId'] as String) <
         (quote['amountMinor'] as int) + (quote['feeMinor'] as int)) {
-      return _error(
-        422,
-        'insufficient_funds',
-        'Недостаточно средств на выбранном счёте',
-      );
+      return _error(422, 'insufficient_funds', 'error.insufficientFunds');
     }
     final kind = quote['_kind'] as String;
     final references = (quote['_referenceIds'] as List).cast<String>();
@@ -961,7 +1058,7 @@ final class DemoApi {
           (kind != 'cinema' ||
               (quote['_details'] as Map)['sessionId'] ==
                   (pending['_details'] as Map)['sessionId'])) {
-        return _error(409, 'payment_pending', 'Начисление уже обрабатывается');
+        return _error(409, 'payment_pending', 'error.billProcessing');
       }
     }
     if (kind == 'cinema') {
@@ -971,7 +1068,7 @@ final class DemoApi {
       );
       if (conflict != null) return conflict;
     } else if (references.any(_paidBills.contains)) {
-      return _error(409, 'bill_stale', 'Начисление уже оплачено');
+      return _error(409, 'bill_stale', 'error.billPaid');
     }
     final payment = <String, dynamic>{
       'id': 'payment-${++_paymentSequence}',
@@ -982,24 +1079,19 @@ final class DemoApi {
       'feeMinor': quote['feeMinor'],
       'currency': quote['currency'],
       'createdAt': _now().toIso8601String(),
-      'description': quote['description'],
       '_quote': quote,
     };
     pendingNextPayment = false;
     _payments[key] = payment;
     if (payment['status'] == 'succeeded') _completePayment(payment);
-    return SimulatedResponse(_public(payment));
+    return SimulatedResponse(_publicPayment(payment));
   }
 
   Future<void> settlePendingPayments({bool succeeded = true}) async {
     for (final payment in _payments.values) {
       if (payment['status'] != 'pending') continue;
       payment['status'] = succeeded ? 'succeeded' : 'failed';
-      if (succeeded) {
-        _completePayment(payment);
-      } else {
-        payment['failureMessage'] = 'Платёж отклонён процессингом';
-      }
+      if (succeeded) _completePayment(payment);
     }
     await _persist();
   }
@@ -1015,9 +1107,10 @@ final class DemoApi {
         _reservedSeats.add('${details['sessionId']}/$id');
       }
       _seatRevision++;
-      payment['ticket'] =
-          'Кинотеатр «Сфера» · сеанс ${details['sessionId']} · '
-          'места ${references.join(', ')} · билет ${payment['id']}';
+      payment['_ticket'] = {
+        'session': details['sessionId'],
+        'seats': references,
+      };
     } else if (kind != 'mobile') {
       _paidBills.addAll(references);
     }
@@ -1028,8 +1121,8 @@ final class DemoApi {
     };
     addTransaction({
       'id': 'txn-${payment['id']}',
-      'title': quote['recipient'],
-      'subtitle': quote['description'],
+      '_recipient': {'kind': kind, 'details': quote['_details']},
+      '_subtitleKey': 'purpose.$kind',
       'amountMinor': (quote['amountMinor'] as int) + (quote['feeMinor'] as int),
       'currency': quote['currency'],
       'occurredAt': _ledgerTime().toIso8601String(),
@@ -1192,12 +1285,16 @@ final class DemoApi {
       if (!entry.key.startsWith('_')) entry.key: entry.value,
   };
 
-  SimulatedResponse _error(int status, String code, String message) =>
-      SimulatedResponse({
-        'error': {'code': code, 'message': message},
-        'code': code,
-        'message': message,
-      }, statusCode: status);
+  /// [messageKey] names a [DemoTexts] entry; the message is sent in the
+  /// request language.
+  SimulatedResponse _error(int status, String code, String messageKey) {
+    final message = _t(messageKey);
+    return SimulatedResponse({
+      'error': {'code': code, 'message': message},
+      'code': code,
+      'message': message,
+    }, statusCode: status);
+  }
 }
 
 final class _Selection {
@@ -1242,5 +1339,7 @@ final class _ApiProblem implements Exception {
 
   final int status;
   final String code;
+
+  /// A [DemoTexts] key.
   final String message;
 }

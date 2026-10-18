@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:app_localizations/app_localizations.dart';
 import 'package:bank_core/bank_core.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:spending_analytics/spending_analytics.dart';
 
 final _now = DateTime(2026, 10, 16);
+final _ru = AppFormats('ru');
 const _accounts = [
   Account(
     id: 'main',
@@ -79,7 +81,7 @@ void main() {
         await tester.pumpAndSettle();
       }
 
-      await click('1. Кафе');
+      await click('1. Кафе и рестораны');
       expect(
         drills.single,
         source.copyWith(
@@ -124,7 +126,7 @@ void main() {
       expect(_choice(tester, 'EUR').selected, isTrue);
       expect(
         _metric(tester).value,
-        const Money(15000, currency: 'EUR').format(),
+        _ru.money(const Money(15000, currency: 'EUR')),
       );
 
       await _tapChoice(tester, 'Счёт в евро');
@@ -139,7 +141,7 @@ void main() {
       expect(_choice(tester, 'Счёт в евро').selected, isTrue);
       expect(_choice(tester, 'Прошлый месяц').selected, isTrue);
       expect(
-        find.text('${ReportingPeriod.label(selected)} · EUR · Москва'),
+        find.text('${_ru.period(selected.from!, selected.to!)} · EUR · Москва'),
         findsOneWidget,
       );
       expect(tester.takeException(), isNull);
@@ -160,7 +162,7 @@ void main() {
       );
       expect(
         _metric(tester).change,
-        '${const Money(5000, currency: 'EUR').format(signed: true)} · +50.0%',
+        '${_ru.money(const Money(5000, currency: 'EUR'), signed: true)} · ${_ru.percent(50, signed: true)}',
       );
       expect(find.text(_metric(tester).change!), findsOneWidget);
 
@@ -173,7 +175,7 @@ void main() {
       );
       expect(
         _metric(tester).change,
-        '${const Money(15000, currency: 'EUR').format(signed: true)} · нет базы для процента',
+        '${_ru.money(const Money(15000, currency: 'EUR'), signed: true)} · нет базы для процента',
       );
       expect(_metric(tester).change, isNot(contains('%')));
       expect(_metric(tester).change, isNot(contains('Infinity')));
@@ -187,7 +189,7 @@ void main() {
         initialFilter: filter,
       );
       expect(find.text('Нет расходов в этом периоде'), findsOneWidget);
-      expect(_metric(tester).value, const Money(0, currency: 'EUR').format());
+      expect(_metric(tester).value, _ru.money(const Money(0, currency: 'EUR')));
       expect(
         tester.widget<DsRankedBars>(find.byType(DsRankedBars)).points,
         isEmpty,
@@ -202,11 +204,11 @@ void main() {
         initialFilter: filter,
       );
       expect(find.text('Нет расходов в этом периоде'), findsNothing);
-      expect(_metric(tester).value, const Money(0, currency: 'EUR').format());
+      expect(_metric(tester).value, _ru.money(const Money(0, currency: 'EUR')));
       final categories = tester.widget<DsRankedBars>(find.byType(DsRankedBars));
       expect(categories.points.single.value, 0);
-      expect(categories.points.single.detail, '0%');
-      expect(find.text('Полная выборка · 2 операций'), findsOneWidget);
+      expect(categories.points.single.detail, '${_ru.percent(0)} · 2 операции');
+      expect(find.text('Полная выборка · 2 операции'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -247,7 +249,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         _metric(tester).value,
-        const Money(17500, currency: 'EUR').format(),
+        _ru.money(const Money(17500, currency: 'EUR')),
       );
       expect(_choice(tester, 'Прошлый месяц').selected, isTrue);
       expect(_choice(tester, 'Счёт в евро').selected, isTrue);
@@ -284,14 +286,16 @@ void main() {
       expect(reader.requests.last.from, previous.from);
       expect(
         _metric(tester).value,
-        const Money(10000, currency: 'EUR').format(),
+        _ru.money(const Money(10000, currency: 'EUR')),
       );
       expect(
-        find.text('${ReportingPeriod.label(initial)} · EUR · Москва'),
+        find.text('${_ru.period(initial.from!, initial.to!)} · EUR · Москва'),
         findsOneWidget,
       );
       expect(
-        find.textContaining('Запрошено: ${ReportingPeriod.label(previous)}'),
+        find.textContaining(
+          'Запрошено: ${_ru.period(previous.from!, previous.to!)}',
+        ),
         findsOneWidget,
       );
       final oldCategories = tester.widget<DsRankedBars>(
@@ -314,7 +318,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         _metric(tester).value,
-        const Money(30000, currency: 'EUR').format(),
+        _ru.money(const Money(30000, currency: 'EUR')),
       );
       expect(_choice(tester, 'Год').selected, isTrue);
       expect(
@@ -336,7 +340,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         _metric(tester).value,
-        const Money(30000, currency: 'EUR').format(),
+        _ru.money(const Money(30000, currency: 'EUR')),
       );
       expect(_choice(tester, 'Год').selected, isTrue);
       expect(_choice(tester, 'Прошлый месяц').selected, isFalse);
@@ -360,6 +364,9 @@ Future<void> _mount(
   await tester.pumpWidget(const SizedBox.shrink());
   await tester.pumpWidget(
     MaterialApp(
+      locale: const Locale('ru'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       theme: DsAppTheme.light(),
       home: AnalyticsPage(
         reader: reader,

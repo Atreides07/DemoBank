@@ -1,0 +1,13 @@
+# Regenerate after editing lib/l10n/*.arb:
+#   flutter gen-l10n
+# The generated Dart is committed so feature packages and CI never depend on
+# a code-generation step. CI verifies that it matches the ARB files.
+arb-dir: lib/l10n
+template-arb-file: app_ru.arb
+output-dir: lib/src/generated
+output-localization-file: app_localizations.g.dart
+output-class: AppLocalizations
+preferred-supported-locales: [ru]
+nullable-getter: false
+required-resource-attributes: false
+format: true

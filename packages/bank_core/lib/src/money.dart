@@ -1,6 +1,5 @@
-import 'package:intl/intl.dart';
-
-/// Exact minor-unit arithmetic; conversion to a decimal is presentation only.
+/// Exact minor-unit arithmetic. Display formatting belongs to the
+/// presentation layer, which knows the reader's language.
 final class Money implements Comparable<Money> {
   const Money(this.minor, {this.currency = 'RUB'});
   final int minor;
@@ -22,19 +21,6 @@ final class Money implements Comparable<Money> {
     }
   }
 
-  String format({bool signed = false}) {
-    final absolute = minor.abs();
-    final whole = NumberFormat.decimalPattern('ru').format(absolute ~/ 100);
-    final fraction = absolute % 100;
-    final suffix = currency == 'RUB' ? '₽' : currency;
-    final sign = minor < 0
-        ? '−'
-        : signed && minor > 0
-        ? '+'
-        : '';
-    return '$sign$whole${fraction == 0 ? '' : ',${fraction.toString().padLeft(2, '0')}'} $suffix';
-  }
-
   @override
   int compareTo(Money other) {
     _checkCurrency(other);
@@ -46,6 +32,8 @@ final class Money implements Comparable<Money> {
       other is Money && minor == other.minor && currency == other.currency;
   @override
   int get hashCode => Object.hash(minor, currency);
+
+  /// Diagnostic representation, not for display.
   @override
-  String toString() => format();
+  String toString() => 'Money($minor $currency)';
 }

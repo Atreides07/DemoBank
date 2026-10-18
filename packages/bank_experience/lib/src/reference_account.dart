@@ -22,9 +22,12 @@ class _AccountWorkspaceState extends State<_AccountWorkspace> {
   late final AnalyticsCubit _overview;
   final _scroll = ScrollController();
   bool _coupon = true;
+  late int _languageRevision;
   @override
   void initState() {
     super.initState();
+    _languageRevision = widget.environment.languageRevision;
+    widget.environment.addListener(_onEnvironment);
     _profile = AccountManagementCubit(
       ApiAccountManagement(widget.environment.api, widget.environment.cache),
       widget.accountId,
@@ -42,6 +45,15 @@ class _AccountWorkspaceState extends State<_AccountWorkspace> {
         widget.environment.now(),
       ).copyWith(accounts: [widget.accountId], currency: currency),
     );
+    unawaited(_profile.load());
+    unawaited(_overview.load());
+  }
+
+  /// Account names, limits and categories come from the server in the
+  /// interface language.
+  void _onEnvironment() {
+    if (_languageRevision == widget.environment.languageRevision) return;
+    _languageRevision = widget.environment.languageRevision;
     unawaited(_profile.load());
     unawaited(_overview.load());
   }
@@ -84,6 +96,7 @@ class _AccountWorkspaceState extends State<_AccountWorkspace> {
 
   @override
   void dispose() {
+    widget.environment.removeListener(_onEnvironment);
     _scroll.dispose();
     unawaited(_profile.close());
     unawaited(_overview.close());
@@ -100,10 +113,12 @@ class _AccountWorkspaceState extends State<_AccountWorkspace> {
             .firstOrNull;
         if (account == null) {
           return DsPage(
-            title: 'Счёт',
+            title: context.l10n.detailsAccount,
             children: [
               DsStatus(
-                title: accounts.loading ? 'Загружаем счёт' : 'Счёт не найден',
+                title: accounts.loading
+                    ? context.l10n.accountLoading
+                    : context.l10n.accountNotFound,
                 kind: accounts.loading
                     ? DsStatusKind.loading
                     : DsStatusKind.error,
@@ -125,10 +140,19 @@ class _AccountWorkspaceState extends State<_AccountWorkspace> {
                   onCard: (id) => unawaited(_card(id)),
                   onRefresh: _refresh,
                   summary: overview.summary,
+                  spendingMonth: overview.filter.from,
                   spendingPoints: overview.summary == null
                       ? const []
-                      : spendingChartPoints(overview.summary!),
-                  error: state.error ?? overview.error,
+                      : spendingChartPoints(context, overview.summary!),
+                  error: switch (state.problem) {
+                    AccountManagementProblem.loadFailed =>
+                      context.l10n.accountLoadFailed,
+                    AccountManagementProblem.saveFailed =>
+                      state.failure?.serverMessage ??
+                          context.l10n.accountSaveFailed,
+                    null =>
+                      overview.failed ? context.l10n.analyticsFailed : null,
+                  },
                   loading: state.loading,
                   couponVisible: _coupon,
                   onDismissCoupon: () => setState(() => _coupon = false),
@@ -197,29 +221,9 @@ class _AccountActionPageState extends State<_AccountActionPage> {
     if (mounted) setState(() => _copied = true);
   }
 
-  String _title(String action) => switch (action) {
-    'rename' => 'Название счёта',
-    'pay' => 'Оплатить или перевести',
-    'rewards' => 'Бонусы по счёту',
-    'autoTopUp' => 'Автопополнение',
-    'salary' => 'Зарплата на счёт',
-    'pension' => 'Пенсия на счёт',
-    'social' => 'Социальные выплаты',
-    'cashback' => 'Зачисление кэшбэка',
-    'roundUp' => 'Округление покупок',
-    'addCard' => 'Дополнительная карта',
-    'limits' => 'Лимиты счёта',
-    'requisites' => 'Реквизиты',
-    'qr' => 'QR для пополнения',
-    'link' => 'Ссылка на пополнение',
-    'linkedServices' => 'Привязанные сервисы',
-    'plan' => 'Тариф',
-    'statement' => 'Выписка по счёту',
-    'certificate' => 'Справка о счёте',
-    'services' => 'Услуги счёта',
-    'freezeCard' => 'Управление картой',
-    _ => 'Действие со счётом',
-  };
+  /// Route segments are identifiers, so they double as catalogue select cases.
+  String _title(AppLocalizations l10n, String action) =>
+      l10n.accountActionTitle(action);
   @override
   Widget build(
     BuildContext context,
@@ -229,14 +233,13 @@ class _AccountActionPageState extends State<_AccountActionPage> {
       final account = accounts.accounts
           .where((a) => a.id == widget.accountId)
           .firstOrNull;
+      final l10n = context.l10n;
+      final formats = context.formats;
       if (account == null) {
-        return const DsPage(
-          title: 'Счёт',
+        return DsPage(
+          title: l10n.detailsAccount,
           children: [
-            DsStatus(
-              title: 'Загружаем данные счёта',
-              kind: DsStatusKind.loading,
-            ),
+            DsStatus(title: l10n.accountLoading, kind: DsStatusKind.loading),
           ],
         );
       }
@@ -272,25 +275,26 @@ class _AccountActionPageState extends State<_AccountActionPage> {
               p?.cards.firstOrNull;
           final children = <Widget>[
             DsText(p?.name ?? account.name, style: DsTextStyle.title),
-            if (state.error != null)
+            if (state.problem case final problem?)
               DsStatus(
-                title: state.error!,
+                title: switch (problem) {
+                  AccountManagementProblem.loadFailed => l10n.accountLoadFailed,
+                  AccountManagementProblem.saveFailed =>
+                    state.failure?.serverMessage ?? l10n.accountSaveFailed,
+                },
                 kind: DsStatusKind.error,
-                action: DsButton(label: 'Обновить', onPressed: _profile.load),
+                action: DsButton(
+                  label: l10n.commonRefresh,
+                  onPressed: _profile.load,
+                ),
               ),
             if (state.saving)
-              const DsStatus(
-                title: 'Сохраняем настройку',
-                kind: DsStatusKind.loading,
-              ),
+              DsStatus(title: l10n.accountSaving, kind: DsStatusKind.loading),
             if (_saved)
-              const DsStatus(
-                title: 'Изменения сохранены',
-                kind: DsStatusKind.success,
-              ),
+              DsStatus(title: l10n.accountSaved, kind: DsStatusKind.success),
             if (p == null && action != 'pay')
               DsStatus(
-                title: 'Загружаем настройки',
+                title: l10n.accountLoadingSettings,
                 kind: DsStatusKind.loading,
               ),
           ];
@@ -300,11 +304,13 @@ class _AccountActionPageState extends State<_AccountActionPage> {
                 child: DsColumn(
                   children: [
                     DsText(
-                      'Доступно ${account.available.format()}',
+                      l10n.commonAvailableAmount(
+                        formats.money(account.available),
+                      ),
                       style: DsTextStyle.headline,
                     ),
                     DsButton(
-                      label: 'Между своими счетами',
+                      label: l10n.accountBetweenOwn,
                       icon: DsIcons.transfer,
                       onPressed: () =>
                           context.push('/account/${account.id}/transfer'),
@@ -314,19 +320,19 @@ class _AccountActionPageState extends State<_AccountActionPage> {
               ),
               if (account.balance.currency == 'RUB')
                 DsButton(
-                  label: 'По номеру телефона',
+                  label: l10n.accountByPhone,
                   icon: DsIcons.mobile,
                   onPressed: () => context.push('/account/${account.id}/phone'),
                 ),
               if (account.balance.currency == 'RUB')
                 DsButton(
-                  label: 'Оплатить услугу',
+                  label: l10n.accountPayService,
                   icon: DsIcons.services,
                   onPressed: () =>
                       context.push('/account-services/${account.id}'),
                 ),
               DsButton(
-                label: 'Пополнить счёт',
+                label: l10n.accountTopUpAccount,
                 icon: DsIcons.add,
                 variant: DsButtonVariant.secondary,
                 onPressed: () => context.push('/account/${account.id}/topup'),
@@ -337,17 +343,20 @@ class _AccountActionPageState extends State<_AccountActionPage> {
               case 'rename':
                 children.addAll([
                   DsField(
-                    label: 'Новое название',
+                    label: l10n.accountNewName,
                     hint: p.name,
                     controller: _name,
                   ),
-                  const DsText(
-                    'От 1 до 32 символов',
+                  DsText(
+                    l10n.accountNameLength(
+                      formats.number(1),
+                      formats.number(32),
+                    ),
                     style: DsTextStyle.caption,
                     tone: DsTone.muted,
                   ),
                   DsButton(
-                    label: 'Сохранить название',
+                    label: l10n.accountSaveName,
                     onPressed: state.saving
                         ? null
                         : () => _save(AccountPreferences(name: _name.text)),
@@ -355,11 +364,18 @@ class _AccountActionPageState extends State<_AccountActionPage> {
                 ]);
               case 'autoTopUp':
                 children.addAll([
-                  const DsText(
-                    'Учебное правило: пополнять на 1 000 ₽, когда остаток ниже 500 ₽. Источник — демонстрационная внешняя карта.',
+                  DsText(
+                    l10n.accountAutoTopUpRule(
+                      formats.money(
+                        Money(100000, currency: account.balance.currency),
+                      ),
+                      formats.money(
+                        Money(50000, currency: account.balance.currency),
+                      ),
+                    ),
                   ),
                   DsSwitchRow(
-                    title: 'Автопополнение',
+                    title: l10n.accountAutoTopUp,
                     value: p.autoTopUp,
                     onChanged: state.saving
                         ? null
@@ -368,11 +384,15 @@ class _AccountActionPageState extends State<_AccountActionPage> {
                 ]);
               case 'roundUp':
                 children.addAll([
-                  const DsText(
-                    'Округлять будущие покупки до 100 ₽. Разница будет отмечаться в демонстрационных накоплениях.',
+                  DsText(
+                    l10n.accountRoundUpRule(
+                      formats.money(
+                        Money(10000, currency: account.balance.currency),
+                      ),
+                    ),
                   ),
                   DsSwitchRow(
-                    title: 'Округлять покупки',
+                    title: l10n.accountRoundUpSwitch,
                     value: p.roundUp,
                     onChanged: state.saving
                         ? null
@@ -381,7 +401,7 @@ class _AccountActionPageState extends State<_AccountActionPage> {
                 ]);
               case 'cashback':
                 children.addAll([
-                  const DsText('Выберите счёт для зачисления бонусов'),
+                  DsText(l10n.accountChooseCashbackAccount),
                   for (final a in accounts.accounts.where(
                     (a) => a.balance.currency == account.balance.currency,
                   ))
@@ -398,8 +418,8 @@ class _AccountActionPageState extends State<_AccountActionPage> {
                             ),
                     ),
                   DsSwitchRow(
-                    title: 'Помогать фонду «Добрый день»',
-                    subtitle: 'Учебный фонд · демонстрационный выбор',
+                    title: l10n.accountCharity,
+                    subtitle: l10n.accountCharityHint,
                     value: p.charity,
                     onChanged: state.saving
                         ? null
@@ -409,17 +429,15 @@ class _AccountActionPageState extends State<_AccountActionPage> {
               case 'addCard':
                 children.addAll([
                   const DsFeatureArtwork(DsArt.cardPromo),
-                  const DsText(
-                    'Виртуальная карта для общих покупок. Выпуск и обслуживание в демо бесплатны.',
-                  ),
+                  DsText(l10n.accountExtraCardHint),
                   if (p.cards.any((c) => c.lastDigits == '6057'))
-                    const DsStatus(
-                      title: 'Карта •• 6057 уже добавлена',
+                    DsStatus(
+                      title: l10n.accountCardAdded('6057'),
                       kind: DsStatusKind.success,
                     )
                   else
                     DsButton(
-                      label: 'Выпустить демо-карту',
+                      label: l10n.accountIssueCard,
                       onPressed: state.saving
                           ? null
                           : () => _save(
@@ -440,17 +458,19 @@ class _AccountActionPageState extends State<_AccountActionPage> {
                   ),
                   if (card != null) ...[
                     DsText(
-                      'Карта •• ${card.lastDigits}',
+                      l10n.accountCard(card.lastDigits),
                       style: DsTextStyle.headline,
                     ),
-                    DsText(card.frozen ? 'Заморожена' : 'Активна'),
-                    const DsText(
-                      'Заморозка обратима и относится только к выбранной демонстрационной карте.',
+                    DsText(
+                      card.frozen
+                          ? l10n.accountCardFrozen
+                          : l10n.accountCardActive,
                     ),
+                    DsText(l10n.accountFreezeHint),
                     DsButton(
                       label: card.frozen
-                          ? 'Разморозить карту'
-                          : 'Подтвердить заморозку',
+                          ? l10n.accountUnfreeze
+                          : l10n.accountConfirmFreeze,
                       variant: card.frozen
                           ? DsButtonVariant.primary
                           : DsButtonVariant.danger,
@@ -473,12 +493,14 @@ class _AccountActionPageState extends State<_AccountActionPage> {
                         children: [
                           DsLimitRow(
                             title: l.title,
-                            detail: 'Доступно ${l.remaining.format()}',
+                            detail: l10n.commonAvailableAmount(
+                              formats.money(l.remaining),
+                            ),
                             fraction: l.remaining.minor / l.limit.minor,
                           ),
                           DsKeyValue(
-                            label: 'Лимит в месяц',
-                            value: l.limit.format(),
+                            label: l10n.accountMonthlyLimit,
+                            value: formats.money(l.limit),
                           ),
                         ],
                       ),
@@ -489,14 +511,13 @@ class _AccountActionPageState extends State<_AccountActionPage> {
               case 'pension':
               case 'social':
                 children.addAll([
-                  const DsText(
-                    'Учебные реквизиты. Не используйте для настоящих переводов.',
-                    tone: DsTone.muted,
-                  ),
+                  DsText(l10n.accountRequisitesHint, tone: DsTone.muted),
                   for (final r in p.requisites.entries)
                     DsKeyValue(label: r.key, value: r.value),
                   DsButton(
-                    label: _copied ? 'Скопировано' : 'Скопировать реквизиты',
+                    label: _copied
+                        ? l10n.accountCopied
+                        : l10n.accountCopyRequisites,
                     icon: DsIcons.copy,
                     onPressed: () => _copy(
                       p.requisites.entries
@@ -509,40 +530,35 @@ class _AccountActionPageState extends State<_AccountActionPage> {
               case 'link':
                 children.addAll([
                   DsQrCode(data: link),
-                  const DsText(
-                    'Учебная ссылка работает только внутри DemoBank. Настоящие переводы недоступны.',
-                    tone: DsTone.muted,
-                  ),
-                  DsKeyValue(label: 'Ссылка на счёт', value: link),
+                  DsText(l10n.accountLinkHint, tone: DsTone.muted),
+                  DsKeyValue(label: l10n.accountLinkLabel, value: link),
                   DsButton(
                     label: _copied
-                        ? 'Ссылка скопирована'
-                        : 'Скопировать ссылку',
+                        ? l10n.accountLinkCopied
+                        : l10n.accountCopyLink,
                     icon: DsIcons.copy,
                     onPressed: () => _copy(link),
                   ),
                 ]);
               case 'linkedServices':
                 children.addAll([
-                  const DsText(
-                    'Разрешение сохранённых привязок демонстрационных сервисов.',
-                  ),
+                  DsText(l10n.accountLinkedServicesHint),
                   if (p.linkedServicesEnabled) ...[
-                    for (final title in [
-                      'Демо Маркет',
-                      'Музыка',
-                      'Кино Дома',
-                      'Город Паркинг',
-                      'Кофе Клуб',
-                      'Доставка',
+                    for (final service in const [
+                      'market',
+                      'music',
+                      'homeCinema',
+                      'parking',
+                      'coffee',
+                      'delivery',
                     ])
                       DsListTile(
-                        title: title,
-                        subtitle: 'Карта •• ${account.lastDigits}',
+                        title: l10n.accountLinkedService(service),
+                        subtitle: l10n.accountCard(account.lastDigits),
                       ),
                   ],
                   DsSwitchRow(
-                    title: 'Разрешить привязанные сервисы',
+                    title: l10n.accountAllowLinkedServices,
                     value: p.linkedServicesEnabled,
                     onChanged: state.saving
                         ? null
@@ -553,18 +569,26 @@ class _AccountActionPageState extends State<_AccountActionPage> {
                 ]);
               case 'plan':
                 children.add(
-                  const DsPanel(
+                  DsPanel(
                     child: DsColumn(
                       children: [
-                        DsText('Демо Плюс', style: DsTextStyle.headline),
-                        DsKeyValue(label: 'Обслуживание', value: 'Бесплатно'),
-                        DsKeyValue(
-                          label: 'Кэшбэк',
-                          value: 'До 30% у учебных партнёров',
+                        DsText(
+                          l10n.accountPlanName,
+                          style: DsTextStyle.headline,
                         ),
                         DsKeyValue(
-                          label: 'Переводы между своими счетами',
-                          value: 'Без комиссии',
+                          label: l10n.accountPlanService,
+                          value: l10n.accountPlanFree,
+                        ),
+                        DsKeyValue(
+                          label: l10n.accountCashback,
+                          value: l10n.accountPlanCashback(
+                            formats.percent(30, fractionDigits: 0),
+                          ),
+                        ),
+                        DsKeyValue(
+                          label: l10n.accountPlanTransfers,
+                          value: l10n.accountPlanNoFee,
                         ),
                       ],
                     ),
@@ -572,11 +596,9 @@ class _AccountActionPageState extends State<_AccountActionPage> {
                 );
               case 'statement':
                 children.addAll([
-                  const DsText(
-                    'Все операции выбранного счёта, включая поступления и переводы. Можно открыть любую запись.',
-                  ),
+                  DsText(l10n.accountStatementHint),
                   DsButton(
-                    label: 'Открыть выписку',
+                    label: l10n.accountOpenStatement,
                     onPressed: () => context.push(
                       '/history',
                       extra: LedgerFilter(
@@ -587,19 +609,21 @@ class _AccountActionPageState extends State<_AccountActionPage> {
                   ),
                 ]);
               case 'certificate':
-                final text =
-                    'ДЕМО-СПРАВКА\nВладелец: Алексей Демонов\nСчёт: ${p.name}\nОстаток: ${account.balance.format()}\nДоговор: ${p.contract}\nУчебный документ, юридической силы не имеет.';
+                final text = l10n.accountCertificateText(
+                  l10n.commonCustomerFullName,
+                  p.name,
+                  formats.money(account.balance),
+                  p.contract,
+                );
                 children.addAll([
-                  const DsText(
-                    'Справка об остатке на выбранном счёте. Данные и документ учебные.',
-                  ),
+                  DsText(l10n.accountCertificateHint),
                   if (_certificate) DsPanel(child: DsText(text)),
                   DsButton(
                     label: _certificate
                         ? (_copied
-                              ? 'Справка скопирована'
-                              : 'Скопировать справку')
-                        : 'Сформировать справку',
+                              ? l10n.accountCertificateCopied
+                              : l10n.accountCopyCertificate)
+                        : l10n.accountMakeCertificate,
                     onPressed: () {
                       if (_certificate) {
                         unawaited(_copy(text));
@@ -612,49 +636,51 @@ class _AccountActionPageState extends State<_AccountActionPage> {
               case 'services':
                 children.addAll([
                   DsListTile(
-                    title: 'Автопополнение',
-                    subtitle: p.autoTopUp ? 'Включено' : 'Выключено',
+                    title: l10n.accountAutoTopUp,
+                    subtitle: p.autoTopUp ? l10n.commonOn : l10n.commonOff,
                     onTap: () =>
                         context.push('/account/${account.id}/autoTopUp'),
                   ),
                   DsListTile(
-                    title: 'Округление покупок',
-                    subtitle: p.roundUp ? 'Включено' : 'Выключено',
+                    title: l10n.accountRoundUp,
+                    subtitle: p.roundUp ? l10n.commonOn : l10n.commonOff,
                     onTap: () => context.push('/account/${account.id}/roundUp'),
                   ),
                   DsListTile(
-                    title: 'Привязанные сервисы',
+                    title: l10n.accountLinkedServices,
                     onTap: () =>
                         context.push('/account/${account.id}/linkedServices'),
                   ),
                 ]);
               case 'rewards':
                 children.addAll([
-                  DsMoneyText(p.cashback.format()),
-                  const DsText('Ожидает зачисления 22 октября'),
+                  DsMoneyText(formats.money(p.cashback)),
+                  DsText(
+                    l10n.accountCashbackPending(
+                      formats.dayMonthLong(p.cashbackDate),
+                    ),
+                  ),
                   DsButton(
-                    label: 'Выбрать категории кэшбэка',
+                    label: l10n.accountChooseCashbackCategories,
                     onPressed: () => context.push('/discover/daily-cashback'),
                   ),
                   DsButton(
-                    label: 'Подарки за бонусы',
+                    label: l10n.accountGiftsForBonuses,
                     variant: DsButtonVariant.secondary,
                     onPressed: () => context.push('/discover/gift'),
                   ),
                   DsButton(
-                    label: 'Аналитика этого счёта',
+                    label: l10n.analyticsForAccount,
                     variant: DsButtonVariant.quiet,
                     onPressed: () =>
                         context.push('/account-analytics/${account.id}'),
                   ),
                 ]);
               default:
-                children.add(
-                  const DsText('Выберите действие на странице счёта.'),
-                );
+                children.add(DsText(l10n.accountChooseAction));
             }
           }
-          return DsPage(title: _title(action), children: children);
+          return DsPage(title: _title(l10n, action), children: children);
         },
       );
     },
@@ -714,6 +740,9 @@ class _AccountOperationPageState extends State<_AccountOperationPage> {
   ) => BlocBuilder<AccountOperationCubit, AccountOperationState>(
     bloc: _cubit,
     builder: (context, state) {
+      final l10n = context.l10n;
+      final formats = context.formats;
+      final currency = widget.account.balance.currency;
       final topUp =
           (state.operation?.kind ?? widget.kind) == AccountOperationKind.topUp;
       final phone =
@@ -730,64 +759,59 @@ class _AccountOperationPageState extends State<_AccountOperationPage> {
           .firstOrNull;
       return DsPage(
         title: topUp
-            ? 'Пополнить счёт'
+            ? l10n.accountTopUpAccount
             : phone
-            ? 'По номеру телефона'
-            : 'Между своими счетами',
+            ? l10n.accountByPhone
+            : l10n.accountBetweenOwn,
         backEnabled: !busy,
         children: [
           DsPanel(
             child: DsColumn(
               children: [
                 DsKeyValue(
-                  label: topUp ? 'Зачислим на счёт' : 'Со счёта',
+                  label: topUp ? l10n.operationTo : l10n.operationFrom,
                   value: widget.account.name,
                 ),
                 DsKeyValue(
-                  label: 'Доступно',
-                  value: widget.account.balance.format(),
+                  label: l10n.commonAvailable,
+                  value: formats.money(widget.account.balance),
                 ),
               ],
             ),
           ),
           if (restoring)
             DsStatus(
-              title: 'Восстанавливаем журнал операций',
-              kind: state.error == null
+              title: l10n.operationRestoring,
+              kind: state.problem == null
                   ? DsStatusKind.loading
                   : DsStatusKind.error,
-              action: state.error == null
+              action: state.problem == null
                   ? null
                   : DsButton(
-                      label: 'Повторить восстановление',
+                      label: l10n.operationRetryRestore,
                       onPressed: _cubit.restore,
                     ),
             )
           else if (editing) ...[
-            if (topUp)
-              const DsText(
-                'Источник: внешняя демонстрационная карта •• 0000. Настоящего списания не будет.',
-              ),
+            if (topUp) DsText(l10n.operationTopUpSource),
             if (phone) ...[
-              const DsText(
-                'Выберите демонстрационный контакт. Номера учебные.',
-              ),
+              DsText(l10n.operationChooseContact),
               for (final r in _cubit.recipients)
                 DsChoice(
-                  label: '${r.name} · ${r.bank} · ${r.phone}',
+                  label: l10n.operationRecipient(r.name, r.bank, r.phone),
                   selected: _destination == r.id,
                   onSelected: (_) => setState(() => _destination = r.id),
                 ),
             ],
             if (!topUp && !phone) ...[
-              const DsText('На свой счёт'),
+              DsText(l10n.operationToOwn),
               for (final a in widget.accounts.where(
                 (a) =>
                     a.id != widget.account.id &&
                     a.balance.currency == widget.account.balance.currency,
               ))
                 DsChoice(
-                  label: '${a.name} · ${a.balance.format()}',
+                  label: l10n.discoveryPair(a.name, formats.money(a.balance)),
                   selected: _destination == a.id,
                   onSelected: (_) => setState(() => _destination = a.id),
                 ),
@@ -796,27 +820,32 @@ class _AccountOperationPageState extends State<_AccountOperationPage> {
                     a.id != widget.account.id &&
                     a.balance.currency == widget.account.balance.currency,
               ))
-                const DsStatus(
-                  title: 'Нет второго счёта в этой валюте',
+                DsStatus(
+                  title: l10n.operationNoSecondAccount,
                   kind: DsStatusKind.empty,
                 ),
             ],
             DsField(
-              label: 'Сумма, ${widget.account.balance.currency}',
+              label: l10n.operationAmount(formats.currencySymbol(currency)),
               controller: _amount,
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
             ),
             DsButton(
-              label: 'Продолжить',
-              onPressed: () => _cubit.review(_amount.text, _destination),
+              label: l10n.commonContinue,
+              onPressed: () => _cubit.review(
+                formats.parseAmount(_amount.text, maxIntegerDigits: 7),
+                _destination,
+              ),
             ),
           ] else ...[
-            DsMoneyText(state.operation!.amount.format()),
+            DsMoneyText(formats.money(state.operation!.amount)),
             if (!topUp)
               DsKeyValue(
-                label: phone ? 'Получатель' : 'На счёт',
+                label: phone
+                    ? l10n.operationRecipientLabel
+                    : l10n.operationToAccount,
                 value: phone
                     ? _cubit.recipients
                               .where(
@@ -824,23 +853,28 @@ class _AccountOperationPageState extends State<_AccountOperationPage> {
                               )
                               .firstOrNull
                               ?.name ??
-                          'Учебный контакт'
+                          l10n.operationSampleContact
                     : destination?.name ?? '—',
               ),
-            const DsKeyValue(label: 'Комиссия', value: '0 ₽'),
+            DsKeyValue(
+              label: l10n.commonFee,
+              value: formats.money(Money(0, currency: currency)),
+            ),
             if (success)
               DsStatus(
-                title: topUp ? 'Счёт пополнен' : 'Перевод выполнен',
-                message: 'Операция ${state.result!.id} сохранена в истории.',
+                title: topUp
+                    ? l10n.operationToppedUp
+                    : l10n.operationTransferred,
+                message: l10n.operationSaved(state.result!.id),
                 kind: DsStatusKind.success,
               )
             else ...[
               DsButton(
                 label: busy
-                    ? 'Выполняем…'
-                    : state.error == null
-                    ? 'Подтвердить'
-                    : 'Повторить запрос',
+                    ? l10n.operationRunning
+                    : state.problem == null
+                    ? l10n.operationConfirm
+                    : l10n.operationRetry,
                 onPressed: busy
                     ? null
                     : () async {
@@ -850,21 +884,53 @@ class _AccountOperationPageState extends State<_AccountOperationPage> {
               ),
               if (_cubit.canEdit)
                 DsButton(
-                  label: 'Изменить сумму',
+                  label: l10n.operationChangeAmount,
                   variant: DsButtonVariant.quiet,
                   onPressed: busy ? null : _cubit.edit,
                 ),
             ],
             if (success)
-              DsButton(label: 'К счёту', onPressed: () => context.pop()),
+              DsButton(
+                label: l10n.operationToAccountPage,
+                onPressed: () => context.pop(),
+              ),
           ],
-          if (state.error != null)
-            DsStatus(title: state.error!, kind: DsStatusKind.error),
+          if (state.problem case final problem?)
+            DsStatus(
+              title: _operationProblem(l10n, formats, state, problem, currency),
+              kind: problem == AccountOperationProblem.restored
+                  ? DsStatusKind.info
+                  : DsStatusKind.error,
+            ),
         ],
       );
     },
   );
 }
+
+String _operationProblem(
+  AppLocalizations l10n,
+  AppFormats formats,
+  AccountOperationState state,
+  AccountOperationProblem problem,
+  String currency,
+) => switch (problem) {
+  AccountOperationProblem.restored => l10n.operationRestored,
+  AccountOperationProblem.journalUnreadable => l10n.operationJournalUnreadable,
+  AccountOperationProblem.invalidAmount => l10n.operationInvalidAmount(
+    formats.money(Money(1, currency: currency)),
+    formats.money(Money(accountOperationLimit.minor, currency: currency)),
+  ),
+  AccountOperationProblem.insufficientFunds =>
+    l10n.paymentErrorInsufficientFunds,
+  AccountOperationProblem.invalidDestination =>
+    l10n.operationInvalidDestination,
+  AccountOperationProblem.invalidRecipient => l10n.operationInvalidRecipient,
+  AccountOperationProblem.earlierRequestPending => l10n.operationEarlierPending,
+  AccountOperationProblem.rejectedJournalStuck => l10n.operationRejectedStuck,
+  AccountOperationProblem.rejected => state.serverMessage ?? l10n.errorRejected,
+  AccountOperationProblem.resultUnknown => l10n.operationResultUnknown,
+};
 
 /// Scanner input is deliberately represented by synthetic codes. No camera or
 /// external URL is opened, and only explicit internal destinations are allowed.
@@ -875,9 +941,11 @@ class _QrDemoPage extends StatefulWidget {
   State<_QrDemoPage> createState() => _QrDemoPageState();
 }
 
+enum _QrProblem { invalid, unsupported }
+
 class _QrDemoPageState extends State<_QrDemoPage> {
   final _code = TextEditingController();
-  String? _error;
+  _QrProblem? _problem;
   @override
   void dispose() {
     _code.dispose();
@@ -892,10 +960,7 @@ class _QrDemoPageState extends State<_QrDemoPage> {
         : uri?.queryParameters['account'] ?? 'main';
     final account = widget.accounts.where((a) => a.id == accountId).firstOrNull;
     if (uri == null || uri.scheme != 'demobank' || account == null) {
-      setState(
-        () => _error =
-            'Вставьте учебную ссылку DemoBank или выберите пример ниже.',
-      );
+      setState(() => _problem = _QrProblem.invalid);
       return;
     }
     if (uri.host == 'topup' && parts.length == 1) {
@@ -914,35 +979,39 @@ class _QrDemoPageState extends State<_QrDemoPage> {
       context.push('/pay/${parts.single}?account=${account.id}');
       return;
     }
-    setState(
-      () => _error =
-          'Этот учебный код не поддерживается. Выберите доступный пример.',
-    );
+    setState(() => _problem = _QrProblem.unsupported);
   }
 
   @override
-  Widget build(BuildContext context) => DsPage(
-    title: 'Сканировать QR',
-    children: [
-      const DsText('Выберите учебный QR-код или вставьте ссылку DemoBank.'),
-      const DsQrCode(data: 'demobank://pay/utilities?account=main'),
-      DsField(
-        label: 'Ссылка из QR-кода',
-        controller: _code,
-        error: _error,
-        hint: 'demobank://…',
-      ),
-      DsButton(label: 'Открыть код', onPressed: () => _open(_code.text)),
-      DsListTile(
-        title: 'Пример · оплата ЖКХ',
-        icon: DsIcons.home,
-        onTap: () => _open('demobank://pay/utilities?account=main'),
-      ),
-      DsListTile(
-        title: 'Пример · пополнение счёта',
-        icon: DsIcons.add,
-        onTap: () => _open('demobank://topup/main'),
-      ),
-    ],
-  );
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return DsPage(
+      title: l10n.qrTitle,
+      children: [
+        DsText(l10n.qrHint),
+        const DsQrCode(data: 'demobank://pay/utilities?account=main'),
+        DsField(
+          label: l10n.qrField,
+          controller: _code,
+          error: switch (_problem) {
+            _QrProblem.invalid => l10n.qrInvalid,
+            _QrProblem.unsupported => l10n.qrUnsupported,
+            null => null,
+          },
+          hint: 'demobank://…',
+        ),
+        DsButton(label: l10n.qrOpen, onPressed: () => _open(_code.text)),
+        DsListTile(
+          title: l10n.qrSampleUtilities,
+          icon: DsIcons.home,
+          onTap: () => _open('demobank://pay/utilities?account=main'),
+        ),
+        DsListTile(
+          title: l10n.qrSampleTopUp,
+          icon: DsIcons.add,
+          onTap: () => _open('demobank://topup/main'),
+        ),
+      ],
+    );
+  }
 }

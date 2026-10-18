@@ -1,4 +1,6 @@
 import 'dart:async';
+
+import 'package:app_localizations/app_localizations.dart';
 import 'package:bank_core/bank_core.dart';
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
@@ -117,27 +119,33 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
   ) => BlocBuilder<AnalyticsCubit, AnalyticsState>(
     bloc: _cubit,
     builder: (context, state) {
+      final l10n = context.l10n;
+      final formats = context.formats;
       final summary = state.summary;
+      String period(LedgerFilter filter) =>
+          filter.from != null && filter.to != null
+          ? formats.period(filter.from!, filter.to!)
+          : l10n.analyticsAllTime;
       final currencies = {
         'RUB',
         ...widget.accounts.map((account) => account.balance.currency),
       };
       return DsPage(
-        title: 'Аналитика трат',
+        title: l10n.analyticsTitle,
         onRefresh: () => _cubit.load(),
         children: [
           DsFilterBar(
             id: 'analytics-period',
             children: [
               DsChoice(
-                label: 'Этот месяц',
+                label: l10n.analyticsThisMonth,
                 selected:
                     state.filter.from ==
                     ReportingPeriod.month(widget.now()).from,
                 onSelected: (_) => _period(ReportingPeriod.month(widget.now())),
               ),
               DsChoice(
-                label: 'Прошлый месяц',
+                label: l10n.analyticsLastMonth,
                 selected:
                     state.filter.from ==
                     ReportingPeriod.month(widget.now(), offset: -1).from,
@@ -145,14 +153,14 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                     _period(ReportingPeriod.month(widget.now(), offset: -1)),
               ),
               DsChoice(
-                label: 'Год',
+                label: l10n.analyticsYear,
                 selected:
                     state.filter.from ==
                     ReportingPeriod.year(widget.now()).from,
                 onSelected: (_) => _period(ReportingPeriod.year(widget.now())),
               ),
               DsButton(
-                label: 'Выбрать даты',
+                label: l10n.analyticsChooseDates,
                 icon: DsIcons.calendar,
                 variant: DsButtonVariant.quiet,
                 onPressed: () => unawaited(_custom()),
@@ -174,7 +182,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                     ),
                   ),
               DsChoice(
-                label: 'Все счета',
+                label: l10n.commonAllAccounts,
                 selected: state.filter.accounts.isEmpty,
                 onSelected: (_) => unawaited(
                   _cubit.load(filter: state.filter.copyWith(accounts: [])),
@@ -203,103 +211,137 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             ],
           ),
           DsText(
-            '${ReportingPeriod.label(state.filter)} · ${state.filter.currency} · Москва',
+            l10n.analyticsScope(
+              period(state.filter),
+              state.filter.currency,
+              l10n.commonMoscowTime,
+            ),
             style: DsTextStyle.caption,
           ),
           if (state.loading)
             DsStatus(
               title: summary == null
-                  ? 'Собираем аналитику'
-                  : 'Обновляем выбранный период',
+                  ? l10n.analyticsLoadingTitle
+                  : l10n.analyticsUpdatingTitle,
               message: summary == null
-                  ? 'Графики появятся по мере получения данных.'
-                  : 'Сейчас показан предыдущий согласованный результат.',
+                  ? l10n.analyticsLoadingMessage
+                  : l10n.analyticsUpdatingMessage,
               kind: DsStatusKind.loading,
             ),
           if (state.pendingFilter case final requested?)
             DsText(
-              'Запрошено: ${ReportingPeriod.label(requested)} · ${requested.accounts.isEmpty ? 'все счета' : requested.accounts.map((id) => widget.accounts.where((a) => a.id == id).firstOrNull?.name ?? id).join(', ')}',
+              l10n.analyticsRequested(
+                period(requested),
+                requested.accounts.isEmpty
+                    ? l10n.commonAllAccounts
+                    : requested.accounts
+                          .map(
+                            (id) =>
+                                widget.accounts
+                                    .where((a) => a.id == id)
+                                    .firstOrNull
+                                    ?.name ??
+                                id,
+                          )
+                          .join(', '),
+              ),
               style: DsTextStyle.caption,
             ),
-          if (state.error != null)
+          if (state.failed)
             DsStatus(
-              title: state.error!,
+              title: l10n.analyticsFailed,
               kind: DsStatusKind.error,
               action: DsButton(
-                label: 'Повторить',
+                label: l10n.commonRetry,
                 onPressed: () => unawaited(_cubit.load()),
               ),
             ),
-          if (state.stale)
-            const DsText('Сохранённые данные · актуальность проверяется'),
+          if (state.stale) DsText(l10n.analyticsStale),
           if (summary != null) ...[
             if (summary.count == 0)
-              const DsStatus(
-                title: 'Нет расходов в этом периоде',
-                message:
-                    'Проведённых списаний по выбранным фильтрам не найдено.',
+              DsStatus(
+                title: l10n.analyticsEmptyTitle,
+                message: l10n.analyticsEmptyMessage,
                 kind: DsStatusKind.empty,
               ),
             DsCard(
               child: DsMetric(
-                label: 'Расходы за период',
-                value: summary.total.format(),
-                change:
-                    '${(summary.total - summary.previous).format(signed: true)} · ${summary.changePercent == null ? 'нет базы для процента' : '${summary.changePercent! >= 0 ? '+' : ''}${summary.changePercent!.toStringAsFixed(1)}%'}',
-                detail:
-                    'Сравнение: ${ReportingPeriod.date(summary.comparisonFrom)} — ${ReportingPeriod.date(summary.comparisonTo.subtract(const Duration(days: 1)))} · ${summary.previous.format()}',
+                label: l10n.analyticsTotal,
+                value: formats.money(summary.total),
+                change: l10n.analyticsChange(
+                  formats.money(summary.total - summary.previous, signed: true),
+                  switch (summary.changePercent) {
+                    null => l10n.analyticsNoPercentBase,
+                    final double percent => formats.percent(
+                      percent,
+                      signed: true,
+                    ),
+                  },
+                ),
+                detail: l10n.analyticsComparison(
+                  formats.period(summary.comparisonFrom, summary.comparisonTo),
+                  formats.money(summary.previous),
+                ),
               ),
             ),
             if (summary.refunds.minor > 0)
               DsCard(
                 tone: DsCardTone.subtle,
                 child: DsMetric(
-                  label: 'Возвраты отдельно',
-                  value: summary.refunds.format(),
-                  detail: 'Не включены в показатель расходов',
+                  label: l10n.analyticsRefunds,
+                  value: formats.money(summary.refunds),
+                  detail: l10n.analyticsRefundsDetail,
                 ),
               ),
             DsSection(
-              title: 'Динамика расходов',
-              subtitle: 'Нажмите на столбец, чтобы увидеть операции',
+              title: l10n.analyticsTrend,
+              subtitle: l10n.analyticsTrendHint,
               child: DsCard(
                 child: DsBarChart(
-                  label: 'Расходы по времени',
+                  label: l10n.analyticsTrendLabel,
                   selectedId: _selectedTime,
                   points: [
                     for (final point in summary.timeline)
                       DsChartPoint(
                         id: point.id,
-                        label: point.label,
+                        label: _timeLabel(formats, point),
                         value: point.amount.minor,
-                        displayValue: point.amount.format(),
+                        displayValue: formats.money(point.amount),
                       ),
                   ],
                   onSelected: state.loading ? null : _drillTime,
-                  valueLabel: (value) => Money(
-                    value.toInt(),
-                    currency: summary.total.currency,
-                  ).format(),
+                  valueLabel: (value) => formats.money(
+                    Money(value.toInt(), currency: summary.total.currency),
+                  ),
                 ),
               ),
             ),
             DsSection(
-              title: 'На что потрачено',
-              subtitle: 'Полная выборка · ${summary.count} операций',
+              title: l10n.analyticsCategories,
+              subtitle: l10n.analyticsCategoriesSubtitle(
+                l10n.commonOperationsCount(summary.count),
+              ),
               child: DsCard(
                 child: DsRankedBars(
-                  label: 'Категории расходов',
+                  label: l10n.analyticsCategoriesLabel,
                   selectedId: _selectedCategory,
                   points: [
                     for (final point in summary.categories)
                       DsChartPoint(
                         id: point.id,
-                        label: point.label,
+                        label: l10n.category(point.id, point.label),
                         value: point.amount.minor,
-                        displayValue: point.amount.format(),
-                        detail: summary.total.minor == 0
-                            ? '0%'
-                            : '${(point.amount.minor * 100 / summary.total.minor).toStringAsFixed(1)}% · ${point.count} операций',
+                        displayValue: formats.money(point.amount),
+                        detail: l10n.analyticsShareDetail(
+                          formats.percent(
+                            summary.total.minor == 0
+                                ? 0
+                                : point.amount.minor *
+                                      100 /
+                                      summary.total.minor,
+                          ),
+                          l10n.commonOperationsCount(point.count),
+                        ),
                         role: _categoryRole(point.id),
                       ),
                   ],
@@ -308,16 +350,16 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
               ),
             ),
             DsSection(
-              title: 'Получатели',
-              subtitle: 'Откройте детализацию по торговой точке',
+              title: l10n.analyticsMerchants,
+              subtitle: l10n.analyticsMerchantsHint,
               child: DsCard(
                 child: DsColumn(
                   children: [
                     for (final point in summary.merchants)
                       DsListTile(
                         title: point.label,
-                        subtitle: '${point.count} операций',
-                        trailing: DsText(point.amount.format()),
+                        subtitle: l10n.commonOperationsCount(point.count),
+                        trailing: DsText(formats.money(point.amount)),
                         onTap: () => widget.onDrill(
                           state.filter.copyWith(
                             merchant: point.id,
@@ -330,14 +372,12 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                 ),
               ),
             ),
-            const DsCard(
+            DsCard(
               tone: DsCardTone.subtle,
               child: DsColumn(
                 children: [
-                  DsText('Как считаем расходы', style: DsTextStyle.title),
-                  DsText(
-                    'Только проведённые списания. Доходы, переводы между своими счетами, отмены и ожидающие операции исключены. Возвраты показываются отдельно. Комиссия учитывается один раз. Дни определяются по московскому времени.',
-                  ),
+                  DsText(l10n.analyticsRuleTitle, style: DsTextStyle.title),
+                  DsText(l10n.analyticsRule),
                 ],
               ),
             ),
@@ -359,14 +399,32 @@ DsChartRole _categoryRole(String id) => switch (id) {
   _ => DsChartRole.sixth,
 };
 
+/// Bucket labels follow the interface language: a day (`16.10`, `10/16`) or,
+/// for monthly buckets, a month (`10.2026`, `10/2026`).
+String _timeLabel(AppFormats formats, AggregatePoint point) {
+  final from = point.from;
+  final to = point.to;
+  if (from == null) return point.label;
+  return to != null && to.difference(from).inDays >= 28
+      ? formats.monthYear(from)
+      : formats.dayMonth(from);
+}
+
 /// One category-to-role mapping for the overview strip and detailed charts.
-List<DsChartPoint> spendingChartPoints(SpendingSummary summary) => [
-  for (final point in summary.categories)
-    DsChartPoint(
-      id: point.id,
-      label: point.label,
-      value: point.amount.minor,
-      displayValue: point.amount.format(),
-      role: _categoryRole(point.id),
-    ),
-];
+List<DsChartPoint> spendingChartPoints(
+  BuildContext context,
+  SpendingSummary summary,
+) {
+  final l10n = context.l10n;
+  final formats = context.formats;
+  return [
+    for (final point in summary.categories)
+      DsChartPoint(
+        id: point.id,
+        label: l10n.category(point.id, point.label),
+        value: point.amount.minor,
+        displayValue: formats.money(point.amount),
+        role: _categoryRole(point.id),
+      ),
+  ];
+}

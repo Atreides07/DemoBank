@@ -3,7 +3,8 @@
     <application
         android:label="DemoBank"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:localeConfig="@xml/locales_config">
         <!-- Pinned Flutter renderer decision: docs/adr/0007-android-renderer.md -->
         <meta-data
             android:name="io.flutter.embedding.android.EnableImpeller"

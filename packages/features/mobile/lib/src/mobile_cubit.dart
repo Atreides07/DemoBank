@@ -4,6 +4,9 @@ import 'package:payment_domain/payment_domain.dart';
 
 import 'models.dart';
 
+/// Why the phone field needs attention. The screen chooses the words.
+enum MobilePhoneProblem { characters, length, lookupFailed }
+
 final class MobileState {
   const MobileState({
     this.phone = '',
@@ -11,7 +14,8 @@ final class MobileState {
     this.selectedOperator,
     this.loading = false,
     this.amount = const Money(50000),
-    this.phoneError,
+    this.phoneProblem,
+    this.lookupFailure,
     this.amountError,
     this.lookedUp = false,
   });
@@ -21,8 +25,11 @@ final class MobileState {
   final MobileOperator? selectedOperator;
   final bool loading;
   final Money? amount;
-  final String? phoneError;
-  final String? amountError;
+  final MobilePhoneProblem? phoneProblem;
+
+  /// Details of [MobilePhoneProblem.lookupFailed] when the gateway gave them.
+  final PaymentFailure? lookupFailure;
+  final MobileInputError? amountError;
   final bool lookedUp;
 
   bool get canContinue =>
@@ -78,16 +85,20 @@ final class MobileCubit extends Cubit<MobileState> {
         );
       }
     } catch (error, stackTrace) {
-      addError(error, stackTrace);
+      if (error is! MobileInputException) addError(error, stackTrace);
       if (!isClosed && generation == _generation) {
         emit(
           MobileState(
             phone: rawPhone,
             amount: state.amount,
             amountError: state.amountError,
-            phoneError: error is PaymentFailure
-                ? error.message
-                : 'Не удалось определить оператора. Повторите запрос.',
+            phoneProblem: switch (error) {
+              MobileInputException(error: MobileInputError.phoneCharacters) =>
+                MobilePhoneProblem.characters,
+              MobileInputException() => MobilePhoneProblem.length,
+              _ => MobilePhoneProblem.lookupFailed,
+            },
+            lookupFailure: error is PaymentFailure ? error : null,
           ),
         );
       }
@@ -110,13 +121,15 @@ final class MobileCubit extends Cubit<MobileState> {
     );
   }
 
-  void changeAmount(String text) {
+  /// [minor] is the amount the screen parsed in the person's language, or
+  /// `null` when the text is not an amount.
+  void changeAmount(int? minor) {
     Money? amount;
-    String? error;
+    MobileInputError? error;
     try {
-      amount = parseMobileAmount(text);
-    } on PaymentFailure catch (failure) {
-      error = failure.message;
+      amount = checkMobileAmount(minor);
+    } on MobileInputException catch (failure) {
+      error = failure.error;
     }
     emit(
       MobileState(
@@ -125,7 +138,8 @@ final class MobileCubit extends Cubit<MobileState> {
         selectedOperator: state.selectedOperator,
         lookedUp: state.lookedUp,
         loading: state.loading,
-        phoneError: state.phoneError,
+        phoneProblem: state.phoneProblem,
+        lookupFailure: state.lookupFailure,
         amount: amount,
         amountError: error,
       ),
@@ -135,15 +149,13 @@ final class MobileCubit extends Cubit<MobileState> {
   PaymentIntent intent(String accountId) {
     final operator = state.selectedOperator;
     if (!state.canContinue || operator == null) {
-      throw const PaymentFailure(
-        PaymentFailureCode.validation,
-        'Уточните номер, оператора и сумму.',
-      );
+      throw const PaymentFailure(PaymentFailureCode.validation);
     }
     return PaymentIntent(
       kind: PaymentKind.mobile,
       accountId: accountId,
-      recipient: operator.name,
+      // The server names the operator in the language of the request.
+      recipient: operator.id,
       referenceIds: [operator.id],
       amount: state.amount,
       details: {

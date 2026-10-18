@@ -6,11 +6,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_localizations:
-    sdk: flutter
   flutter_bloc: 8.1.6
   go_router: 16.2.4
   app_foundation: any
+  app_localizations: any
   bank_artwork: any
   bank_core: any
   design_system: any

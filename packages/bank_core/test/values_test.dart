@@ -5,8 +5,6 @@ void main() {
   test('money arithmetic stays in exact minor units', () {
     expect(const Money(10) + const Money(20), const Money(30));
     expect(const Money(100) - const Money(1), const Money(99));
-    expect(const Money(105).format(), '1,05 ₽');
-    expect(const Money(-105).format(), '−1,05 ₽');
     expect(
       () => const Money(1) + const Money(1, currency: 'USD'),
       throwsArgumentError,
@@ -16,8 +14,6 @@ void main() {
     final month = ReportingPeriod.month(DateTime(2026, 10, 16));
     expect(month.from, DateTime.utc(2026, 9, 30, 21));
     expect(month.to, DateTime.utc(2026, 10, 16, 21));
-    expect(ReportingPeriod.label(month), '01.10.2026 — 16.10.2026');
-    expect(ReportingPeriod.time(DateTime.utc(2026, 10, 16, 8, 5)), '11:05');
     final leap = ReportingPeriod.custom(
       DateTime(2024, 2, 28),
       DateTime(2024, 2, 29),

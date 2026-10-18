@@ -58,7 +58,7 @@ void main() {
       repository.sold = true;
       await controller.selectSession(_session);
       expect(controller.state.selectedIds, {'b'});
-      expect(controller.state.notice, isNotNull);
+      expect(controller.state.seatsChanged, isTrue);
       controller.toggleSeat('a', true);
       expect(controller.state.selectedIds, {'b'});
       final intent = controller.intent('source');

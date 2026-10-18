@@ -2,8 +2,9 @@ library;
 
 import 'dart:async';
 import 'dart:convert';
+
+import 'package:app_localizations/app_localizations.dart';
 import 'package:checkout/checkout.dart';
-import 'package:design_system/design_system.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:local_storage/local_storage.dart';
@@ -11,13 +12,28 @@ import 'package:network_client/network_client.dart';
 import 'package:network_simulation/network_simulation.dart';
 import 'package:payment_domain/payment_domain.dart';
 
+import 'src/language_scoped_cache.dart';
+
+export 'src/environment_page.dart';
 export 'src/error_reporting.dart';
+export 'src/language_settings.dart';
+
+/// Result of the last cache action requested on the demo settings screen.
+enum CacheNotice { automatic, cleared, clearFailed, expired, expireFailed }
+
+/// Result of the last demo activity request.
+enum ActivityOutcome { added, failed }
 
 /// Application-scoped resources; contains no bank-specific feature dependency.
 final class AppEnvironment extends ChangeNotifier {
+  /// [preferences] keeps choices that belong to the device rather than to a
+  /// backend, such as the interface language; by default it is in memory, and
+  /// [AppEnvironment.fromDefines] makes it durable. [systemLocales] are the
+  /// device language preferences used while no language has been chosen.
   AppEnvironment({
     CacheStore? cache,
     CacheStore? journal,
+    CacheStore? preferences,
     SimulationAdapter? simulation,
     NetworkProfile profile = NetworkProfile.normal,
     int seed = 42,
@@ -25,12 +41,14 @@ final class AppEnvironment extends ChangeNotifier {
     this.httpKeepAlive = true,
     Uri? baseUri,
     ApiRequestObserver? onApiEvent,
+    AppLanguage? language,
+    List<Locale> systemLocales = const [Locale('ru')],
   }) : scopeId = storageScope(
          http: http,
          baseUri: baseUri,
          seed: simulation?.transport.seed ?? seed,
        ),
-       cache =
+       _responses =
            cache ??
            CacheStore(
              namespace:
@@ -43,7 +61,11 @@ final class AppEnvironment extends ChangeNotifier {
              namespace:
                  '${storageScope(http: http, baseUri: baseUri, seed: simulation?.transport.seed ?? seed)}_journal',
              durable: true,
-           ) {
+           ),
+       preferences = preferences ?? MemoryCacheStore(durable: true),
+       _chosenLanguage = language,
+       _systemLocales = List.unmodifiable(systemLocales) {
+    this.cache = LanguageScopedCache(_responses, () => this.language.code);
     this.simulation =
         simulation ??
         SimulationAdapter(
@@ -62,6 +84,7 @@ final class AppEnvironment extends ChangeNotifier {
       baseUri: baseUri ?? Uri.parse('https://demo.invalid'),
       adapter: http ? null : this.simulation,
       persistentConnection: httpKeepAlive,
+      acceptLanguage: this.language.code,
       onEvent: (event) {
         _apiEvents.add(event);
         if (_apiEvents.length > 1000) _apiEvents.removeAt(0);
@@ -95,33 +118,50 @@ final class AppEnvironment extends ChangeNotifier {
       keyFactory: SecureIdempotencyKeyFactory(),
     );
   }
-  factory AppEnvironment.fromDefines({ApiRequestObserver? onApiEvent}) =>
-      AppEnvironment(
-        onApiEvent: onApiEvent,
-        http: const String.fromEnvironment('DATA_SOURCE') == 'http',
-        httpKeepAlive: const bool.fromEnvironment(
-          'HTTP_KEEP_ALIVE',
-          defaultValue: true,
-        ),
-        baseUri: Uri.parse(
-          const String.fromEnvironment(
-            'API_BASE_URL',
-            defaultValue: 'https://demo.invalid',
-          ),
-        ),
-        seed: const int.fromEnvironment('NETWORK_SEED', defaultValue: 42),
-        profile: switch (const String.fromEnvironment(
-          'NETWORK_PROFILE',
-          defaultValue: 'normal',
-        )) {
-          'slow' => NetworkProfile.slow,
-          'unstable' => NetworkProfile.unstable,
-          'offline' => NetworkProfile.offline,
-          _ => NetworkProfile.normal,
-        },
-      );
-  final CacheStore cache;
+
+  /// Production composition: build-time defines, durable preferences and the
+  /// device language list. `--dart-define=APP_LANGUAGE=en` pins a language,
+  /// as does [language] (used by device tests that assert on text).
+  factory AppEnvironment.fromDefines({
+    ApiRequestObserver? onApiEvent,
+    AppLanguage? language,
+  }) => AppEnvironment(
+    onApiEvent: onApiEvent,
+    preferences: CacheStore(namespace: 'preferences', durable: true),
+    language:
+        language ??
+        AppLanguage.tryParse(const String.fromEnvironment('APP_LANGUAGE')),
+    systemLocales: PlatformDispatcher.instance.locales,
+    http: const String.fromEnvironment('DATA_SOURCE') == 'http',
+    httpKeepAlive: const bool.fromEnvironment(
+      'HTTP_KEEP_ALIVE',
+      defaultValue: true,
+    ),
+    baseUri: Uri.parse(
+      const String.fromEnvironment(
+        'API_BASE_URL',
+        defaultValue: 'https://demo.invalid',
+      ),
+    ),
+    seed: const int.fromEnvironment('NETWORK_SEED', defaultValue: 42),
+    profile: switch (const String.fromEnvironment(
+      'NETWORK_PROFILE',
+      defaultValue: 'normal',
+    )) {
+      'slow' => NetworkProfile.slow,
+      'unstable' => NetworkProfile.unstable,
+      'offline' => NetworkProfile.offline,
+      _ => NetworkProfile.normal,
+    },
+  );
+
+  /// Responses in the current content language. Server texts (names,
+  /// descriptions, rejection messages) follow `Accept-Language`, so cached
+  /// copies are kept per language; clearing applies to all of them.
+  late final CacheStore cache;
+  final CacheStore _responses;
   final CacheStore journal;
+  final CacheStore preferences;
   final String scopeId;
   late final SimulationAdapter simulation;
   final bool http;
@@ -133,20 +173,109 @@ final class AppEnvironment extends ChangeNotifier {
   ThemeMode theme = ThemeMode.light;
   bool reduceMotion = false;
   bool motionComparison = false;
-  String cacheMessage = 'Кеш используется автоматически';
-  String? activityMessage;
+  CacheNotice cacheNotice = CacheNotice.automatic;
+  ActivityOutcome? activityOutcome;
+  ApiFailure? activityFailure;
   bool activityInProgress = false;
   int activityRevision = 0;
   final List<double> navigationFirstFrameMs = [];
   bool _disposed = false;
-  String get sourceLabel => http
-      ? 'Сетевой транспорт · тестовый сервер'
-      : 'Локальный симулятор · seed ${simulation.transport.seed}';
+
+  AppLanguage? _chosenLanguage;
+  List<Locale> _systemLocales;
+
+  /// Incremented whenever the effective language changes, so hosts can reload
+  /// server content that was received in the previous language.
+  int languageRevision = 0;
+
+  /// The interface and content language in effect.
+  AppLanguage get language =>
+      _chosenLanguage ?? AppLanguage.resolve(_systemLocales);
+
+  /// The explicit choice, or `null` while following the device language.
+  AppLanguage? get chosenLanguage => _chosenLanguage;
+
+  /// The language the device prefers, when it is supported.
+  AppLanguage get systemLanguage => AppLanguage.resolve(_systemLocales);
+
+  Locale get locale => language.locale;
+
+  /// Language-neutral description of the data source for diagnostics and
+  /// device reports. Screens describe the source in the current language.
+  String get sourceLabel =>
+      http ? 'http' : 'simulation · seed ${simulation.transport.seed}';
 
   /// The demo calendar shared with the ledger backend; see
   /// [DemoApi.businessNow]. Reporting periods computed from it include every
   /// payment and operation created during the session.
   DateTime now() => DemoApi.businessNow;
+
+  /// Applies a stored language choice. Call before the first frame so the
+  /// interface never flashes in a different language.
+  Future<void> restorePreferences() async {
+    try {
+      final entry = await preferences.read('language');
+      final stored = AppLanguage.tryParse(entry?.value['code'] as String?);
+      if (stored == null || stored == _chosenLanguage) return;
+      final before = language;
+      _chosenLanguage = stored;
+      _languageChanged(before);
+    } on Object catch (error, stackTrace) {
+      // A missing preference only means the device language is used.
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stackTrace,
+          library: 'app_foundation',
+          context: ErrorDescription('while restoring preferences'),
+        ),
+      );
+    }
+  }
+
+  /// Chooses a language, or follows the device again when [language] is null.
+  /// The interface switches immediately; the choice is then persisted.
+  Future<void> setLanguage(AppLanguage? language) async {
+    final before = this.language;
+    _chosenLanguage = language;
+    _languageChanged(before);
+    try {
+      if (language == null) {
+        await preferences.delete('language');
+      } else {
+        await preferences.write('language', {
+          'code': language.code,
+        }, ttl: const Duration(days: 3650));
+      }
+    } on Object catch (error, stackTrace) {
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stackTrace,
+          library: 'app_foundation',
+          context: ErrorDescription('while saving the language choice'),
+        ),
+      );
+    }
+  }
+
+  /// Device language preferences changed (Android per-app or system setting).
+  void updateSystemLocales(List<Locale> locales) {
+    final before = language;
+    _systemLocales = List.unmodifiable(locales);
+    _languageChanged(before);
+  }
+
+  void _languageChanged(AppLanguage before) {
+    if (_disposed) return;
+    api.acceptLanguage = language.code;
+    if (language == before) {
+      notifyListeners();
+      return;
+    }
+    languageRevision++;
+    notifyListeners();
+  }
 
   /// Simulator state is synthetic and can be regenerated, unlike the payment
   /// journal: an unreadable copy is replaced by fresh fixtures instead of
@@ -214,9 +343,9 @@ final class AppEnvironment extends ChangeNotifier {
   Future<void> clearCache() async {
     try {
       await cache.clear();
-      cacheMessage = 'Кеш очищен. Откройте экран заново для холодной загрузки.';
+      cacheNotice = CacheNotice.cleared;
     } on Exception {
-      cacheMessage = 'Не удалось очистить кеш. Повторите действие.';
+      cacheNotice = CacheNotice.clearFailed;
     }
     if (!_disposed) notifyListeners();
   }
@@ -224,10 +353,9 @@ final class AppEnvironment extends ChangeNotifier {
   Future<void> expireCache() async {
     try {
       await cache.expireAll();
-      cacheMessage = 'Кеш помечен устаревшим.';
+      cacheNotice = CacheNotice.expired;
     } on Exception {
-      cacheMessage =
-          'Не удалось изменить актуальность кеша. Повторите действие.';
+      cacheNotice = CacheNotice.expireFailed;
     }
     if (!_disposed) notifyListeners();
   }
@@ -235,16 +363,18 @@ final class AppEnvironment extends ChangeNotifier {
   Future<void> addActivity() async {
     if (activityInProgress) return;
     activityInProgress = true;
-    activityMessage = null;
+    activityOutcome = null;
+    activityFailure = null;
     notifyListeners();
     try {
       await api.post('/v1/demo/activity', data: {'changeStatus': true});
       activityRevision++;
-      activityMessage = 'Операция добавлена. Обновите историю для применения.';
+      activityOutcome = ActivityOutcome.added;
     } on ApiFailure catch (error) {
-      activityMessage = error.message;
+      activityOutcome = ActivityOutcome.failed;
+      activityFailure = error;
     } on Exception {
-      activityMessage = 'Не удалось добавить операцию. Повторите действие.';
+      activityOutcome = ActivityOutcome.failed;
     } finally {
       activityInProgress = false;
       if (!_disposed) notifyListeners();
@@ -253,6 +383,7 @@ final class AppEnvironment extends ChangeNotifier {
 
   String diagnosticJson() => const JsonEncoder.withIndent('  ').convert({
     'source': sourceLabel,
+    'language': language.code,
     'httpKeepAlive': http && !kIsWeb ? api.persistentConnection : null,
     'profile': simulation.profile.toJson(),
     'events': apiEvents.map((event) => event.toJson()).toList(),
@@ -266,141 +397,13 @@ final class AppEnvironment extends ChangeNotifier {
     if (_disposed) return;
     _disposed = true;
     api.close();
-    unawaited(cache.close());
-    if (!identical(cache, journal)) unawaited(journal.close());
+    final stores = <CacheStore>[];
+    for (final store in [_responses, journal, preferences]) {
+      if (!stores.any((known) => identical(known, store))) stores.add(store);
+    }
+    for (final store in stores) {
+      unawaited(store.close());
+    }
     super.dispose();
   }
-}
-
-class EnvironmentPage extends StatelessWidget {
-  const EnvironmentPage({super.key, required this.environment});
-  final AppEnvironment environment;
-  @override
-  Widget build(BuildContext context) => ListenableBuilder(
-    listenable: environment,
-    builder: (context, _) => DsPage(
-      title: 'Среда демонстрации',
-      subtitle: environment.sourceLabel,
-      children: [
-        DsSection(
-          title: 'Сеть',
-          subtitle: 'Профиль меняет транспорт, сохраняя состояние данных',
-          child: DsFlow(
-            children: [
-              for (final profile in [
-                NetworkProfile.normal,
-                NetworkProfile.slow,
-                NetworkProfile.unstable,
-                NetworkProfile.offline,
-              ])
-                DsChoice(
-                  label: switch (profile.name) {
-                    'normal' => 'Обычная',
-                    'slow' => 'Медленная',
-                    'unstable' => 'Нестабильная',
-                    _ => 'Нет связи',
-                  },
-                  selected: environment.simulation.profile == profile,
-                  onSelected: environment.http
-                      ? null
-                      : (_) => environment.setProfile(profile),
-                ),
-            ],
-          ),
-        ),
-        DsCard(
-          child: DsColumn(
-            children: [
-              DsText('Внешний вид', style: DsTextStyle.title),
-              DsCheckbox(
-                label: 'Тёмная тема',
-                value: environment.theme == ThemeMode.dark,
-                onChanged: environment.setTheme,
-              ),
-              DsCheckbox(
-                label: 'Уменьшить движение',
-                value: environment.reduceMotion,
-                onChanged: environment.setReducedMotion,
-              ),
-              DsCheckbox(
-                label: 'Сравнить историю без перехода',
-                value: environment.motionComparison,
-                onChanged: environment.setComparison,
-              ),
-            ],
-          ),
-        ),
-        DsSection(
-          title: 'Состояние кеша',
-          subtitle: environment.cacheMessage,
-          child: DsFlow(
-            children: [
-              DsButton(
-                label: 'Пустой кеш',
-                onPressed: () => unawaited(environment.clearCache()),
-              ),
-              DsButton(
-                label: 'Устаревший кеш',
-                variant: DsButtonVariant.secondary,
-                onPressed: () => unawaited(environment.expireCache()),
-              ),
-            ],
-          ),
-        ),
-        DsCard(
-          tone: DsCardTone.subtle,
-          child: DsColumn(
-            children: [
-              const DsText('Тестовые события', style: DsTextStyle.title),
-              const DsText(
-                'Добавьте операцию, вернитесь в историю и обновите её во время чтения. Действие «Есть новые операции» применит изменения с сохранением контекста.',
-              ),
-              DsButton(
-                label: 'Новая операция и смена статуса',
-                icon: DsIcons.add,
-                onPressed: environment.activityInProgress
-                    ? null
-                    : () => unawaited(environment.addActivity()),
-              ),
-              if (environment.activityMessage case final message?)
-                DsText(message),
-            ],
-          ),
-        ),
-        DsSection(
-          title: 'Диагностика',
-          subtitle: 'Без реквизитов и содержимого запросов',
-          child: DsColumn(
-            children: [
-              DsText(
-                'Сетевых событий: ${environment.apiEvents.length} · профиль ${environment.simulation.profile.name}',
-              ),
-              DsButton(
-                label: 'Показать журнал',
-                variant: DsButtonVariant.quiet,
-                onPressed: () => showDialog<void>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Сетевые события'),
-                    content: SingleChildScrollView(
-                      child: SelectableText(environment.diagnosticJson()),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Закрыть'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const DsText(
-          'Для реального HTTPS-стенда приложение запускается с DATA_SOURCE=http и API_BASE_URL. Настройка выполняется в оболочке, код фич остаётся общим.',
-        ),
-      ],
-    ),
-  );
 }

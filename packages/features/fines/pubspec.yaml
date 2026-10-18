@@ -9,6 +9,7 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_bloc: 8.1.6
+  app_localizations: any
   bank_core:
     path: ../../bank_core
   payment_domain:

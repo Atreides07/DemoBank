@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:app_foundation/app_foundation.dart';
+import 'package:app_localizations/app_localizations.dart';
 import 'package:bank_core/bank_core.dart';
 import 'package:bank_experience/bank_experience.dart';
 import 'package:design_system/design_system.dart';
@@ -30,7 +31,8 @@ void main() {
   testWidgets(
     'physical history interactions and analytical drill performance',
     (tester) async {
-      final environment = AppEnvironment.fromDefines();
+      // Probes find screens by their Russian text.
+      final environment = AppEnvironment.fromDefines(language: AppLanguage.ru);
       final probe = _Probe(tester, binding, environment);
       try {
         probe.publish('preparing');
@@ -57,7 +59,7 @@ void main() {
         await _until(tester, () {
           if (!_homeExists()) return false;
           final state = _home(tester).state;
-          if (state.error != null && !state.loading) {
+          if (state.failed && !state.loading) {
             throw StateError('Startup history request failed');
           }
           return state.rowCount > 0 && !state.loading;
@@ -350,9 +352,7 @@ Future<void> _backToOverview(
 }
 
 bool _analyticsReady(AnalyticsCubit cubit) =>
-    !cubit.state.loading &&
-    cubit.state.error == null &&
-    cubit.state.summary != null;
+    !cubit.state.loading && !cubit.state.failed && cubit.state.summary != null;
 bool _drillReady(WidgetTester tester) =>
     find.text('Детализация расходов').evaluate().isNotEmpty &&
     _analyticsCubits(tester).length > 1 &&

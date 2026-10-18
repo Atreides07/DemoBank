@@ -6,6 +6,7 @@ import 'amount.dart';
 import 'charts.dart';
 import 'components.dart';
 import 'layout.dart';
+import 'localizations.dart';
 import 'theme.dart';
 import 'tokens.dart';
 
@@ -402,7 +403,7 @@ class DsBankCards extends StatelessWidget {
               color: Colors.white.withValues(alpha: .12),
               borderRadius: BorderRadius.circular(10),
               child: IconButton(
-                tooltip: 'Добавить карту',
+                tooltip: DsLocalizations.of(context).addCard,
                 onPressed: onAdd,
                 icon: const Icon(
                   Icons.add_rounded,
@@ -418,7 +419,9 @@ class DsBankCards extends StatelessWidget {
           width: DsTokens.bankCardWidth,
           child: Semantics(
             button: true,
-            label: 'Карта ${card.digits}${card.frozen ? ', заморожена' : ''}',
+            label: DsLocalizations.of(
+              context,
+            ).card(card.digits, frozen: card.frozen),
             excludeSemantics: true,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
@@ -596,7 +599,7 @@ class DsOfferBanner extends StatelessWidget {
                 top: 0,
                 right: 0,
                 child: IconButton(
-                  tooltip: 'Скрыть предложение',
+                  tooltip: DsLocalizations.of(context).hideOffer,
                   onPressed: onDismiss,
                   icon: const Icon(Icons.close_rounded, color: Colors.white),
                 ),
@@ -942,7 +945,7 @@ class _HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
                   opacity: (1 - t / .8).clamp(0, 1),
                   child: Semantics(
                     button: true,
-                    label: 'Поиск по банку',
+                    label: DsLocalizations.of(context).searchBank,
                     child: InkWell(
                       onTap: onSearch,
                       borderRadius: BorderRadius.circular(DsTokens.panelRadius),
@@ -962,7 +965,10 @@ class _HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
                               color: context.dsPalette.muted,
                             ),
                             const SizedBox(width: 8),
-                            const DsText('Поиск', tone: DsTone.muted),
+                            DsText(
+                              DsLocalizations.of(context).search,
+                              tone: DsTone.muted,
+                            ),
                           ],
                         ),
                       ),
@@ -1008,12 +1014,12 @@ class _HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
                   ),
                   if (t > .6)
                     DsIconButton(
-                      label: 'Поиск по банку',
+                      label: DsLocalizations.of(context).searchBank,
                       icon: DsIcons.search,
                       onPressed: onSearch,
                     ),
                   DsIconButton(
-                    label: 'Кешбэк и бонусы',
+                    label: DsLocalizations.of(context).rewards,
                     icon: Icons.redeem_rounded,
                     onPressed: onRewards,
                   ),
@@ -1093,7 +1099,7 @@ class _AccountHeaderDelegate extends SliverPersistentHeaderDelegate {
               top: 4,
               left: 4,
               child: IconButton(
-                tooltip: 'Назад',
+                tooltip: DsLocalizations.of(context).back,
                 onPressed: content.onBack,
                 color: Colors.white,
                 icon: const Icon(Icons.arrow_back_rounded),
@@ -1104,7 +1110,7 @@ class _AccountHeaderDelegate extends SliverPersistentHeaderDelegate {
                 top: 4,
                 right: 4,
                 child: IconButton(
-                  tooltip: 'Переименовать счёт',
+                  tooltip: DsLocalizations.of(context).renameAccount,
                   onPressed: content.onRename,
                   color: Colors.white,
                   icon: const Icon(Icons.edit_rounded, size: 18),
@@ -1130,7 +1136,7 @@ class _AccountHeaderDelegate extends SliverPersistentHeaderDelegate {
                   ),
                   if (scale <= 1.4 && t < .4)
                     IconButton(
-                      tooltip: 'Переименовать счёт',
+                      tooltip: DsLocalizations.of(context).renameAccount,
                       onPressed: content.onRename,
                       color: Colors.white,
                       icon: const Icon(Icons.edit_rounded, size: 18),
@@ -1275,11 +1281,12 @@ class DsFeatureArtwork extends StatelessWidget {
 
 /// Demo deep links are valid QR payloads but contain no real bank details.
 class DsQrCode extends StatelessWidget {
-  const DsQrCode({super.key, required this.data});
+  const DsQrCode({super.key, required this.data, this.label});
   final String data;
+  final String? label;
   @override
   Widget build(BuildContext context) => Semantics(
-    label: 'QR-код для демонстрационного пополнения',
+    label: label ?? DsLocalizations.of(context).qrCode,
     image: true,
     child: Center(
       child: ConstrainedBox(

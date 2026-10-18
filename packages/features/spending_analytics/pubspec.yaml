@@ -7,6 +7,7 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_bloc: 8.1.6
+  app_localizations: any
   bank_core: any
   ledger_data: any
   design_system: any

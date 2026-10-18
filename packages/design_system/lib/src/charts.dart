@@ -1,9 +1,11 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import 'components.dart';
 import 'layout.dart';
+import 'localizations.dart';
 import 'theme.dart';
 import 'tokens.dart';
 
@@ -49,14 +51,14 @@ class DsBarChart extends StatefulWidget {
     this.onSelected,
     this.selectedId,
     this.valueLabel,
-    this.label = 'Динамика',
+    this.label,
     this.updating = false,
   });
   final List<DsChartPoint> points;
   final ValueChanged<DsChartPoint>? onSelected;
   final String? selectedId;
   final String Function(num)? valueLabel;
-  final String label;
+  final String? label;
   final bool updating;
 
   @override
@@ -77,11 +79,9 @@ class _DsBarChartState extends State<DsBarChart> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = DsLocalizations.of(context);
     if (widget.points.isEmpty) {
-      return const DsStatus(
-        title: 'За этот период данных нет',
-        kind: DsStatusKind.empty,
-      );
+      return DsStatus(title: strings.chartNoData, kind: DsStatusKind.empty);
     }
     final maximum = widget.points.fold<num>(
       0,
@@ -92,23 +92,23 @@ class _DsBarChartState extends State<DsBarChart> {
     final selected = widget.points
         .where((point) => point.id == selectedId)
         .firstOrNull;
-    final scaleLabel = widget.valueLabel ?? _compactNumber;
+    final scaleLabel = widget.valueLabel ?? _compactNumber(context);
     final colors = context.dsPalette;
     final textScale = MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 2.0);
     return Semantics(
       container: true,
-      label: widget.label,
+      label: widget.label ?? strings.chartTrend,
       child: DsColumn(
         gap: DsSpace.regular,
         children: [
           DsText(
-            'Шкала: 0 — ${scaleLabel(maximum)}',
+            strings.chartScale(scaleLabel(maximum)),
             style: DsTextStyle.caption,
             tone: DsTone.muted,
           ),
           if (widget.updating)
-            const DsText(
-              'Обновляем график…',
+            DsText(
+              strings.chartUpdating,
               style: DsTextStyle.caption,
               tone: DsTone.accent,
             ),
@@ -249,7 +249,7 @@ class _DsBarChartState extends State<DsBarChart> {
               tone: DsTone.primary,
             ),
           DsButton(
-            label: _textView ? 'Показать график' : 'Все значения списком',
+            label: _textView ? strings.chartShowChart : strings.chartShowList,
             variant: DsButtonVariant.quiet,
             icon: _textView
                 ? Icons.bar_chart_rounded
@@ -290,18 +290,19 @@ class DsRankedBars extends StatelessWidget {
     required this.points,
     this.onSelected,
     this.selectedId,
-    this.label = 'Распределение',
+    this.label,
   });
   final List<DsChartPoint> points;
   final ValueChanged<DsChartPoint>? onSelected;
   final String? selectedId;
-  final String label;
+  final String? label;
 
   @override
   Widget build(BuildContext context) {
+    final strings = DsLocalizations.of(context);
     if (points.isEmpty) {
-      return const DsStatus(
-        title: 'Категорий пока нет',
+      return DsStatus(
+        title: strings.chartNoCategories,
         kind: DsStatusKind.empty,
       );
     }
@@ -311,7 +312,7 @@ class DsRankedBars extends StatelessWidget {
     );
     return Semantics(
       container: true,
-      label: label,
+      label: label ?? strings.chartDistribution,
       child: DsColumn(
         gap: DsSpace.regular,
         children: [
@@ -462,10 +463,10 @@ Color dsChartColor(BuildContext context, DsChartRole role) {
   };
 }
 
-String _compactNumber(num value) {
-  if (value.abs() >= 1000000) {
-    return '${(value / 1000000).toStringAsFixed(1)} млн';
-  }
-  if (value.abs() >= 1000) return '${(value / 1000).toStringAsFixed(1)} тыс.';
-  return value % 1 == 0 ? value.toInt().toString() : value.toStringAsFixed(1);
+/// Scale labels follow the reader's language: `1,2 млн`, `1.2M`, `1,2 mln`.
+String Function(num) _compactNumber(BuildContext context) {
+  final format = NumberFormat.compact(
+    locale: Localizations.localeOf(context).languageCode,
+  );
+  return format.format;
 }

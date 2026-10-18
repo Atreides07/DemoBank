@@ -8,14 +8,16 @@ final class AnalyticsState {
     this.summary,
     this.loading = false,
     this.stale = false,
-    this.error,
+    this.failed = false,
   });
   final LedgerFilter filter;
   final LedgerFilter? pendingFilter;
   final SpendingSummary? summary;
   final bool loading;
   final bool stale;
-  final String? error;
+
+  /// The last request failed; [summary] is the saved copy, if any.
+  final bool failed;
 }
 
 final class AnalyticsCubit extends Cubit<AnalyticsState> {
@@ -62,7 +64,7 @@ final class AnalyticsCubit extends Cubit<AnalyticsState> {
             filter: state.filter,
             summary: state.summary,
             stale: state.summary != null,
-            error: 'Аналитика временно недоступна. Повторите загрузку.',
+            failed: true,
           ),
         );
       }
