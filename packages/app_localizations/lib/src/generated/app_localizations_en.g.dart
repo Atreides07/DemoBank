@@ -876,7 +876,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get accountServices => 'Services';
 
   @override
-  String get accountFreezeCard => 'Freeze card';
+  String get accountManageCards => 'Card management';
 
   @override
   String get analyticsTitle => 'Spending analytics';

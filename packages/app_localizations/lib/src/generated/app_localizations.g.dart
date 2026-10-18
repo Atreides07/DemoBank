@@ -1534,11 +1534,11 @@ abstract class AppLocalizations {
   /// **'Услуги'**
   String get accountServices;
 
-  /// No description provided for @accountFreezeCard.
+  /// No description provided for @accountManageCards.
   ///
   /// In ru, this message translates to:
-  /// **'Заморозить карту'**
-  String get accountFreezeCard;
+  /// **'Управление картами'**
+  String get accountManageCards;
 
   /// No description provided for @analyticsTitle.
   ///

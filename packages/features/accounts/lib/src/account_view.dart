@@ -310,11 +310,7 @@ class AccountDashboard extends StatelessWidget {
                   tile(l10n.accountStatement, AccountAction.statement),
                   tile(l10n.accountCertificate, AccountAction.certificate),
                   tile(l10n.accountServices, AccountAction.services),
-                  DsButton(
-                    label: l10n.accountFreezeCard,
-                    variant: DsButtonVariant.danger,
-                    onPressed: () => open(AccountAction.freezeCard),
-                  ),
+                  tile(l10n.accountManageCards, AccountAction.freezeCard),
                 ],
               ),
             ),

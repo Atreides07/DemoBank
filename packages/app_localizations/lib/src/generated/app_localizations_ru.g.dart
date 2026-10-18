@@ -886,7 +886,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get accountServices => 'Услуги';
 
   @override
-  String get accountFreezeCard => 'Заморозить карту';
+  String get accountManageCards => 'Управление картами';
 
   @override
   String get analyticsTitle => 'Аналитика трат';

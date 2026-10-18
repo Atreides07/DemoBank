@@ -449,7 +449,7 @@
   "accountStatement": "Выписка по счёту",
   "accountCertificate": "Заказать справку",
   "accountServices": "Услуги",
-  "accountFreezeCard": "Заморозить карту",
+  "accountManageCards": "Управление картами",
   "analyticsTitle": "Аналитика трат",
   "analyticsThisMonth": "Этот месяц",
   "analyticsLastMonth": "Прошлый месяц",

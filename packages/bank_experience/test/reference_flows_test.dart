@@ -65,6 +65,36 @@ Future<void> _close(WidgetTester tester) async {
 
 void main() {
   testWidgets(
+    'account card management is a list item and opens card management',
+    (tester) async {
+      await _open(tester);
+      final router = _router(tester);
+      unawaited(router.push('/account/main'));
+      await _ready(tester);
+      await tester.scrollUntilVisible(
+        find.text('Управление картами'),
+        300,
+        scrollable: find
+            .descendant(
+              of: find.byType(AccountDashboard),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      expect(find.text('Заморозить карту'), findsNothing);
+      expect(
+        find.ancestor(
+          of: find.text('Управление картами'),
+          matching: find.byType(DsListTile),
+        ),
+        findsOneWidget,
+      );
+      await _tap(tester, 'Управление картами');
+      expect(find.text('Управление картой'), findsOneWidget);
+      await _close(tester);
+    },
+  );
+  testWidgets(
     'account header collapses only with scroll and pinned back preserves home',
     (tester) async {
       await _open(tester);

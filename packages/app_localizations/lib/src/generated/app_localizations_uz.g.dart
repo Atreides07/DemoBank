@@ -886,7 +886,7 @@ class AppLocalizationsUz extends AppLocalizations {
   String get accountServices => 'Xizmatlar';
 
   @override
-  String get accountFreezeCard => 'Kartani muzlatish';
+  String get accountManageCards => 'Kartalarni boshqarish';
 
   @override
   String get analyticsTitle => 'Xarajatlar tahlili';

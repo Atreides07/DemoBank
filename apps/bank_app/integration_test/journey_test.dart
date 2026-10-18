@@ -182,7 +182,7 @@ Future<void> _referenceJourney(_Journey journey) async {
   expect(account.scrollController.offset, 0);
   await journey.capture('account_expanded');
   await tester.scrollUntilVisible(
-    find.text('Заморозить карту'),
+    find.text('Управление картами'),
     280,
     scrollable: find
         .byWidgetPredicate(
@@ -193,7 +193,7 @@ Future<void> _referenceJourney(_Journey journey) async {
         .first,
     maxScrolls: 35,
   );
-  await journey.reveal(find.text('Заморозить карту'));
+  await journey.reveal(find.text('Управление картами'));
   expect(find.byTooltip('Назад').hitTestable(), findsOneWidget);
   expect(account.scrollController.offset, greaterThan(208));
   await journey.capture('account_collapsed_bottom');
