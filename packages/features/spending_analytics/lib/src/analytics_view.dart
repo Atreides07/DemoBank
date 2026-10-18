@@ -130,6 +130,10 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         'RUB',
         ...widget.accounts.map((account) => account.balance.currency),
       };
+      // A report has one currency, so only its accounts can be chosen.
+      final reportAccounts = widget.accounts
+          .where((account) => account.balance.currency == state.filter.currency)
+          .toList(growable: false);
       return DsPage(
         title: l10n.analyticsTitle,
         onRefresh: () => _cubit.load(),
@@ -177,7 +181,20 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                     selected: state.filter.currency == currency,
                     onSelected: (_) => unawaited(
                       _cubit.load(
-                        filter: state.filter.copyWith(currency: currency),
+                        filter: state.filter.copyWith(
+                          currency: currency,
+                          // Accounts in another currency would make the
+                          // report empty; the choice starts over.
+                          accounts: state.filter.accounts
+                              .where(
+                                (id) => widget.accounts.any(
+                                  (a) =>
+                                      a.id == id &&
+                                      a.balance.currency == currency,
+                                ),
+                              )
+                              .toList(),
+                        ),
                       ),
                     ),
                   ),
@@ -188,7 +205,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                   _cubit.load(filter: state.filter.copyWith(accounts: [])),
                 ),
               ),
-              for (final account in widget.accounts)
+              for (final account in reportAccounts)
                 DsChoice(
                   label: account.name,
                   selected: state.filter.accounts.contains(account.id),
@@ -253,7 +270,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
               kind: DsStatusKind.error,
               action: DsButton(
                 label: l10n.commonRetry,
-                onPressed: () => unawaited(_cubit.load()),
+                onPressed: () => unawaited(_cubit.retry()),
               ),
             ),
           if (state.stale) DsText(l10n.analyticsStale),
@@ -293,82 +310,91 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                   detail: l10n.analyticsRefundsDetail,
                 ),
               ),
-            DsSection(
-              title: l10n.analyticsTrend,
-              subtitle: l10n.analyticsTrendHint,
-              child: DsCard(
-                child: DsBarChart(
-                  label: l10n.analyticsTrendLabel,
-                  selectedId: _selectedTime,
-                  points: [
-                    for (final point in summary.timeline)
-                      DsChartPoint(
-                        id: point.id,
-                        label: _timeLabel(formats, point),
-                        value: point.amount.minor,
-                        displayValue: formats.money(point.amount),
-                      ),
-                  ],
-                  onSelected: state.loading ? null : _drillTime,
-                  valueLabel: (value) => formats.money(
-                    Money(value.toInt(), currency: summary.total.currency),
+            Builder(
+              key: const ValueKey('analytics-trend'),
+              builder: (context) => DsSection(
+                title: l10n.analyticsTrend,
+                subtitle: l10n.analyticsTrendHint,
+                child: DsCard(
+                  child: DsBarChart(
+                    label: l10n.analyticsTrendLabel,
+                    selectedId: _selectedTime,
+                    points: [
+                      for (final point in summary.timeline)
+                        DsChartPoint(
+                          id: point.id,
+                          label: _timeLabel(formats, point),
+                          value: point.amount.minor,
+                          displayValue: formats.money(point.amount),
+                        ),
+                    ],
+                    onSelected: state.loading ? null : _drillTime,
+                    valueLabel: (value) => formats.money(
+                      Money(value.toInt(), currency: summary.total.currency),
+                    ),
                   ),
                 ),
               ),
             ),
-            DsSection(
-              title: l10n.analyticsCategories,
-              subtitle: l10n.analyticsCategoriesSubtitle(
-                l10n.commonOperationsCount(summary.count),
-              ),
-              child: DsCard(
-                child: DsRankedBars(
-                  label: l10n.analyticsCategoriesLabel,
-                  selectedId: _selectedCategory,
-                  points: [
-                    for (final point in summary.categories)
-                      DsChartPoint(
-                        id: point.id,
-                        label: l10n.category(point.id, point.label),
-                        value: point.amount.minor,
-                        displayValue: formats.money(point.amount),
-                        detail: l10n.analyticsShareDetail(
-                          formats.percent(
-                            summary.total.minor == 0
-                                ? 0
-                                : point.amount.minor *
-                                      100 /
-                                      summary.total.minor,
+            Builder(
+              key: const ValueKey('analytics-categories'),
+              builder: (context) => DsSection(
+                title: l10n.analyticsCategories,
+                subtitle: l10n.analyticsCategoriesSubtitle(
+                  l10n.commonOperationsCount(summary.count),
+                ),
+                child: DsCard(
+                  child: DsRankedBars(
+                    label: l10n.analyticsCategoriesLabel,
+                    selectedId: _selectedCategory,
+                    points: [
+                      for (final point in summary.categories)
+                        DsChartPoint(
+                          id: point.id,
+                          label: l10n.category(point.id, point.label),
+                          value: point.amount.minor,
+                          displayValue: formats.money(point.amount),
+                          detail: l10n.analyticsShareDetail(
+                            formats.percent(
+                              summary.total.minor == 0
+                                  ? 0
+                                  : point.amount.minor *
+                                        100 /
+                                        summary.total.minor,
+                            ),
+                            l10n.commonOperationsCount(point.count),
                           ),
-                          l10n.commonOperationsCount(point.count),
+                          role: _categoryRole(point.id),
                         ),
-                        role: _categoryRole(point.id),
-                      ),
-                  ],
-                  onSelected: state.loading ? null : _drillCategory,
+                    ],
+                    onSelected: state.loading ? null : _drillCategory,
+                  ),
                 ),
               ),
             ),
-            DsSection(
-              title: l10n.analyticsMerchants,
-              subtitle: l10n.analyticsMerchantsHint,
-              child: DsCard(
-                child: DsColumn(
-                  children: [
-                    for (final point in summary.merchants)
-                      DsListTile(
-                        title: point.label,
-                        subtitle: l10n.commonOperationsCount(point.count),
-                        trailing: DsText(formats.money(point.amount)),
-                        onTap: () => widget.onDrill(
-                          state.filter.copyWith(
-                            merchant: point.id,
-                            kind: EntryKind.expense,
-                            revision: summary.revision,
+            Builder(
+              key: const ValueKey('analytics-merchants'),
+              builder: (context) => DsSection(
+                title: l10n.analyticsMerchants,
+                subtitle: l10n.analyticsMerchantsHint,
+                child: DsCard(
+                  child: DsColumn(
+                    children: [
+                      for (final point in summary.merchants)
+                        DsListTile(
+                          title: point.label,
+                          subtitle: l10n.commonOperationsCount(point.count),
+                          trailing: DsText(formats.money(point.amount)),
+                          onTap: () => widget.onDrill(
+                            state.filter.copyWith(
+                              merchant: point.id,
+                              kind: EntryKind.expense,
+                              revision: summary.revision,
+                            ),
                           ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

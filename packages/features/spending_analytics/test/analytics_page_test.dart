@@ -116,6 +116,26 @@ void main() {
   );
 
   testWidgets(
+    'only accounts in the report currency can be chosen, and switching the '
+    'currency drops the others',
+    (tester) async {
+      final reader = _Reader((filter) async => _summary(filter));
+      await _mount(tester, reader);
+      expect(find.text('Счёт в евро'), findsNothing);
+      await _tapChoice(tester, 'Основной счёт');
+      expect(reader.requests.last.accounts, ['main']);
+
+      await _tapChoice(tester, 'EUR');
+      expect(reader.requests.last.currency, 'EUR');
+      expect(reader.requests.last.accounts, isEmpty);
+      expect(find.text('Основной счёт'), findsNothing);
+      expect(find.text('Счёт в евро'), findsOneWidget);
+      expect(_choice(tester, 'Все счета').selected, isTrue);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'EUR selection reaches the reader and survives account and period changes',
     (tester) async {
       final reader = _Reader((filter) async => _summary(filter));
@@ -224,6 +244,9 @@ void main() {
       await _tapChoice(tester, 'Счёт в евро');
       await _tapChoice(tester, 'Прошлый месяц');
       final selected = reader.requests.last;
+      await tester.tap(find.text('Все значения списком'));
+      await tester.pumpAndSettle();
+      expect(find.text('Показать график'), findsOneWidget);
       final previousValue = _metric(tester).value;
       final response = Completer<SpendingSummary>();
       reader.respond = (_) => response.future;
@@ -238,6 +261,7 @@ void main() {
       expect(reader.requests.last.accounts, ['euro']);
       expect(_metric(tester).value, previousValue);
       expect(find.text('Обновляем выбранный период'), findsOneWidget);
+      expect(find.text('Показать график'), findsOneWidget);
       expect(
         find.text('Сейчас показан предыдущий согласованный результат.'),
         findsOneWidget,
@@ -255,6 +279,7 @@ void main() {
       expect(_choice(tester, 'Счёт в евро').selected, isTrue);
       expect(_choice(tester, 'EUR').selected, isTrue);
       expect(find.text('Обновляем выбранный период'), findsNothing);
+      expect(find.text('Показать график'), findsOneWidget);
 
       await tester.pumpWidget(const SizedBox.shrink());
       signal.value++;
@@ -361,6 +386,12 @@ Future<void> _mount(
   Listenable? refreshSignal,
   ValueChanged<LedgerFilter>? onDrill,
 }) async {
+  // These tests inspect the complete financial report; lazy mounting is covered
+  // separately at the phone viewport in the design-system tests.
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = const Size(800, 4000);
+  addTearDown(tester.view.resetDevicePixelRatio);
+  addTearDown(tester.view.resetPhysicalSize);
   await tester.pumpWidget(const SizedBox.shrink());
   await tester.pumpWidget(
     MaterialApp(

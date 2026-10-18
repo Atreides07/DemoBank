@@ -21,6 +21,27 @@ extension _AccountFixtures on DemoApi {
 
   Future<SimulatedResponse?> _accountRoute(SimulatedRequest request) async {
     final parts = request.path.split('/').where((p) => p.isNotEmpty).toList();
+    if (parts.length == 5 &&
+        parts.first == 'accounts' &&
+        parts[2] == 'cards' &&
+        parts.last == 'requisites' &&
+        request.method == 'GET') {
+      final account = _findAccount(parts[1]);
+      if (account == null) {
+        return _error(404, 'account_not_found', 'error.accountNotFound');
+      }
+      final card = (_accountProfile(parts[1]).body['cards'] as List)
+          .where((c) => c['id'] == parts[3])
+          .firstOrNull;
+      if (card == null) {
+        return _error(404, 'invalid_card', 'error.cardNotFound');
+      }
+      return SimulatedResponse({
+        'number': '0000 0000 0000 ${card['lastDigits']}',
+        'expiry': '12/29',
+        'cvc': '000',
+      });
+    }
     if (parts.length != 3 || parts.first != 'accounts') return null;
     final id = parts[1];
     if (_findAccount(id) == null) {
@@ -56,6 +77,8 @@ extension _AccountFixtures on DemoApi {
         'extraCard',
         'frozenCardId',
         'frozen',
+        'limitCardId',
+        'monthlyLimitMinor',
         'linkedServicesEnabled',
       };
       if (request.body.keys.any((key) => !allowed.contains(key))) {
@@ -88,6 +111,19 @@ extension _AccountFixtures on DemoApi {
           return _error(422, 'invalid_destination', 'error.cashbackCurrency');
         }
       }
+      final limitCard = patch['limitCardId'];
+      if (patch.containsKey('limitCardId') ||
+          patch.containsKey('monthlyLimitMinor')) {
+        final limit = patch['monthlyLimitMinor'];
+        final cards = _accountProfile(id).body['cards'] as List;
+        if (limitCard is! String ||
+            !cards.any((c) => c['id'] == limitCard) ||
+            limit is! int ||
+            limit < 0 ||
+            limit > 999999999) {
+          return _error(422, 'invalid_card_limit', 'error.invalidSetting');
+        }
+      }
       final preferences = _accountPreferences.putIfAbsent(id, () => {});
       if (patch.containsKey('frozenCardId')) {
         final cardId = patch.remove('frozenCardId');
@@ -99,6 +135,10 @@ extension _AccountFixtures on DemoApi {
         preferences['frozen:$cardId'] = patch.remove('frozen');
       } else if (patch.containsKey('frozen')) {
         return _error(422, 'invalid_card', 'error.chooseCard');
+      }
+      if (limitCard != null) {
+        preferences['limit:$limitCard'] = patch.remove('monthlyLimitMinor');
+        patch.remove('limitCardId');
       }
       preferences.addAll(patch);
       await _persist();
@@ -114,9 +154,16 @@ extension _AccountFixtures on DemoApi {
     final account = _findAccount(id)!;
     final prefs = _accountPreferences[id] ?? const <String, dynamic>{};
     final digits = id == 'main'
-        ? ['4821', '9364']
+        ? [
+            '4821',
+            '9364',
+            if (prefs['extraCard'] == true) '6057' else null,
+            '3178',
+            '8246',
+            '5903',
+          ]
         : [account['lastDigits'] as String];
-    if (prefs['extraCard'] == true) digits.add('6057');
+    if (id != 'main' && prefs['extraCard'] == true) digits.add('6057');
     return SimulatedResponse({
       'id': id,
       'name': account['name'],
@@ -139,11 +186,13 @@ extension _AccountFixtures on DemoApi {
       },
       'cards': [
         for (var i = 0; i < digits.length; i++)
-          {
-            'id': '$id-card-$i',
-            'lastDigits': digits[i],
-            'frozen': prefs['frozen:$id-card-$i'] ?? false,
-          },
+          if (digits[i] != null)
+            {
+              'id': '$id-card-$i',
+              'lastDigits': digits[i],
+              'frozen': prefs['frozen:$id-card-$i'] ?? false,
+              'monthlyLimitMinor': prefs['limit:$id-card-$i'] ?? 10000000,
+            },
       ],
       'limits': [
         for (final (limitId, limit, remaining) in const [

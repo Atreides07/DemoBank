@@ -34,6 +34,7 @@ final class LedgerEntry {
     required this.accountId,
     required this.kind,
     required this.status,
+    this.cardId,
   });
   final String id;
   final String title;
@@ -45,6 +46,7 @@ final class LedgerEntry {
   final String accountId;
   final EntryKind kind;
   final EntryStatus status;
+  final String? cardId;
 }
 
 /// Half-open [from,to), interpreted in the reporting timezone (+03).
@@ -55,6 +57,7 @@ final class LedgerFilter {
     this.to,
     this.category,
     this.merchant,
+    this.cardId,
     List<String> accounts = const [],
     this.kind,
     this.revision,
@@ -64,6 +67,7 @@ final class LedgerFilter {
   final DateTime? to;
   final String? category;
   final String? merchant;
+  final String? cardId;
   final List<String> accounts;
   final EntryKind? kind;
   final String? revision;
@@ -73,6 +77,7 @@ final class LedgerFilter {
     DateTime? to,
     String? category,
     String? merchant,
+    String? cardId,
     List<String>? accounts,
     EntryKind? kind,
     String? revision,
@@ -84,6 +89,7 @@ final class LedgerFilter {
     to: to ?? this.to,
     category: clearCategory ? null : category ?? this.category,
     merchant: clearMerchant ? null : merchant ?? this.merchant,
+    cardId: cardId ?? this.cardId,
     accounts: accounts ?? this.accounts,
     kind: kind ?? this.kind,
     revision: revision ?? this.revision,
@@ -97,6 +103,7 @@ final class LedgerFilter {
       to?.microsecondsSinceEpoch == other.to?.microsecondsSinceEpoch &&
       category == other.category &&
       merchant == other.merchant &&
+      cardId == other.cardId &&
       kind == other.kind &&
       revision == other.revision &&
       currency == other.currency &&
@@ -111,6 +118,7 @@ final class LedgerFilter {
       to?.microsecondsSinceEpoch,
       category,
       merchant,
+      cardId,
       kind,
       revision,
       currency,
@@ -194,6 +202,16 @@ abstract interface class AccountsReader {
   Future<List<Account>> accounts();
 }
 
+/// The server no longer serves the ledger revision a page was requested in.
+/// Earlier pages are still valid to show; a fresh first page resolves the
+/// current revision.
+final class LedgerSnapshotExpired implements Exception {
+  const LedgerSnapshotExpired();
+
+  @override
+  String toString() => 'LedgerSnapshotExpired';
+}
+
 abstract interface class HistoryReader {
   Future<LedgerPage?> cached(LedgerFilter filter, {String? cursor});
   Future<LedgerPage> page(
@@ -212,7 +230,21 @@ abstract interface class HistoryReader {
   });
 }
 
+/// A history consumer owns its reads; changing filters must not cancel another
+/// screen's page requests.
+abstract interface class ScopedHistoryReader implements HistoryReader {
+  ScopedHistoryReader createScope();
+  void cancelPending();
+}
+
 abstract interface class AnalyticsReader {
   Future<SpendingSummary?> cached(LedgerFilter filter);
   Future<SpendingSummary> summary(LedgerFilter filter);
+}
+
+/// An independent consumer of shared analytics work. Cancelling one scope must
+/// leave requests that other scopes still use alive.
+abstract interface class ScopedAnalyticsReader implements AnalyticsReader {
+  ScopedAnalyticsReader createScope();
+  void cancelPending();
 }

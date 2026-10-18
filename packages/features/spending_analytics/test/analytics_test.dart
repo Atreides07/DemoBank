@@ -10,6 +10,43 @@ import 'package:spending_analytics/spending_analytics.dart';
 
 void main() {
   test(
+    'retry requests the failed filter while keeping old totals coherent',
+    () async {
+      var fail = false;
+      Completer<void>? retryGate;
+      final requests = <LedgerFilter>[];
+      final old = LedgerFilter(category: 'groceries');
+      final target = LedgerFilter(category: 'dining');
+      final cubit = AnalyticsCubit(
+        _Reader(
+          request: (filter) async {
+            requests.add(filter);
+            if (fail) throw StateError('offline');
+            if (retryGate != null) await retryGate.future;
+            return _summary(100, 'fresh');
+          },
+        ),
+        filter: old,
+      );
+      addTearDown(cubit.close);
+      await cubit.load();
+      fail = true;
+      await cubit.load(filter: target);
+      expect(cubit.state.filter, old);
+      expect(cubit.state.failed, isTrue);
+      fail = false;
+      retryGate = Completer();
+      final retry = cubit.retry();
+      await cubit.retry();
+      retryGate.complete();
+      await retry;
+      expect(requests, [old, target, target]);
+      expect(cubit.state.filter, target);
+      expect(cubit.state.failed, isFalse);
+    },
+  );
+
+  test(
     'cached analytics is shown while fresh aggregates are pending',
     () async {
       final fresh = Completer<SpendingSummary>();

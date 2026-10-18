@@ -2015,4 +2015,97 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get qrSampleTopUp => 'Example · account top-up';
+
+  @override
+  String get checkoutPreviousPaymentTitle =>
+      'Finishing the previous payment first';
+
+  @override
+  String get checkoutPreviousPaymentMessage =>
+      'An earlier payment is not confirmed yet, so the new one has not been sent. Its status is shown below. Once it is final, you can continue with the new payment.';
+
+  @override
+  String get checkoutContinueNew => 'Continue with the new payment';
+
+  @override
+  String get accountListUnavailable => 'Could not load accounts';
+
+  @override
+  String get operationRecipientsUnavailable =>
+      'Could not load contacts. Nothing was sent — try again.';
+
+  @override
+  String get operationLoadingContacts => 'Loading contacts';
+
+  @override
+  String get cardDetails => 'Card details';
+
+  @override
+  String get cardFreeze => 'Freeze';
+
+  @override
+  String get cardUnfreeze => 'Unfreeze';
+
+  @override
+  String get cardLimits => 'Limits';
+
+  @override
+  String get cardLinkedAccount => 'Linked account';
+
+  @override
+  String get cardSharedBalance => 'Available in shared account';
+
+  @override
+  String get cardSharedBalanceHint =>
+      'All cards linked to this account share this balance.';
+
+  @override
+  String get cardTransactions => 'Card transactions';
+
+  @override
+  String get cardAllTransactions => 'All card transactions';
+
+  @override
+  String get cardNoTransactions => 'No transactions on this card yet';
+
+  @override
+  String get cardTransactionsFailed => 'Could not load card transactions';
+
+  @override
+  String get cardNumber => 'Card number';
+
+  @override
+  String get cardExpiry => 'Expiry date';
+
+  @override
+  String get cardCopyNumber => 'Copy card number';
+
+  @override
+  String get cardDemoDetails => 'Demo details. Not valid for real payments.';
+
+  @override
+  String get cardDetailsFailed => 'Could not load card details';
+
+  @override
+  String get cardMonthlyLimit => 'Monthly purchase limit';
+
+  @override
+  String get cardLimitHint =>
+      'Applies only to the selected card. Zero disables purchases.';
+
+  @override
+  String get cardLimitInvalid => 'Enter an amount from 0 to 9,999,999.99';
+
+  @override
+  String get cardSaveLimit => 'Save limit';
+
+  @override
+  String get cardLimitUnavailable => 'Card limit unavailable';
+
+  @override
+  String get cardFreezeTitle => 'Freeze this card?';
+
+  @override
+  String get cardFreezeDescription =>
+      'Freezing is reversible and affects only this card. The account and other cards remain available.';
 }

@@ -117,6 +117,7 @@ final class _FinesScreenState extends State<_FinesScreen> {
                       label: l10n.finesDocumentLabel,
                       hint: l10n.finesDocumentHint,
                       controller: _document,
+                      onChanged: _controller.changeDocument,
                       keyboardType: TextInputType.number,
                     ),
                     DsButton(
@@ -137,16 +138,19 @@ final class _FinesScreenState extends State<_FinesScreen> {
                 title: l10n.finesSearchFailedTitle,
                 message: switch (problem) {
                   FinesProblem.invalidDocument => l10n.finesInvalidDocument,
-                  FinesProblem.requestFailed => switch (state.failure) {
-                    final failure? => l10n.paymentFailure(failure),
-                    null => l10n.finesSearchFailed,
-                  },
+                  FinesProblem.requestFailed => l10n.loadFailure(
+                    state.failure,
+                    l10n.finesSearchFailed,
+                  ),
                 },
                 kind: DsStatusKind.error,
-                action: DsButton(
-                  label: l10n.commonRetry,
-                  onPressed: () => _controller.search(_document.text),
-                ),
+                // Repeating the same invalid input cannot help.
+                action: problem == FinesProblem.invalidDocument
+                    ? null
+                    : DsButton(
+                        label: l10n.commonRetry,
+                        onPressed: () => _controller.search(_document.text),
+                      ),
               ),
             if (state.phase == FinesPhase.ready && state.bills.isEmpty)
               DsStatus(

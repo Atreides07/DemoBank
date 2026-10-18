@@ -1,6 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+Future<void> revealJourneyElement(WidgetTester tester, Finder finder) async {
+  bool visible() {
+    final candidates = finder.evaluate().toSet();
+    final onstage = find.byElementPredicate(candidates.contains);
+    final elements = onstage.evaluate();
+    if (elements.length != 1) return false;
+    final object = elements.single.renderObject;
+    return object is RenderBox &&
+        object.hasSize &&
+        onstage.hitTestable().evaluate().isNotEmpty;
+  }
+
+  await tester.pumpAndSettle();
+  if (!visible()) {
+    final scrollable = find
+        .descendant(
+          of: find.byType(CustomScrollView).last,
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    tester.state<ScrollableState>(scrollable).position.jumpTo(0);
+    await tester.pumpAndSettle();
+    for (var step = 0; step < 60 && !visible(); step++) {
+      await tester.drag(scrollable, const Offset(0, -240));
+      await tester.pumpAndSettle();
+    }
+  }
+  expect(
+    visible(),
+    isTrue,
+    reason: 'Control must be onstage before interaction: $finder',
+  );
+}
+
 /// Test-only readiness shared by the device journey and its widget regressions.
 Future<void> waitForJourneyReadiness(
   WidgetTester tester, {
@@ -31,5 +65,7 @@ Iterable<Element> _activeLoaders() => find
       // although their progress tickers still run. Covered routes and muted
       // tabs are excluded so retained background UI cannot block this journey.
       (element) =>
-          TickerMode.of(element) && (ModalRoute.of(element)?.isCurrent ?? true),
+          (element.widget as CircularProgressIndicator).value == null &&
+          TickerMode.of(element) &&
+          (ModalRoute.of(element)?.isCurrent ?? true),
     );

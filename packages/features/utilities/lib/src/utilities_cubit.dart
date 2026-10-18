@@ -46,6 +46,11 @@ final class UtilitiesCubit extends Cubit<UtilitiesState> {
   final UtilitiesRepository _repository;
   int _generation = 0;
 
+  void changeAccount(String account) {
+    _generation++;
+    emit(UtilitiesState(account: account));
+  }
+
   Future<void> load(String account) async {
     final generation = ++_generation;
     final normalized = account.replaceAll(' ', '');

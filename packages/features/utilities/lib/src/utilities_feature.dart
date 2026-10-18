@@ -72,9 +72,11 @@ final class _UtilitiesScreenState extends State<_UtilitiesScreen> {
     super.dispose();
   }
 
+  /// Reloads the bills that were paid, even if the field was edited since.
   void _finish() {
     setState(() => _intent = null);
-    unawaited(_controller.load(_account.text));
+    final account = _controller.state.account;
+    if (account.isNotEmpty) unawaited(_controller.load(account));
   }
 
   @override
@@ -104,6 +106,7 @@ final class _UtilitiesScreenState extends State<_UtilitiesScreen> {
                   DsField(
                     label: l10n.utilitiesAccountLabel,
                     controller: _account,
+                    onChanged: _controller.changeAccount,
                     hint: l10n.utilitiesAccountHint,
                     keyboardType: TextInputType.number,
                   ),
@@ -125,16 +128,19 @@ final class _UtilitiesScreenState extends State<_UtilitiesScreen> {
                 message: switch (problem) {
                   UtilitiesProblem.invalidAccount =>
                     l10n.utilitiesInvalidAccount,
-                  UtilitiesProblem.requestFailed => switch (state.failure) {
-                    final failure? => l10n.paymentFailure(failure),
-                    null => l10n.utilitiesLoadFailed,
-                  },
+                  UtilitiesProblem.requestFailed => l10n.loadFailure(
+                    state.failure,
+                    l10n.utilitiesLoadFailed,
+                  ),
                 },
                 kind: DsStatusKind.error,
-                action: DsButton(
-                  label: l10n.commonRetry,
-                  onPressed: () => _controller.load(_account.text),
-                ),
+                // Repeating the same invalid input cannot help.
+                action: problem == UtilitiesProblem.invalidAccount
+                    ? null
+                    : DsButton(
+                        label: l10n.commonRetry,
+                        onPressed: () => _controller.load(state.account),
+                      ),
               ),
             if (state.phase == UtilitiesPhase.ready && state.bills.isEmpty)
               DsStatus(

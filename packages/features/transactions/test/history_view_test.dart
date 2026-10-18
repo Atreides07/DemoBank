@@ -214,8 +214,8 @@ void main() {
           amount: const Money(65432, currency: 'EUR'),
         ),
       );
-      expect(tile().value, '−654,32 €');
-      expect(find.text('−654,32 €'), findsOneWidget);
+      expect(tile().value, '−654,32\u00a0€');
+      expect(find.text('−654,32\u00a0€'), findsOneWidget);
       expect(tile().positive, isFalse);
       await apply(
         _rowEntry(
@@ -225,7 +225,7 @@ void main() {
           kind: EntryKind.refund,
         ),
       );
-      expect(tile().value, '+654,32 €');
+      expect(tile().value, '+654,32\u00a0€');
       expect(tile().positive, isTrue);
 
       await apply(

@@ -48,6 +48,8 @@ flutter run --dart-define=DATA_SOURCE=http --dart-define=API_BASE_URL=https://YO
 - `design_system` — семантические токены, темы, компоновка, инфографика и прерываемое движение.
 - `network_client`, `network_simulation`, `local_storage` — инфраструктура; `services/demo_api` — сетевой сервер на том же контракте.
 
+Архитектурный документ оформлен по arc42, с представлениями C4, обоснованием решений и ссылками на ADR.
+
 См. [архитектуру](docs/architecture.md), [дизайн-систему](docs/design-system.md), [мотивацию анимации](docs/motion-design.md), [платежи](docs/payments.md), [требования](docs/requirements.md) и [результаты проверок](docs/verification.md).
 
 ## Проверки

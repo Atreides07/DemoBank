@@ -135,7 +135,7 @@ class HistorySliver extends StatelessWidget {
                             kind: DsStatusKind.error,
                             action: DsButton(
                               label: l10n.commonRetry,
-                              onPressed: () => unawaited(cubit.load()),
+                              onPressed: () => unawaited(cubit.retry()),
                             ),
                           ),
                       ],

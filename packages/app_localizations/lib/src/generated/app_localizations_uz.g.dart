@@ -2035,4 +2035,98 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get qrSampleTopUp => 'Namuna · hisobni toʻldirish';
+
+  @override
+  String get checkoutPreviousPaymentTitle =>
+      'Avval oldingi toʻlovni yakunlaymiz';
+
+  @override
+  String get checkoutPreviousPaymentMessage =>
+      'Oldingi toʻlov hali tasdiqlanmagan, shuning uchun yangisi yuborilmadi. Quyida uning holati. U yakuniy boʻlgach, yangi toʻlovni davom ettirish mumkin.';
+
+  @override
+  String get checkoutContinueNew => 'Yangi toʻlovga oʻtish';
+
+  @override
+  String get accountListUnavailable => 'Hisoblarni yuklab boʻlmadi';
+
+  @override
+  String get operationRecipientsUnavailable =>
+      'Kontaktlarni yuklab boʻlmadi. Hech narsa yuborilmadi — qayta urinib koʻring.';
+
+  @override
+  String get operationLoadingContacts => 'Kontaktlar yuklanmoqda';
+
+  @override
+  String get cardDetails => 'Karta rekvizitlari';
+
+  @override
+  String get cardFreeze => 'Muzlatish';
+
+  @override
+  String get cardUnfreeze => 'Muzdan chiqarish';
+
+  @override
+  String get cardLimits => 'Limitlar';
+
+  @override
+  String get cardLinkedAccount => 'Bogʻlangan hisob';
+
+  @override
+  String get cardSharedBalance => 'Umumiy hisobda mavjud';
+
+  @override
+  String get cardSharedBalanceHint =>
+      'Bu hisobning barcha kartalari shu balansdan foydalanadi.';
+
+  @override
+  String get cardTransactions => 'Karta operatsiyalari';
+
+  @override
+  String get cardAllTransactions => 'Barcha karta operatsiyalari';
+
+  @override
+  String get cardNoTransactions => 'Bu kartada hali operatsiyalar yoʻq';
+
+  @override
+  String get cardTransactionsFailed => 'Karta operatsiyalarini yuklab boʻlmadi';
+
+  @override
+  String get cardNumber => 'Karta raqami';
+
+  @override
+  String get cardExpiry => 'Amal qilish muddati';
+
+  @override
+  String get cardCopyNumber => 'Karta raqamini nusxalash';
+
+  @override
+  String get cardDemoDetails =>
+      'Demo rekvizitlar. Haqiqiy toʻlovlar uchun yaroqsiz.';
+
+  @override
+  String get cardDetailsFailed => 'Karta rekvizitlarini yuklab boʻlmadi';
+
+  @override
+  String get cardMonthlyLimit => 'Oylik xarid limiti';
+
+  @override
+  String get cardLimitHint =>
+      'Faqat tanlangan kartaga tegishli. Nol xaridlarni taqiqlaydi.';
+
+  @override
+  String get cardLimitInvalid => '0 dan 9 999 999,99 gacha summa kiriting';
+
+  @override
+  String get cardSaveLimit => 'Limitni saqlash';
+
+  @override
+  String get cardLimitUnavailable => 'Karta limiti mavjud emas';
+
+  @override
+  String get cardFreezeTitle => 'Bu karta muzlatilsinmi?';
+
+  @override
+  String get cardFreezeDescription =>
+      'Muzlatishni bekor qilish mumkin va u faqat shu kartaga tegishli. Hisob va boshqa kartalar mavjud boʻlib qoladi.';
 }

@@ -30,6 +30,29 @@ Future<void> _settle(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> _reveal(WidgetTester tester, Finder finder) async {
+  if (finder.evaluate().isEmpty) {
+    final scrollable = find
+        .descendant(
+          of: find.byType(CustomScrollView).last,
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    tester.state<ScrollableState>(scrollable).position.jumpTo(0);
+    await _settle(tester);
+    if (finder.evaluate().isEmpty) {
+      await tester.scrollUntilVisible(
+        finder,
+        250,
+        scrollable: scrollable,
+        maxScrolls: 40,
+      );
+    }
+  }
+  await tester.ensureVisible(finder);
+  await _settle(tester);
+}
+
 void main() {
   testWidgets('movie → session → available seat → payment → usable ticket', (
     tester,
@@ -65,26 +88,26 @@ void main() {
     await _settle(tester);
     await tester.tap(find.text('Орбита света'));
     await _settle(tester);
-    await tester.ensureVisible(find.byIcon(DsIcons.schedule).first);
+    await _reveal(tester, find.byIcon(DsIcons.schedule).first);
     await _settle(tester);
     await tester.tap(find.byIcon(DsIcons.schedule).first);
     await _settle(tester);
-    await tester.ensureVisible(find.text('Ряд 1 · место 1'));
+    await _reveal(tester, find.text('Ряд 1 · место 1'));
     await _settle(tester);
     await tester.tap(find.text('Ряд 1 · место 1'));
     await _settle(tester);
-    await tester.ensureVisible(find.text('Перейти к оплате'));
+    await _reveal(tester, find.text('Перейти к оплате'));
     await _settle(tester);
     await tester.tap(find.text('Перейти к оплате'));
     await _settle(tester);
-    await tester.ensureVisible(find.text('Подтвердить оплату'));
+    await _reveal(tester, find.text('Подтвердить оплату'));
     await _settle(tester);
     await tester.tap(find.text('Подтвердить оплату'));
     await _settle(tester);
     expect(find.text('Ваш билет'), findsOneWidget);
     expect(completed.single.ticket, contains('seat-1'));
     expect(completed.single.amount.minor, 65000);
-    await tester.ensureVisible(find.text('Готово'));
+    await _reveal(tester, find.text('Готово'));
     await _settle(tester);
     await tester.tap(find.text('Готово'));
     await _settle(tester);

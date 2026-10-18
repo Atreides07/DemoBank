@@ -1217,7 +1217,7 @@ Route<T> dsRoute<T>({
   reverseTransitionDuration: DsTokens.quick,
   transitionsBuilder: (context, animation, secondaryAnimation, child) {
     if (MediaQuery.disableAnimationsOf(context)) return child;
-    final curved = CurvedAnimation(parent: animation, curve: DsTokens.movement);
+    final curved = animation.drive(CurveTween(curve: DsTokens.movement));
     return AnimatedBuilder(
       animation: curved,
       child: child,

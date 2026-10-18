@@ -44,6 +44,84 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('page defers unseen sections and keeps visited input state', (
+    tester,
+  ) async {
+    final scroll = ScrollController();
+    addTearDown(scroll.dispose);
+    var built = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DsPage(
+          scrollController: scroll,
+          children: [
+            const TextField(),
+            const SizedBox(height: 2000),
+            Builder(
+              builder: (_) {
+                built++;
+                return const Text('Last section');
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(built, 0);
+    await tester.enterText(find.byType(TextField), 'saved input');
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Last section'),
+      400,
+      scrollable: find
+          .byWidgetPredicate(
+            (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
+          )
+          .first,
+    );
+    expect(built, 1);
+    scroll.jumpTo(0);
+    await tester.pumpAndSettle();
+    expect(find.text('saved input'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final entry in <String, Key>{
+    'local': const ValueKey('input'),
+    'global': GlobalKey(),
+  }.entries) {
+    testWidgets(
+      'page preserves ${entry.key} keyed input when a section is inserted',
+      (tester) async {
+        var inserted = false;
+        late StateSetter update;
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: DsAppTheme.light(),
+            home: StatefulBuilder(
+              builder: (context, setState) {
+                update = setState;
+                return DsPage(
+                  children: [
+                    if (inserted) const DsText('New section'),
+                    TextField(key: entry.value),
+                  ],
+                );
+              },
+            ),
+          ),
+        );
+        await tester.enterText(find.byType(TextField), 'saved input');
+        update(() => inserted = true);
+        await tester.pumpAndSettle();
+        expect(find.text('saved input'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   for (final scale in [1.0, 2.0]) {
     testWidgets('route back stays reachable after long scrolling at $scale', (
       tester,
@@ -90,7 +168,11 @@ void main() {
       await tester.tap(find.text('Открыть операцию'));
       await tester.pumpAndSettle();
       final before = tester.getRect(find.byTooltip('Назад'));
-      scroll.jumpTo(scroll.position.maxScrollExtent);
+      await tester.scrollUntilVisible(
+        find.text('Реквизиты операции 39'),
+        500,
+        scrollable: find.byType(Scrollable).last,
+      );
       await tester.pumpAndSettle();
       expect(scroll.offset, greaterThan(0));
       expect(find.text('Реквизиты операции 39').hitTestable(), findsOneWidget);

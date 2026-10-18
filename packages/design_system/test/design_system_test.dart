@@ -7,6 +7,31 @@ import 'font_loader.dart';
 
 void main() {
   setUpAll(loadDsTestFonts);
+  testWidgets('rebuilding route motion does not retain status listeners', (
+    tester,
+  ) async {
+    final animation = _TrackedAnimation();
+    final route =
+        dsRoute<void>(builder: (_) => const SizedBox())
+            as PageRouteBuilder<void>;
+    for (var i = 0; i < 20; i++) {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => route.transitionsBuilder(
+              context,
+              animation,
+              const AlwaysStoppedAnimation<double>(0),
+              SizedBox(key: ValueKey(i)),
+            ),
+          ),
+        ),
+      );
+    }
+    expect(animation.statusListeners, isEmpty);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('loading motion does not repaint the static status surface', (
     tester,
   ) async {
@@ -496,4 +521,23 @@ class _PaintCounter extends CustomPainter {
   void paint(Canvas canvas, Size size) => onPaint();
   @override
   bool shouldRepaint(_PaintCounter oldDelegate) => false;
+}
+
+class _TrackedAnimation extends Animation<double> {
+  final statusListeners = <AnimationStatusListener>{};
+  final listeners = <VoidCallback>{};
+  @override
+  double get value => .5;
+  @override
+  AnimationStatus get status => AnimationStatus.forward;
+  @override
+  void addListener(VoidCallback listener) => listeners.add(listener);
+  @override
+  void removeListener(VoidCallback listener) => listeners.remove(listener);
+  @override
+  void addStatusListener(AnimationStatusListener listener) =>
+      statusListeners.add(listener);
+  @override
+  void removeStatusListener(AnimationStatusListener listener) =>
+      statusListeners.remove(listener);
 }

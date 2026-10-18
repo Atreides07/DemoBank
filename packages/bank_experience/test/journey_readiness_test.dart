@@ -1,11 +1,68 @@
 import 'dart:async';
 
+import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../apps/bank_app/integration_test/support/journey_readiness.dart';
 
 void main() {
+  testWidgets(
+    'reveals relocated kept-alive controls by scrolling the viewport',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(360, 700);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+      var inserted = false;
+      late StateSetter update;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: DsAppTheme.light(),
+          home: StatefulBuilder(
+            builder: (context, setState) {
+              update = setState;
+              return DsPage(
+                children: [
+                  if (inserted) const Text('Loading status'),
+                  const SizedBox(
+                    key: ValueKey('first'),
+                    height: 80,
+                    child: Text('First control'),
+                  ),
+                  for (var index = 0; index < 12; index++)
+                    SizedBox(
+                      key: ValueKey(index),
+                      height: 180,
+                      child: Text('Section $index'),
+                    ),
+                  const Text('Last control', key: ValueKey('last')),
+                ],
+              );
+            },
+          ),
+        ),
+      );
+      await revealJourneyElement(
+        tester,
+        find.text('Last control', skipOffstage: false),
+      );
+      update(() => inserted = true);
+      await tester.pumpAndSettle();
+      await revealJourneyElement(
+        tester,
+        find.text('First control', skipOffstage: false),
+      );
+      expect(find.text('First control').hitTestable(), findsOneWidget);
+      await revealJourneyElement(
+        tester,
+        find.text('Last control', skipOffstage: false),
+      );
+      expect(find.text('Last control').hitTestable(), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('waits for an active loader below the viewport', (tester) async {
     final scroll = ScrollController();
     addTearDown(scroll.dispose);

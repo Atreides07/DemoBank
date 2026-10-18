@@ -20,6 +20,7 @@ import 'package:utilities/utilities.dart';
 
 part 'src/reference_home.dart';
 part 'src/reference_account.dart';
+part 'src/card_management.dart';
 part 'src/discovery.dart';
 
 GoRoute _flowRoute({
@@ -90,17 +91,14 @@ class _BankExperienceState extends State<BankExperience>
               onSelected: (index) =>
                   _environment.navigate(() => shell.goBranch(index)),
               destinations: [
+                DsDestination(label: context.l10n.navHome, icon: DsIcons.bank),
                 DsDestination(
-                  label: context.l10n.navHome,
-                  icon: DsIcons.dashboard,
+                  label: context.l10n.navPayments,
+                  icon: DsIcons.services,
                 ),
                 DsDestination(
                   label: context.l10n.navAnalytics,
                   icon: DsIcons.analytics,
-                ),
-                DsDestination(
-                  label: context.l10n.navPayments,
-                  icon: DsIcons.services,
                 ),
                 DsDestination(
                   label: context.l10n.navProfile,
@@ -140,6 +138,16 @@ class _BankExperienceState extends State<BankExperience>
             StatefulShellBranch(
               routes: [
                 GoRoute(
+                  path: '/services',
+                  builder: (context, state) => _ServicesPage(
+                    onOpen: (name) => context.push('/pay/$name'),
+                  ),
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
                   path: '/analytics',
                   builder: (context, state) =>
                       BlocBuilder<AccountsCubit, AccountsState>(
@@ -153,16 +161,6 @@ class _BankExperienceState extends State<BankExperience>
                               context.push('/drill', extra: filter),
                         ),
                       ),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/services',
-                  builder: (context, state) => _ServicesPage(
-                    onOpen: (name) => context.push('/pay/$name'),
-                  ),
                 ),
               ],
             ),
@@ -237,6 +235,7 @@ class _BankExperienceState extends State<BankExperience>
         _flowRoute(
           path: '/account/:id/:action',
           builder: (context, state) => _AccountActionPage(
+            dataRevision: _dataRevision,
             accountId: state.pathParameters['id']!,
             action: state.pathParameters['action']!,
             operationJournal: _operationJournal,
@@ -270,6 +269,11 @@ class _BankExperienceState extends State<BankExperience>
         _flowRoute(
           path: '/history',
           builder: (context, state) => HistoryScreen(
+            title:
+                state.extra is LedgerFilter &&
+                    (state.extra! as LedgerFilter).cardId != null
+                ? context.l10n.cardTransactions
+                : null,
             reader: _historyReader,
             reloadSignal: _languageChanges,
             filter: state.extra is LedgerFilter
@@ -405,6 +409,7 @@ class _BankExperienceState extends State<BankExperience>
   /// [background] keeps a reader's place when new operations arrive; a
   /// language change replaces server texts at once instead.
   void _refresh({bool background = true}) {
+    _analytics.invalidate();
     _dataRevision.value++;
     unawaited(_overview.load());
     unawaited(_accounts.load());
@@ -669,7 +674,8 @@ class _DrillPageState extends State<_DrillPage> {
                                 kind: DsStatusKind.error,
                                 action: DsButton(
                                   label: l10n.commonRetry,
-                                  onPressed: () => unawaited(_analytics.load()),
+                                  onPressed: () =>
+                                      unawaited(_analytics.retry()),
                                 ),
                               ),
                             if (summary != null &&

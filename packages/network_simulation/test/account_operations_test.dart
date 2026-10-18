@@ -36,8 +36,133 @@ void main() {
     await api.warmUp();
   });
   test(
+    'card limits persist independently and reject invalid updates',
+    () async {
+      final before = await _balances(api);
+      final original = (await _call(api, '/accounts/main/profile')).body;
+      for (final patch in [
+        {'limitCardId': 'missing', 'monthlyLimitMinor': 100},
+        {'limitCardId': 'main-card-0', 'monthlyLimitMinor': -1},
+        {'limitCardId': 'main-card-0', 'monthlyLimitMinor': 1.5},
+        {'limitCardId': 'main-card-0', 'monthlyLimitMinor': 1000000000},
+        {'monthlyLimitMinor': 100},
+      ]) {
+        expect(
+          (await _call(
+            api,
+            '/accounts/main/preferences',
+            body: patch,
+          )).statusCode,
+          422,
+        );
+        expect((await _call(api, '/accounts/main/profile')).body, original);
+      }
+      await _call(
+        api,
+        '/accounts/main/preferences',
+        body: {'limitCardId': 'main-card-1', 'monthlyLimitMinor': 120050},
+      );
+      final profile = (await _call(api, '/accounts/main/profile')).body;
+      final cards = profile['cards'] as List;
+      expect(
+        cards.singleWhere((c) => c['id'] == 'main-card-1')['monthlyLimitMinor'],
+        120050,
+      );
+      expect(
+        cards
+            .where((c) => c['id'] != 'main-card-1')
+            .every((c) => c['monthlyLimitMinor'] == 10000000),
+        isTrue,
+      );
+      expect(await _balances(api), before);
+      final restored = DemoApi();
+      await restored.restoreState(api.exportState());
+      expect((await _call(restored, '/accounts/main/profile')).body, profile);
+      await _call(
+        api,
+        '/accounts/main/preferences',
+        body: {'limitCardId': 'main-card-1', 'monthlyLimitMinor': 0},
+      );
+      expect(
+        ((await _call(api, '/accounts/main/profile')).body['cards'] as List)
+            .singleWhere((c) => c['id'] == 'main-card-1')['monthlyLimitMinor'],
+        0,
+      );
+    },
+  );
+
+  test(
+    'card history is scoped and requisites belong to selected card',
+    () async {
+      final sets = <Set<String>>[];
+      for (final index in [0, 1, 3, 4, 5]) {
+        final card = 'main-card-$index';
+        final response = await _call(
+          api,
+          '/transactions?accounts=main&cardId=$card&limit=5',
+        );
+        expect(response.statusCode, 200);
+        final items = response.body['items'] as List;
+        expect(items, hasLength(5));
+        expect(
+          items.every((e) => e['cardId'] == card && e['accountId'] == 'main'),
+          isTrue,
+        );
+        final ids = items.map((e) => e['id'] as String).toSet();
+        expect(
+          sets.every((previous) => previous.intersection(ids).isEmpty),
+          isTrue,
+        );
+        sets.add(ids);
+        final cursor = Uri.encodeQueryComponent(
+          response.body['nextCursor'] as String,
+        );
+        expect(
+          (await _call(
+            api,
+            '/transactions?accounts=main&cardId=missing&cursor=$cursor&limit=5',
+          )).statusCode,
+          400,
+        );
+      }
+      final details = await _call(
+        api,
+        '/accounts/main/cards/main-card-1/requisites',
+      );
+      expect(details.body['number'], '0000 0000 0000 9364');
+      expect(
+        (await _call(
+          api,
+          '/accounts/main/cards/missing/requisites',
+        )).statusCode,
+        404,
+      );
+      expect(
+        (await _call(
+          api,
+          '/accounts/savings/cards/main-card-1/requisites',
+        )).statusCode,
+        404,
+      );
+      expect(
+        ((await _call(api, '/accounts/main/profile')).body['cards'] as List)
+            .any(
+              (c) =>
+                  c.containsKey('cvc') == true ||
+                  c.containsKey('number') == true,
+            ),
+        isFalse,
+      );
+    },
+  );
+
+  test(
     'own transfer is atomic, exact, idempotent and excluded from expenses',
     () async {
+      expect(
+        (await _call(api, '/accounts/main/profile')).body['cards'],
+        hasLength(5),
+      );
       final before = await _balances(api);
       final expenses = (await _call(
         api,
@@ -252,7 +377,7 @@ void main() {
       );
       final profile = (await _call(api, '/accounts/main/profile')).body;
       expect(profile['name'], 'Семейный');
-      expect(profile['cards'], hasLength(3));
+      expect(profile['cards'], hasLength(6));
       expect((profile['cards'] as List).first['frozen'], isTrue);
       await _call(
         api,

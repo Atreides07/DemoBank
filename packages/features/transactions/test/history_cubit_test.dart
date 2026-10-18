@@ -10,6 +10,68 @@ import 'package:transactions/transactions.dart';
 
 void main() {
   _registerAnchorTests();
+  test(
+    'loading flags reuse projection and unchanged page slots retain identity',
+    () async {
+      final cubit = HistoryCubit(_Reader());
+      addTearDown(cubit.close);
+      await cubit.load();
+      final before = cubit.state;
+      final slots = before.slots;
+      expect(before.slots, same(slots));
+      final loading = cubit.stream.firstWhere((s) => s.loadingPages.isNotEmpty);
+      final next = cubit.loadNext();
+      final status = await loading;
+      expect(status.slots, same(slots));
+      expect(status.pages, same(before.pages));
+      expect(status.ids, same(before.ids));
+      expect(status.days, same(before.days));
+      await next;
+      final extended = cubit.state.slots;
+      expect(extended.length, 60);
+      expect(extended, same(cubit.state.slots));
+      for (var i = 0; i < 30; i++) {
+        expect(extended[i], same(slots[i]));
+      }
+      expect(() => extended.clear(), throwsUnsupportedError);
+    },
+  );
+
+  test(
+    'retry requests the failed filter while keeping old rows coherent',
+    () async {
+      var fail = false;
+      Completer<void>? retryGate;
+      final requests = <LedgerFilter>[];
+      final cubit = HistoryCubit(
+        _Reader(
+          request: (filter, _, _) async {
+            requests.add(filter);
+            if (fail) throw StateError('offline');
+            if (retryGate != null) await retryGate.future;
+            return _page();
+          },
+        ),
+      );
+      addTearDown(cubit.close);
+      final old = LedgerFilter(category: 'groceries');
+      final target = LedgerFilter(category: 'dining');
+      await cubit.load(filter: old);
+      fail = true;
+      await cubit.load(filter: target);
+      expect(cubit.state.filter, old);
+      expect(cubit.state.failed, isTrue);
+      fail = false;
+      retryGate = Completer();
+      final retry = cubit.retry();
+      await cubit.retry();
+      retryGate.complete();
+      await retry;
+      expect(requests, [old, target, target]);
+      expect(cubit.state.filter, target);
+      expect(cubit.state.failed, isFalse);
+    },
+  );
   test('latest filter wins when requests complete in reverse order', () async {
     final first = Completer<LedgerPage>();
     final second = Completer<LedgerPage>();
@@ -58,6 +120,52 @@ void main() {
       expect(cubit.state.stale, isFalse);
     },
   );
+
+  test('an expired snapshot reloads the current revision instead of failing '
+      'on every retry', () async {
+    var current = '1';
+    final reader = _Reader(
+      request: (filter, cursor, _) async {
+        final requested = filter.revision;
+        if (requested != null && requested != current) {
+          throw const LedgerSnapshotExpired();
+        }
+        return _page(offset: _offset(cursor), revision: current);
+      },
+    );
+    final cubit = HistoryCubit(reader);
+    addTearDown(cubit.close);
+    await cubit.load();
+    expect(cubit.state.revision, '1');
+    current = '2';
+    cubit.userIsReading = true;
+    await cubit.ensurePage(1);
+    expect(cubit.state.revision, '2');
+    expect(cubit.state.failedPages, isEmpty);
+    expect(cubit.state.pendingUpdate, isNull);
+    await cubit.ensurePage(1);
+    expect(cubit.state.pages[1]?.revision, '2');
+    expect(cubit.state.failedPages, isEmpty);
+  });
+
+  test('a snapshot that keeps expiring is reported once, not reloaded in a '
+      'loop', () async {
+    var loads = 0;
+    final reader = _Reader(
+      request: (filter, cursor, _) async {
+        if (filter.revision != null) throw const LedgerSnapshotExpired();
+        loads++;
+        return _page(offset: _offset(cursor));
+      },
+    );
+    final cubit = HistoryCubit(reader);
+    addTearDown(cubit.close);
+    await cubit.load();
+    await cubit.ensurePage(1);
+    await cubit.ensurePage(1);
+    expect(loads, 2);
+    expect(cubit.state.failedPages, {1});
+  });
 
   test('an unreadable cache never prevents the network request', () async {
     final reader = _Reader(

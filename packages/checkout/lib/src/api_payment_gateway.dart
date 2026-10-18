@@ -56,6 +56,9 @@ final class ApiPaymentGateway implements PaymentGateway {
       throw paymentFailureFromApi(error);
     } on FormatException {
       throw const PaymentFailure(PaymentFailureCode.invalidTerms);
+    } on TypeError {
+      // A missing or mistyped field: the terms cannot be shown or confirmed.
+      throw const PaymentFailure(PaymentFailureCode.invalidTerms);
     }
   }
 
@@ -89,7 +92,22 @@ final class ApiPaymentGateway implements PaymentGateway {
     }
   }
 
+  /// A record that cannot be read proves nothing about the payment, so it is
+  /// an inconsistent response: the outcome stays unknown and is re-checked.
   PaymentRecord _record(Map<String, dynamic> json) {
+    try {
+      return _decodeRecord(json);
+    } on Object catch (error) {
+      if (error is! FormatException &&
+          error is! TypeError &&
+          error is! ArgumentError) {
+        rethrow;
+      }
+      throw const PaymentFailure(PaymentFailureCode.inconsistentResponse);
+    }
+  }
+
+  PaymentRecord _decodeRecord(Map<String, dynamic> json) {
     final currency = json['currency'] as String;
     final status = PaymentStatus.values.byName(json['status'] as String);
     return PaymentRecord(

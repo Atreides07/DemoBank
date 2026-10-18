@@ -201,6 +201,7 @@ final class CheckoutState {
     this.pending,
     this.payment,
     this.failure,
+    this.resumed = false,
   });
 
   final CheckoutPhase phase;
@@ -208,6 +209,19 @@ final class CheckoutState {
   final PendingPayment? pending;
   final PaymentRecord? payment;
   final PaymentFailure? failure;
+
+  /// The screen shows an earlier unfinished payment from the journal, not the
+  /// one the person has just started. Only one payment can be in flight.
+  final bool resumed;
+
+  CheckoutState asResumed() => CheckoutState(
+    phase: phase,
+    quote: quote,
+    pending: pending,
+    payment: payment,
+    failure: failure,
+    resumed: true,
+  );
 
   bool get isBusy =>
       phase == CheckoutPhase.loadingQuote || phase == CheckoutPhase.submitting;

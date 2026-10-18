@@ -24,6 +24,30 @@ final class _Repository implements FinesRepository {
 
 void main() {
   test(
+    'editing a document clears selection and ignores its in-flight result',
+    () async {
+      final repository = _Repository();
+      final cubit = FinesCubit(repository);
+      addTearDown(cubit.close);
+      final first = cubit.search('7712345678');
+      repository.responses['7712345678']!.complete([_bill('old')]);
+      await first;
+      cubit.select(cubit.state.bills.single);
+      cubit.changeDocument('8812345678');
+      expect(cubit.state.bills, isEmpty);
+      expect(cubit.state.selected, isNull);
+      expect(() => cubit.intent('main'), throwsA(isA<PaymentFailure>()));
+      final pending = cubit.search('9912345678');
+      cubit.changeDocument('0012345678');
+      repository.responses['9912345678']!.complete([_bill('late')]);
+      await pending;
+      expect(cubit.state.document, '0012345678');
+      expect(cubit.state.bills, isEmpty);
+      expect(cubit.state.phase, FinesPhase.initial);
+    },
+  );
+
+  test(
     'out-of-order responses cannot replace the current document results',
     () async {
       final repository = _Repository();

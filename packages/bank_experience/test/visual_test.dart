@@ -7,6 +7,7 @@ import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:local_storage/local_storage.dart';
 import 'package:network_simulation/network_simulation.dart';
 
@@ -77,6 +78,165 @@ AppEnvironment _environment({
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(_loadFonts);
+  testWidgets(
+    'card carousel shows neighbors, selected scale and tappable dots',
+    (tester) async {
+      String? selected;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: DsAppTheme.light(),
+          home: DsArtworkSource(
+            package: 'bank_artwork',
+            child: Scaffold(
+              body: Center(
+                child: RepaintBoundary(
+                  key: const ValueKey('carousel-capture'),
+                  child: Container(
+                    color: Colors.white,
+                    width: 328,
+                    height: 240,
+                    child: DsBankCardCarousel(
+                      cards: const [
+                        DsBankCardData('one', '4821'),
+                        DsBankCardData('two', '9364'),
+                        DsBankCardData('three', '6057', frozen: true),
+                      ],
+                      selectedId: 'two',
+                      onCard: (id) => selected = id,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await _awaitArtwork(tester);
+      final scales = tester
+          .widgetList<Transform>(
+            find.descendant(
+              of: find.byType(DsBankCardCarousel),
+              matching: find.byWidgetPredicate(
+                (w) => w is Transform && w.child is Padding,
+              ),
+            ),
+          )
+          .map((w) => w.transform.entry(0, 0))
+          .toList();
+      expect(scales, [.86, 1.0, .86]);
+      expect(find.text('4821'), findsOneWidget);
+      expect(find.text('6057'), findsOneWidget);
+      await expectLater(
+        find.byKey(const ValueKey('carousel-capture')),
+        matchesGoldenFile('goldens/card_carousel.png'),
+      );
+      await tester.drag(find.byType(PageView), const Offset(-300, 0));
+      await tester.pumpAndSettle();
+      expect(selected, 'three');
+      await tester.tap(find.byType(InkResponse).first);
+      await tester.pumpAndSettle();
+      expect(selected, 'one');
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'three compact cards fit without scrolling and retain tap targets',
+    (tester) async {
+      String? selected;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: DsAppTheme.light(),
+          builder: (context, child) =>
+              DsArtworkSource(package: 'bank_artwork', child: child!),
+          home: Scaffold(
+            body: SizedBox(
+              width: 192,
+              child: DsBankCards(
+                cards: const [
+                  DsBankCardData('one', '4821'),
+                  DsBankCardData('two', '9364'),
+                  DsBankCardData('three', '1234'),
+                ],
+                onCard: (id) => selected = id,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final cards = find.descendant(
+        of: find.byType(DsBankCards),
+        matching: find.byType(InkWell),
+      );
+      expect(cards, findsNWidgets(3));
+      for (var i = 0; i < 3; i++) {
+        expect(tester.getSize(cards.at(i)), const Size(56, 48));
+        final visual = find.descendant(
+          of: cards.at(i),
+          matching: find.byType(ClipRRect),
+        );
+        expect(tester.getSize(visual), const Size(56, 36.4));
+        await tester.tapAt(
+          tester.getTopLeft(cards.at(i)) + const Offset(28, 2),
+        );
+        expect(selected, ['one', 'two', 'three'][i]);
+      }
+      final scrollable = tester.state<ScrollableState>(find.byType(Scrollable));
+      expect(scrollable.position.maxScrollExtent, 0);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  for (final variant in ['light', 'dark', 'large_text']) {
+    testWidgets('card management renders $variant', (tester) async {
+      final shadows = debugDisableShadows;
+      debugDisableShadows = false;
+      try {
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = variant == 'large_text'
+            ? const Size(320, 1000)
+            : const Size(360, 800);
+        tester.platformDispatcher.textScaleFactorTestValue =
+            variant == 'large_text' ? 2 : 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        final e = _environment(dark: variant == 'dark')..reduceMotion = true;
+        addTearDown(e.dispose);
+        await tester.pumpWidget(
+          RepaintBoundary(
+            key: const ValueKey('card-management-capture'),
+            child: BankExperience(environment: e),
+          ),
+        );
+        await _advanceNetwork(tester);
+        final router = GoRouter.of(tester.element(find.byType(DsHomeHeader)));
+        unawaited(router.push('/account/main/freezeCard?card=main-card-3'));
+        await _advanceNetwork(tester);
+        await _awaitArtwork(tester);
+        expect(tester.takeException(), isNull);
+        expect(find.text('Связанный счёт'), findsOneWidget);
+        await expectLater(
+          find.byKey(const ValueKey('card-management-capture')),
+          matchesGoldenFile('goldens/card_management_$variant.png'),
+        );
+        await tester.ensureVisible(find.text('Операции по карте'));
+        await tester.pumpAndSettle();
+        expect(find.byType(DsTransactionTile), findsNWidgets(5));
+        expect(tester.takeException(), isNull);
+        await expectLater(
+          find.byKey(const ValueKey('card-management-capture')),
+          matchesGoldenFile('goldens/card_management_operations_$variant.png'),
+        );
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      } finally {
+        debugDisableShadows = shadows;
+      }
+    });
+  }
 
   for (final variant in ['light_phone', 'dark_phone', 'narrow_large_text']) {
     testWidgets('bank home, analytics and catalog render $variant', (
@@ -111,6 +271,17 @@ void main() {
         await _awaitArtwork(tester);
         expect(tester.takeException(), isNull);
         expect(find.byType(DsHomeHeader), findsOneWidget);
+        final navigation = tester.widget<DsNavigationBar>(
+          find.byType(DsNavigationBar),
+        );
+        expect(navigation.destinations.map((item) => item.label), [
+          'Главная',
+          'Платежи',
+          'Аналитика',
+          'Профиль',
+        ]);
+        expect(navigation.destinations.first.icon, DsIcons.bank);
+
         if (!narrow) expect(find.text('Основной счёт'), findsOneWidget);
         expect(find.text('Загружаем операции'), findsNothing);
         await expectLater(
@@ -172,6 +343,12 @@ void main() {
           find.byKey(const ValueKey('bank-capture')),
           matchesGoldenFile('goldens/analytics_$variant.png'),
         );
+        if (find.byType(DsBarChart).evaluate().isEmpty) {
+          await tester.scrollUntilVisible(
+            find.byType(DsBarChart), 240,
+            scrollable: find.descendant(of: find.byType(CustomScrollView).last, matching: find.byType(Scrollable)).first,
+          );
+        }
         await tester.ensureVisible(find.byType(DsBarChart));
         await tester.pump();
         expect(tester.takeException(), isNull);

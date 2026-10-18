@@ -17,6 +17,9 @@ enum AccountOperationProblem {
   rejectedJournalStuck,
   rejected,
   resultUnknown,
+
+  /// Contacts for a transfer by phone could not be loaded; nothing was sent.
+  recipientsUnavailable,
 }
 
 final class AccountOperationState {
@@ -26,6 +29,7 @@ final class AccountOperationState {
     this.result,
     this.problem,
     this.serverMessage,
+    this.loadingRecipients = false,
   });
   final AccountOperationStep step;
   final AccountOperation? operation;
@@ -35,6 +39,9 @@ final class AccountOperationState {
   /// The bank's explanation of [AccountOperationProblem.rejected], in the
   /// interface language.
   final String? serverMessage;
+
+  /// Contacts for a transfer by phone are being loaded again.
+  final bool loadingRecipients;
 }
 
 /// Largest amount of one operation, in minor units.
@@ -59,24 +66,16 @@ final class AccountOperationCubit extends Cubit<AccountOperationState> {
   final AccountOperationJournal journal;
   List<AccountRecipient> _recipients = const [];
   List<AccountRecipient> get recipients => _recipients;
+
+  /// Reads the journal first: an unfinished request takes priority over a
+  /// new one. Contacts are loaded separately, so a network failure is not
+  /// reported as a damaged journal, and a saved request never waits for them.
   Future<void> restore() async {
+    if (state.step == AccountOperationStep.submitting) return;
+    emit(const AccountOperationState(step: AccountOperationStep.restoring));
+    AccountOperation? pending;
     try {
-      final pending = await journal.load(account.id);
-      if (kind == AccountOperationKind.phoneTransfer ||
-          pending?.kind == AccountOperationKind.phoneTransfer) {
-        _recipients = await reader.recipients(account.id);
-      }
-      if (isClosed) return;
-      _attempted = pending != null;
-      emit(
-        pending == null
-            ? const AccountOperationState()
-            : AccountOperationState(
-                step: AccountOperationStep.review,
-                operation: pending,
-                problem: AccountOperationProblem.restored,
-              ),
-      );
+      pending = await journal.load(account.id);
     } catch (error, stackTrace) {
       addError(error, stackTrace);
       if (!isClosed) {
@@ -87,6 +86,56 @@ final class AccountOperationCubit extends Cubit<AccountOperationState> {
           ),
         );
       }
+      return;
+    }
+    if (isClosed) return;
+    _attempted = pending != null;
+    final loaded =
+        pending != null ||
+        kind != AccountOperationKind.phoneTransfer ||
+        await _loadRecipients();
+    if (isClosed) return;
+    emit(
+      pending != null
+          // The saved request is repeated as it is; the screen names the
+          // contact by its saved identifier if the list is not loaded.
+          ? AccountOperationState(
+              step: AccountOperationStep.review,
+              operation: pending,
+              problem: AccountOperationProblem.restored,
+            )
+          : AccountOperationState(
+              problem: loaded
+                  ? null
+                  : AccountOperationProblem.recipientsUnavailable,
+            ),
+    );
+  }
+
+  /// Repeats loading contacts for a transfer by phone.
+  Future<void> retryRecipients() async {
+    if (state.step != AccountOperationStep.editing ||
+        state.loadingRecipients ||
+        state.problem != AccountOperationProblem.recipientsUnavailable) {
+      return;
+    }
+    emit(const AccountOperationState(loadingRecipients: true));
+    final loaded = await _loadRecipients();
+    if (isClosed) return;
+    emit(
+      AccountOperationState(
+        problem: loaded ? null : AccountOperationProblem.recipientsUnavailable,
+      ),
+    );
+  }
+
+  Future<bool> _loadRecipients() async {
+    try {
+      _recipients = await reader.recipients(account.id);
+      return true;
+    } catch (error, stackTrace) {
+      addError(error, stackTrace);
+      return false;
     }
   }
 
@@ -168,6 +217,11 @@ final class AccountOperationCubit extends Cubit<AccountOperationState> {
         return false;
       }
       final result = await reader.execute(operation);
+      if (result.id.isEmpty ||
+          result.requestId != operation.requestId ||
+          result.amount != operation.amount) {
+        throw const FormatException('Account operation result mismatch');
+      }
       await journal.clear(operation);
       if (isClosed) return false;
       emit(

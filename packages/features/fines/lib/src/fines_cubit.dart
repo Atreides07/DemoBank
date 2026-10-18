@@ -38,6 +38,11 @@ final class FinesCubit extends Cubit<FinesState> {
   final FinesRepository _repository;
   int _generation = 0;
 
+  void changeDocument(String document) {
+    _generation++;
+    emit(FinesState(document: document));
+  }
+
   Future<void> search(String document) async {
     final generation = ++_generation;
     final normalized = document.replaceAll(RegExp(r'\D'), '');

@@ -30,6 +30,7 @@ LedgerEntry decodeLedgerEntry(Map<String, dynamic> json, {String? currency}) =>
       categoryId: json.string('categoryId'),
       merchantId: json.string('merchantId'),
       accountId: json.string('accountId'),
+      cardId: json.optionalString('cardId'),
       kind: json.enumValue('kind', EntryKind.values),
       status: json.enumValue('status', EntryStatus.values),
     );
@@ -97,6 +98,7 @@ extension LedgerFilterEncoding on LedgerFilter {
       if (to != null) 'to': to!.toUtc().toIso8601String(),
       if (category != null) 'category': category,
       if (merchant != null) 'merchant': merchant,
+      if (cardId != null) 'cardId': cardId,
       if (members.isNotEmpty) 'accounts': members.join(','),
       if (kind != null) 'kind': kind!.name,
       if (revision != null) 'revision': revision,

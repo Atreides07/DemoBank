@@ -2,144 +2,144 @@
   "schema": 1,
   "artworks": [
     {
-      "path": "assets/art/account-glow.png",
+      "path": "assets/art/account-glow.webp",
       "width": 1536,
       "height": 1024,
-      "sha256": "4bed3db7d41a3291116d12df0e0b59ce7c789634836232a0564d8d3822b343db",
-      "source": "Original OpenAI ImageGen output created for DemoBank, October 2026"
+      "sha256": "65f6e80bd0ec345e0e31ec46f94d5596e0a44fd6578bd588ad8ccc653ffa9c80",
+      "source": "Lossless WebP of original OpenAI ImageGen output created for DemoBank, October 2026"
     },
     {
-      "path": "assets/art/airfryer.png",
+      "path": "assets/art/airfryer.webp",
       "width": 1254,
       "height": 1254,
-      "sha256": "6fd4f8a81b07a7ff5ea6b61dea9bfbc7144a12562864b49ace0f26243d31b5bc",
-      "source": "Original OpenAI ImageGen output created for DemoBank, October 2026"
+      "sha256": "4e487b5980794a86da8631f8228ec27389c6f49bca82894d3e1bfb093f6540e0",
+      "source": "Lossless WebP of original OpenAI ImageGen output created for DemoBank, October 2026"
     },
     {
-      "path": "assets/art/appliances.png",
+      "path": "assets/art/appliances.webp",
       "width": 1254,
       "height": 1254,
-      "sha256": "d59310ba23e5cb280ff8e4fc688cbe782263607891c3ef6c5267bee66083d4b8",
-      "source": "Original OpenAI ImageGen output created for DemoBank, October 2026"
+      "sha256": "6897297eb1ac9ad688969afcdee93f08a56585f8bd0e875925766a53487dbb1e",
+      "source": "Lossless WebP of original OpenAI ImageGen output created for DemoBank, October 2026"
     },
     {
-      "path": "assets/art/books.png",
+      "path": "assets/art/books.webp",
       "width": 1254,
       "height": 1254,
-      "sha256": "cc8d0004dabf7187844fc5089feb8e5a3a0dc8c94650a10dd5bcc86d236caaec",
-      "source": "Original OpenAI ImageGen output created for DemoBank, October 2026"
+      "sha256": "a7920f919e00c4145b1747c1464abca9b858124111f603f2bc6003bbd8827439",
+      "source": "Lossless WebP of original OpenAI ImageGen output created for DemoBank, October 2026"
     },
     {
-      "path": "assets/art/borrow.png",
+      "path": "assets/art/borrow.webp",
       "width": 1254,
       "height": 1254,
-      "sha256": "4b0cc9ba9d3e97781eee1ec7d19e16fd44894e1163e64ee4da51ac73e965eb1f",
-      "source": "Original OpenAI ImageGen output created for DemoBank, October 2026"
+      "sha256": "1098a622388cc647a94c95706461b58d959109e67175422a3f5377a9c0bfdd3f",
+      "source": "Lossless WebP of original OpenAI ImageGen output created for DemoBank, October 2026"
     },
     {
-      "path": "assets/art/card-plastic.png",
+      "path": "assets/art/card-plastic.webp",
       "width": 1586,
       "height": 992,
-      "sha256": "4d8d669ce874e9d5ab6dedd94b2f9066553dfa57ec4dda92634281386b84aaad",
-      "source": "Original OpenAI ImageGen output created for DemoBank, October 2026"
+      "sha256": "9eed15f259e79f94bfe708f075b532df1ad7b7e264b26ab933fe540f67e21ff8",
+      "source": "Lossless WebP of original OpenAI ImageGen output created for DemoBank, October 2026"
     },
     {
-      "path": "assets/art/card-promo.png",
+      "path": "assets/art/card-promo.webp",
       "width": 1254,
       "height": 1254,
-      "sha256": "716032130b16d685cd32caa47daab9d56d287ff5f360b72be67ddfcf80b3a39d",
-      "source": "Original OpenAI ImageGen output created for DemoBank, October 2026"
+      "sha256": "24721d4dc106a5bd77dcb3c890d0441b4bf6e9e793009974274294d867de6c42",
+      "source": "Lossless WebP of original OpenAI ImageGen output created for DemoBank, October 2026"
     },
     {
-      "path": "assets/art/cashback.png",
+      "path": "assets/art/cashback.webp",
       "width": 1254,
       "height": 1254,
-      "sha256": "4787993ab7c2c6ff0c2444348f00c36742ae7b2ff28b01beb1818d9ebe5cb5d0",
-      "source": "Original OpenAI ImageGen output created for DemoBank, October 2026"
+      "sha256": "63dad31ab296a93357a42f78c34f4aaf095e7d02c1cd2632fea1e66fe77633c8",
+      "source": "Lossless WebP of original OpenAI ImageGen output created for DemoBank, October 2026"
     },
     {
-      "path": "assets/art/clothes.png",
+      "path": "assets/art/clothes.webp",
       "width": 1254,
       "height": 1254,
-      "sha256": "66b9cc0671e82a967e136a4206d118eab14130beaf88eeb576b738478f8c66e7",
-      "source": "Original OpenAI ImageGen output created for DemoBank, October 2026"
+      "sha256": "d3a0787846bfa79255cb8630d74d6c2f11a8086b5feeb54e4f189321a6512c75",
+      "source": "Lossless WebP of original OpenAI ImageGen output created for DemoBank, October 2026"
     },
     {
-      "path": "assets/art/coast.png",
+      "path": "assets/art/coast.webp",
       "width": 1086,
       "height": 1448,
-      "sha256": "7c8a62f7b8d2bbf6ce097fb7fef4d7ed7bf285f0a266840dc5fb416eef4fefd8",
-      "source": "Original OpenAI ImageGen output created for DemoBank, October 2026"
+      "sha256": "fb631a8b9e3ae52b94506ae9df3f4356fa3a520112d919948e9d2ab2c6d9f1f5",
+      "source": "Lossless WebP of original OpenAI ImageGen output created for DemoBank, October 2026"
     },
     {
-      "path": "assets/art/cosmetics.png",
+      "path": "assets/art/cosmetics.webp",
       "width": 1254,
       "height": 1254,
-      "sha256": "0728f99a9da501e10f4b881e4ba813ad960f2750c004f61c2f90e3f258731dcb",
-      "source": "Original OpenAI ImageGen output created for DemoBank, October 2026"
+      "sha256": "521733c82e09922143c46dea0351c0db371b747f525821a0447d0945d9d1e81e",
+      "source": "Lossless WebP of original OpenAI ImageGen output created for DemoBank, October 2026"
     },
     {
-      "path": "assets/art/electronics.png",
+      "path": "assets/art/electronics.webp",
       "width": 1254,
       "height": 1254,
-      "sha256": "fc140f0312775fb6f9360b78899910129356bd8439d6856866081b7c0e68bb29",
-      "source": "Original OpenAI ImageGen output created for DemoBank, October 2026"
+      "sha256": "aab0e94113057aa5df57b803ef32488220be073a355630a33f5b5c974aa642f3",
+      "source": "Lossless WebP of original OpenAI ImageGen output created for DemoBank, October 2026"
     },
     {
-      "path": "assets/art/gift.png",
+      "path": "assets/art/gift.webp",
       "width": 1536,
       "height": 1024,
-      "sha256": "f37563ecdf910de1ba7d336db77d916def3c2d16ad9215e913f86a9f93d9c02c",
-      "source": "Original OpenAI ImageGen output created for DemoBank, October 2026"
+      "sha256": "d09246458d2c3a189251a5b2a63998c703d2364c02d4508ea6e87e27b89a21e1",
+      "source": "Lossless WebP of original OpenAI ImageGen output created for DemoBank, October 2026"
     },
     {
-      "path": "assets/art/home.png",
+      "path": "assets/art/home.webp",
       "width": 1536,
       "height": 1024,
-      "sha256": "f5fc89e2fb4f59c299c6f87aa2edc607ba1eb4184edf273f3ee674fc06a582f0",
-      "source": "Original OpenAI ImageGen output created for DemoBank, October 2026"
+      "sha256": "93686809056e5040dbe09c0e17841be03051cf50d09f391f4c7c853363bae56d",
+      "source": "Lossless WebP of original OpenAI ImageGen output created for DemoBank, October 2026"
     },
     {
-      "path": "assets/art/insurance.png",
+      "path": "assets/art/insurance.webp",
       "width": 1536,
       "height": 1024,
-      "sha256": "0b545c3d6362927ea8b2e32d251071083df1c39306dbca2972b9ba4d15075e3c",
-      "source": "Original OpenAI ImageGen output created for DemoBank, October 2026"
+      "sha256": "6c6ae1e9873bbbe78bcf553c5b33094cd193ba52dab81deea95641517249ca39",
+      "source": "Lossless WebP of original OpenAI ImageGen output created for DemoBank, October 2026"
     },
     {
-      "path": "assets/art/investments.png",
+      "path": "assets/art/investments.webp",
       "width": 1254,
       "height": 1254,
-      "sha256": "a119ec35004e38ab228675983af08bf875c45ab0e1d9cad63d0f0ffecc586f5b",
-      "source": "Original OpenAI ImageGen output created for DemoBank, October 2026"
+      "sha256": "4ce2b7b758bf4f0b9d4cdc1d897dbc34cf11701c7a855e7abc2e2b51a01c1c16",
+      "source": "Lossless WebP of original OpenAI ImageGen output created for DemoBank, October 2026"
     },
     {
-      "path": "assets/art/pillow.png",
+      "path": "assets/art/pillow.webp",
       "width": 1254,
       "height": 1254,
-      "sha256": "f2fed1b2be5b9ffb310f5470e7e9b2fe7141815d0fe83cc87c5d9594998d5d14",
-      "source": "Original OpenAI ImageGen output created for DemoBank, October 2026"
+      "sha256": "ca214379bafee99f9864d956da126cc1d9c99133de0a5715f5af21545d12d083",
+      "source": "Lossless WebP of original OpenAI ImageGen output created for DemoBank, October 2026"
     },
     {
-      "path": "assets/art/saving.png",
+      "path": "assets/art/saving.webp",
       "width": 1254,
       "height": 1254,
-      "sha256": "d206f306550976db7fabc1ff21d262fc4c58c9d8c1454dc129efa7d7b6f9c905",
-      "source": "Original OpenAI ImageGen output created for DemoBank, October 2026"
+      "sha256": "c89123ec6a2eeec7312480a89e3a307941a2cf4aea6a5a1cec85ea00f49e379b",
+      "source": "Lossless WebP of original OpenAI ImageGen output created for DemoBank, October 2026"
     },
     {
-      "path": "assets/art/shopping.png",
+      "path": "assets/art/shopping.webp",
       "width": 1254,
       "height": 1254,
-      "sha256": "ff5e96344e91262b53cffe42974a10a37ad4404f5969b8309c62193ebc83fb3c",
-      "source": "Original OpenAI ImageGen output created for DemoBank, October 2026"
+      "sha256": "19dee5c1220d3153444ffce955980cf8068671d330d1e52e9a94e6f53ff88ba9",
+      "source": "Lossless WebP of original OpenAI ImageGen output created for DemoBank, October 2026"
     },
     {
-      "path": "assets/art/travel-train.png",
+      "path": "assets/art/travel-train.webp",
       "width": 1536,
       "height": 1024,
-      "sha256": "b392dc63b481114914854da007489961c786de0599a2d138e559796d9be6ffe9",
-      "source": "Original OpenAI ImageGen output created for DemoBank, October 2026"
+      "sha256": "be476358a483dc8583869daaa96344b106f97413fbdc1e53871e1c2235b24872",
+      "source": "Lossless WebP of original OpenAI ImageGen output created for DemoBank, October 2026"
     }
   ]
 }

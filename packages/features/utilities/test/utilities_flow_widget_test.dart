@@ -30,6 +30,29 @@ Future<void> _settle(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> _reveal(WidgetTester tester, Finder finder) async {
+  if (finder.evaluate().isEmpty) {
+    final scrollable = find
+        .descendant(
+          of: find.byType(CustomScrollView).last,
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    tester.state<ScrollableState>(scrollable).position.jumpTo(0);
+    await _settle(tester);
+    if (finder.evaluate().isEmpty) {
+      await tester.scrollUntilVisible(
+        finder,
+        250,
+        scrollable: scrollable,
+        maxScrolls: 40,
+      );
+    }
+  }
+  await tester.ensureVisible(finder);
+  await _settle(tester);
+}
+
 void main() {
   testWidgets('account → selected bills → exact fee → receipt', (tester) async {
     final api = DemoApi();
@@ -65,24 +88,36 @@ void main() {
     await tester.tap(find.text('Получить начисления'));
     await _settle(tester);
     final first = find.byType(CheckboxListTile).first;
-    await tester.ensureVisible(first);
+    await _reveal(tester, first);
     await _settle(tester);
     await tester.tap(first);
     await _settle(tester);
-    await tester.ensureVisible(find.text('Продолжить'));
+    await _reveal(tester, find.byType(TextField));
+    await tester.enterText(find.byType(TextField), '2234567890');
+    await _settle(tester);
+    expect(find.byType(CheckboxListTile), findsNothing);
+    expect(find.text('Продолжить'), findsNothing);
+    await tester.enterText(find.byType(TextField), '1234567890');
+    await tester.tap(find.text('Получить начисления'));
+    await _settle(tester);
+    await _reveal(tester, first);
+    await _settle(tester);
+    await tester.tap(first);
+    await _settle(tester);
+    await _reveal(tester, find.text('Продолжить'));
     await _settle(tester);
     await tester.tap(find.text('Продолжить'));
     await _settle(tester);
     expect(find.text('Комиссия'), findsOneWidget);
-    expect(find.text('10 ₽'), findsOneWidget);
-    await tester.ensureVisible(find.text('Подтвердить оплату'));
+    expect(find.text('10\u00a0₽'), findsOneWidget);
+    await _reveal(tester, find.text('Подтвердить оплату'));
     await _settle(tester);
     await tester.tap(find.text('Подтвердить оплату'));
     await _settle(tester);
     expect(find.text('Оплата выполнена'), findsOneWidget);
     expect(completed.single.total.minor, 685320);
     expect(completed.single.fee.minor, 1000);
-    await tester.ensureVisible(find.text('Готово'));
+    await _reveal(tester, find.text('Готово'));
     await _settle(tester);
     await tester.tap(find.text('Готово'));
     await _settle(tester);

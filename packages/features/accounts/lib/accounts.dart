@@ -21,11 +21,14 @@ final class ApiAccountsRepository implements AccountsReader {
 
   @override
   Future<List<Account>> accounts() async {
+    // Bound before the request: a response that arrives after a language
+    // switch is cached under the language it was requested in.
+    final cache = _cache.pinned();
     final json = await _api.get('/v1/accounts');
     // Only a response that decodes is cached; a malformed one must not replace
     // the last good copy or be served on the next launch.
     final accounts = decodeAccounts(json);
-    await _cache.write('accounts', json);
+    await cache.writeResponse('accounts', json);
     return accounts;
   }
 }
@@ -35,12 +38,16 @@ final class AccountsState {
     this.accounts = const [],
     this.loading = true,
     this.failed = false,
+    this.failure,
   });
   final List<Account> accounts;
   final bool loading;
 
   /// The last refresh failed; [accounts] are the saved copy, if any.
   final bool failed;
+
+  /// Why the last refresh failed, when [failed].
+  final Object? failure;
 
   /// Compatibility total for the primary RUB header. Other currencies are
   /// deliberately presented separately through [balances].
@@ -86,7 +93,12 @@ final class AccountsCubit extends Cubit<AccountsState> {
       addError(error, stackTrace);
       if (!isClosed && epoch == _epoch) {
         emit(
-          AccountsState(accounts: state.accounts, loading: false, failed: true),
+          AccountsState(
+            accounts: state.accounts,
+            loading: false,
+            failed: true,
+            failure: error,
+          ),
         );
       }
     }

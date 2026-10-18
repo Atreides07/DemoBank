@@ -132,7 +132,7 @@ final class _CinemaScreenState extends State<_CinemaScreen> {
         if (state.failed)
           DsStatus(
             title: l10n.cinemaUnavailable,
-            message: state.failure?.serverMessage ?? l10n.cinemaLoadFailed,
+            message: l10n.loadFailure(state.failure, l10n.cinemaLoadFailed),
             kind: DsStatusKind.error,
             action: DsButton(
               label: l10n.commonRetry,

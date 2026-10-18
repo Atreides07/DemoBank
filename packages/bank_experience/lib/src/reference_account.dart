@@ -112,18 +112,9 @@ class _AccountWorkspaceState extends State<_AccountWorkspace> {
             .where((a) => a.id == widget.accountId)
             .firstOrNull;
         if (account == null) {
-          return DsPage(
-            title: context.l10n.detailsAccount,
-            children: [
-              DsStatus(
-                title: accounts.loading
-                    ? context.l10n.accountLoading
-                    : context.l10n.accountNotFound,
-                kind: accounts.loading
-                    ? DsStatusKind.loading
-                    : DsStatusKind.error,
-              ),
-            ],
+          return _AccountUnavailable(
+            accounts: accounts,
+            onRetry: widget.accounts.load,
           );
         }
         return BlocBuilder<AccountManagementCubit, AccountManagementState>(
@@ -146,10 +137,15 @@ class _AccountWorkspaceState extends State<_AccountWorkspace> {
                       : spendingChartPoints(context, overview.summary!),
                   error: switch (state.problem) {
                     AccountManagementProblem.loadFailed =>
-                      context.l10n.accountLoadFailed,
+                      context.l10n.loadFailure(
+                        state.failure,
+                        context.l10n.accountLoadFailed,
+                      ),
                     AccountManagementProblem.saveFailed =>
-                      state.failure?.serverMessage ??
-                          context.l10n.accountSaveFailed,
+                      context.l10n.loadFailure(
+                        state.failure,
+                        context.l10n.accountSaveFailed,
+                      ),
                     null =>
                       overview.failed ? context.l10n.analyticsFailed : null,
                   },
@@ -164,9 +160,40 @@ class _AccountWorkspaceState extends State<_AccountWorkspace> {
   );
 }
 
+/// An account route whose account is not in the list: still loading, the
+/// list could not be loaded (offline with nothing saved), or it is gone.
+class _AccountUnavailable extends StatelessWidget {
+  const _AccountUnavailable({required this.accounts, required this.onRetry});
+  final AccountsState accounts;
+  final Future<void> Function() onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return DsPage(
+      title: l10n.detailsAccount,
+      onBack: () => context.canPop() ? context.pop() : context.go('/'),
+      children: [
+        if (accounts.loading)
+          DsStatus(title: l10n.accountLoading, kind: DsStatusKind.loading)
+        else if (accounts.failed)
+          DsStatus(
+            title: l10n.accountListUnavailable,
+            message: l10n.loadFailure(accounts.failure, l10n.accountLoadFailed),
+            kind: DsStatusKind.error,
+            action: DsButton(label: l10n.commonRetry, onPressed: onRetry),
+          )
+        else
+          DsStatus(title: l10n.accountNotFound, kind: DsStatusKind.error),
+      ],
+    );
+  }
+}
+
 class _AccountActionPage extends StatefulWidget {
   const _AccountActionPage({
     required this.accountId,
+    required this.dataRevision,
     required this.action,
     required this.environment,
     required this.accounts,
@@ -174,6 +201,7 @@ class _AccountActionPage extends StatefulWidget {
     required this.operationJournal,
     this.cardId,
   });
+  final ValueNotifier<int> dataRevision;
   final String accountId, action;
   final String? cardId;
   final AccountOperationJournal operationJournal;
@@ -186,34 +214,93 @@ class _AccountActionPage extends StatefulWidget {
 
 class _AccountActionPageState extends State<_AccountActionPage> {
   late final AccountManagementCubit _profile;
+  late final ApiAccountManagement _management;
   final _name = TextEditingController();
+  final _cardHistory =
+      <String, ({Future<LedgerPage> page, DateTime expiresAt})>{};
+
+  void _invalidateCardHistory() => setState(_cardHistory.clear);
+
+  Future<LedgerPage> _loadCardHistory(
+    Account account,
+    AccountCard card, {
+    bool refresh = false,
+  }) {
+    final key = '${account.balance.currency}:${card.id}';
+    final cached = _cardHistory[key];
+    if (!refresh &&
+        cached != null &&
+        DateTime.now().isBefore(cached.expiresAt)) {
+      return cached.page;
+    }
+    late final Future<LedgerPage> page;
+    page =
+        ApiHistoryRepository(widget.environment.api, widget.environment.cache)
+            .page(
+              LedgerFilter(
+                accounts: [account.id],
+                cardId: card.id,
+                currency: account.balance.currency,
+              ),
+              limit: 5,
+            )
+            .then(
+              (value) => value,
+              onError: (Object error, StackTrace stack) {
+                if (identical(_cardHistory[key]?.page, page)) {
+                  _cardHistory.remove(key);
+                }
+                Error.throwWithStackTrace(error, stack);
+              },
+            );
+    _cardHistory[key] = (
+      page: page,
+      expiresAt: DateTime.now().add(const Duration(minutes: 5)),
+    );
+    return page;
+  }
+
   bool _saved = false;
   bool _certificate = false;
   bool _copied = false;
   @override
   void initState() {
     super.initState();
-    _profile = AccountManagementCubit(
-      ApiAccountManagement(widget.environment.api, widget.environment.cache),
-      widget.accountId,
+    widget.dataRevision.addListener(_invalidateCardHistory);
+    _management = ApiAccountManagement(
+      widget.environment.api,
+      widget.environment.cache,
     );
+    _profile = AccountManagementCubit(_management, widget.accountId);
     unawaited(_profile.load());
   }
 
   @override
   void dispose() {
+    widget.dataRevision.removeListener(_invalidateCardHistory);
+    _cardHistory.clear();
     _name.dispose();
     unawaited(_profile.close());
     super.dispose();
   }
 
-  Future<void> _save(AccountPreferences value) async {
+  Future<bool> _save(AccountPreferences value) async {
+    setState(() => _saved = false);
+    if (widget.action == 'freezeCard') {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    }
     final saved = await _profile.update(value);
-    if (!mounted) return;
+    if (!mounted) return false;
     if (saved) {
       widget.onChanged();
       setState(() => _saved = true);
+      if (widget.action == 'freezeCard') {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.l10n.accountSaved)));
+      }
     }
+    return saved;
   }
 
   Future<void> _copy(String text) async {
@@ -236,11 +323,9 @@ class _AccountActionPageState extends State<_AccountActionPage> {
       final l10n = context.l10n;
       final formats = context.formats;
       if (account == null) {
-        return DsPage(
-          title: l10n.detailsAccount,
-          children: [
-            DsStatus(title: l10n.accountLoading, kind: DsStatusKind.loading),
-          ],
+        return _AccountUnavailable(
+          accounts: accounts,
+          onRetry: widget.accounts.load,
         );
       }
       if (widget.action == 'topup' ||
@@ -274,13 +359,19 @@ class _AccountActionPageState extends State<_AccountActionPage> {
               p?.cards.where((c) => c.id == widget.cardId).firstOrNull ??
               p?.cards.firstOrNull;
           final children = <Widget>[
-            DsText(p?.name ?? account.name, style: DsTextStyle.title),
+            if (action != 'freezeCard')
+              DsText(p?.name ?? account.name, style: DsTextStyle.title),
             if (state.problem case final problem?)
               DsStatus(
                 title: switch (problem) {
-                  AccountManagementProblem.loadFailed => l10n.accountLoadFailed,
-                  AccountManagementProblem.saveFailed =>
-                    state.failure?.serverMessage ?? l10n.accountSaveFailed,
+                  AccountManagementProblem.loadFailed => l10n.loadFailure(
+                    state.failure,
+                    l10n.accountLoadFailed,
+                  ),
+                  AccountManagementProblem.saveFailed => l10n.loadFailure(
+                    state.failure,
+                    l10n.accountSaveFailed,
+                  ),
                 },
                 kind: DsStatusKind.error,
                 action: DsButton(
@@ -290,9 +381,9 @@ class _AccountActionPageState extends State<_AccountActionPage> {
               ),
             if (state.saving)
               DsStatus(title: l10n.accountSaving, kind: DsStatusKind.loading),
-            if (_saved)
+            if (_saved && action != 'freezeCard')
               DsStatus(title: l10n.accountSaved, kind: DsStatusKind.success),
-            if (p == null && action != 'pay')
+            if (p == null && state.problem == null && action != 'pay')
               DsStatus(
                 title: l10n.accountLoadingSettings,
                 kind: DsStatusKind.loading,
@@ -447,43 +538,33 @@ class _AccountActionPageState extends State<_AccountActionPage> {
                 ]);
               case 'freezeCard':
                 children.addAll([
-                  DsBankCards(
+                  DsBankCardCarousel(
                     cards: [
                       for (final c in p.cards)
                         DsBankCardData(c.id, c.lastDigits, frozen: c.frozen),
                     ],
-                    onCard: (id) => context.replace(
-                      '/account/${account.id}/freezeCard?card=$id',
-                    ),
+                    selectedId: card?.id ?? '',
+                    onCard: state.saving
+                        ? null
+                        : (id) {
+                            setState(() => _saved = false);
+                            context.replace(
+                              '/account/${account.id}/freezeCard?card=${Uri.encodeComponent(id)}',
+                            );
+                          },
                   ),
-                  if (card != null) ...[
-                    DsText(
-                      l10n.accountCard(card.lastDigits),
-                      style: DsTextStyle.headline,
+                  if (card != null)
+                    _CardWorkspace(
+                      key: ValueKey((card.id, widget.dataRevision.value)),
+                      account: account,
+                      card: card,
+                      saving: state.saving,
+                      loadHistory: ({bool refresh = false}) =>
+                          _loadCardHistory(account, card, refresh: refresh),
+                      onSave: _save,
+                      loadRequisites: () =>
+                          _management.cardRequisites(account.id, card.id),
                     ),
-                    DsText(
-                      card.frozen
-                          ? l10n.accountCardFrozen
-                          : l10n.accountCardActive,
-                    ),
-                    DsText(l10n.accountFreezeHint),
-                    DsButton(
-                      label: card.frozen
-                          ? l10n.accountUnfreeze
-                          : l10n.accountConfirmFreeze,
-                      variant: card.frozen
-                          ? DsButtonVariant.primary
-                          : DsButtonVariant.danger,
-                      onPressed: state.saving
-                          ? null
-                          : () => _save(
-                              AccountPreferences(
-                                frozenCardId: card.id,
-                                frozen: !card.frozen,
-                              ),
-                            ),
-                    ),
-                  ],
                 ]);
               case 'limits':
                 children.addAll([
@@ -772,9 +853,10 @@ class _AccountOperationPageState extends State<_AccountOperationPage> {
                   label: topUp ? l10n.operationTo : l10n.operationFrom,
                   value: widget.account.name,
                 ),
+                // Holds and pending debits are not spendable.
                 DsKeyValue(
                   label: l10n.commonAvailable,
-                  value: formats.money(widget.account.balance),
+                  value: formats.money(widget.account.available),
                 ),
               ],
             ),
@@ -796,6 +878,8 @@ class _AccountOperationPageState extends State<_AccountOperationPage> {
             if (topUp) DsText(l10n.operationTopUpSource),
             if (phone) ...[
               DsText(l10n.operationChooseContact),
+              if (state.loadingRecipients)
+                DsLoading(label: l10n.operationLoadingContacts),
               for (final r in _cubit.recipients)
                 DsChoice(
                   label: l10n.operationRecipient(r.name, r.bank, r.phone),
@@ -853,6 +937,7 @@ class _AccountOperationPageState extends State<_AccountOperationPage> {
                               )
                               .firstOrNull
                               ?.name ??
+                          state.operation?.destinationId ??
                           l10n.operationSampleContact
                     : destination?.name ?? '—',
               ),
@@ -901,6 +986,12 @@ class _AccountOperationPageState extends State<_AccountOperationPage> {
               kind: problem == AccountOperationProblem.restored
                   ? DsStatusKind.info
                   : DsStatusKind.error,
+              action: problem == AccountOperationProblem.recipientsUnavailable
+                  ? DsButton(
+                      label: l10n.commonRetry,
+                      onPressed: _cubit.retryRecipients,
+                    )
+                  : null,
             ),
         ],
       );
@@ -930,6 +1021,8 @@ String _operationProblem(
   AccountOperationProblem.rejectedJournalStuck => l10n.operationRejectedStuck,
   AccountOperationProblem.rejected => state.serverMessage ?? l10n.errorRejected,
   AccountOperationProblem.resultUnknown => l10n.operationResultUnknown,
+  AccountOperationProblem.recipientsUnavailable =>
+    l10n.operationRecipientsUnavailable,
 };
 
 /// Scanner input is deliberately represented by synthetic codes. No camera or

@@ -55,14 +55,21 @@ final class CheckoutCubit extends Cubit<CheckoutState> {
   PaymentIntent? _intent;
   bool _working = false;
 
+  /// Set while an earlier journal entry is shown instead of [_intent].
+  bool _resumed = false;
+
   Future<void> begin(PaymentIntent intent) async {
     if (_working) return;
     _working = true;
     _intent = intent;
+    _resumed = false;
     _set(const CheckoutState(phase: CheckoutPhase.loadingQuote));
     try {
       final pending = await _store.load();
       if (pending != null) {
+        // An earlier payment is still unconfirmed; it is resolved first and
+        // the person is told this is not the payment they just started.
+        _resumed = true;
         await _check(pending);
       } else {
         final quote = await _gateway.quote(intent);
@@ -81,6 +88,7 @@ final class CheckoutCubit extends Cubit<CheckoutState> {
   Future<void> restore() async {
     if (_working) return;
     _working = true;
+    _resumed = false;
     _set(const CheckoutState(phase: CheckoutPhase.loadingQuote));
     try {
       final pending = await _store.load();
@@ -103,6 +111,13 @@ final class CheckoutCubit extends Cubit<CheckoutState> {
   Future<void> refreshQuote() async {
     final intent = _intent;
     if (intent != null) await begin(intent);
+  }
+
+  /// After an earlier payment has been resolved, starts the one the person
+  /// opened this screen for.
+  Future<void> continueWithNew() async {
+    if (!state.resumed || state.pending != null) return;
+    await refreshQuote();
   }
 
   Future<void> confirm() async {
@@ -135,6 +150,9 @@ final class CheckoutCubit extends Cubit<CheckoutState> {
       // Durable write precedes the only operation that can charge money.
       final reserved = await _store.reserve(pending);
       if (reserved.idempotencyKey != pending.idempotencyKey) {
+        // Another payment took the journal first (another screen or a
+        // restored session); this one was not sent.
+        _resumed = true;
         await _check(reserved);
         _working = false;
         return;
@@ -330,6 +348,8 @@ final class CheckoutCubit extends Cubit<CheckoutState> {
       : const PaymentFailure(PaymentFailureCode.unknown);
 
   void _set(CheckoutState value) {
-    if (!isClosed) emit(value);
+    if (isClosed) return;
+    final resumed = _resumed && value.phase != CheckoutPhase.loadingQuote;
+    emit(resumed ? value.asResumed() : value);
   }
 }

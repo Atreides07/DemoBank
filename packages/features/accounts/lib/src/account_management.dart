@@ -11,20 +11,37 @@ final class ApiAccountManagement implements AccountManagement {
   final _cancellation = RequestCancellation();
   String _path(String id) => '/v1/accounts/${Uri.encodeComponent(id)}';
   String _key(String id) => 'account-profile:$id';
-  @override
-  Future<AccountProfile?> cachedProfile(String accountId) async {
-    final entry = await cache.read(_key(accountId));
-    return entry == null ? null : decodeAccountProfile(entry.value);
+  Future<CardRequisites> cardRequisites(String accountId, String cardId) async {
+    final json = await api.get(
+      '${_path(accountId)}/cards/${Uri.encodeComponent(cardId)}/requisites',
+      cancellation: _cancellation,
+    );
+    if (json['number'] is! String ||
+        json['expiry'] is! String ||
+        json['cvc'] is! String) {
+      throw const FormatException('Invalid card requisites');
+    }
+    return CardRequisites(
+      number: json['number'] as String,
+      expiry: json['expiry'] as String,
+      cvc: json['cvc'] as String,
+    );
   }
 
   @override
+  Future<AccountProfile?> cachedProfile(String accountId) =>
+      cache.readDecoded(_key(accountId), decodeAccountProfile);
+
+  @override
   Future<AccountProfile> profile(String accountId) async {
+    final scoped = cache.pinned();
     final json = await api.get(
       '${_path(accountId)}/profile',
       cancellation: _cancellation,
     );
-    await cache.write(_key(accountId), json);
-    return decodeAccountProfile(json);
+    final profile = decodeAccountProfile(json);
+    await scoped.writeResponse(_key(accountId), json);
+    return profile;
   }
 
   @override
@@ -32,13 +49,15 @@ final class ApiAccountManagement implements AccountManagement {
     String accountId,
     AccountPreferences preferences,
   ) async {
+    final scoped = cache.pinned();
     final json = await api.post(
       '${_path(accountId)}/preferences',
       data: encodeAccountPreferences(preferences),
       cancellation: _cancellation,
     );
-    await cache.write(_key(accountId), json);
-    return decodeAccountProfile(json);
+    final profile = decodeAccountProfile(json);
+    await scoped.writeResponse(_key(accountId), json);
+    return profile;
   }
 
   @override
@@ -113,7 +132,7 @@ final class AccountManagementState {
   final bool stale;
   final AccountManagementProblem? problem;
 
-  /// Details of the failed request when the server explained it.
+  /// The failed request behind [problem], when it reached the network layer.
   final ApiFailure? failure;
 }
 
@@ -128,7 +147,7 @@ final class AccountManagementCubit extends Cubit<AccountManagementState> {
     emit(AccountManagementState(profile: state.profile, loading: true));
     try {
       if (state.profile == null) {
-        final cached = await reader.cachedProfile(accountId);
+        final cached = await _cachedProfile();
         if (isClosed || epoch != _epoch) return;
         if (cached != null) {
           emit(
@@ -148,9 +167,19 @@ final class AccountManagementCubit extends Cubit<AccountManagementState> {
             profile: state.profile,
             stale: state.profile != null,
             problem: AccountManagementProblem.loadFailed,
+            failure: error is ApiFailure ? error : null,
           ),
         );
       }
+    }
+  }
+
+  Future<AccountProfile?> _cachedProfile() async {
+    try {
+      return await reader.cachedProfile(accountId);
+    } catch (error, stackTrace) {
+      addError(error, stackTrace);
+      return null;
     }
   }
 

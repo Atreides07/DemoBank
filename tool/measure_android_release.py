@@ -44,7 +44,7 @@ from typing import Any
 PACKAGE = "dev.demobank.bank_app"
 ACTIVITY = PACKAGE + "/.MainActivity"
 FENCE_PENDING = (1 << 63) - 1
-ROUTES = (("Аналитика", 1), ("Платежи", 2), ("Профиль", 3), ("Главная", 0))
+ROUTES = (("Платежи", 1), ("Аналитика", 2), ("Профиль", 3), ("Главная", 0))
 Frame = tuple[int, int, int]  # desiredPresent, actualPresent, frameReady, ns.
 
 

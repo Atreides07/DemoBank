@@ -288,7 +288,7 @@ Future<void> _analyticsJourney(_Journey journey) async {
   final tester = journey.tester;
   journey.stage = 'analytics period and account filters';
   await journey.navigation('Аналитика');
-  await journey.waitFor(find.byType(DsRankedBars));
+  await journey.reveal(find.text('На что потрачено'));
   await journey.ready();
   await journey.pressText('Прошлый месяц');
   await journey.ready();
@@ -302,6 +302,7 @@ Future<void> _analyticsJourney(_Journey journey) async {
       .widget<DsText>(
         find.byWidgetPredicate(
           (widget) => widget is DsText && widget.text.contains('RUB · Москва'),
+          skipOffstage: false,
         ),
       )
       .text;
@@ -309,9 +310,11 @@ Future<void> _analyticsJourney(_Journey journey) async {
       .widget<DsMetric>(
         find.byWidgetPredicate(
           (widget) => widget is DsMetric && widget.label == 'Расходы за период',
+          skipOffstage: false,
         ),
       )
       .value;
+  await journey.reveal(find.text('На что потрачено'));
   final chart = tester.widget<DsRankedBars>(find.byType(DsRankedBars));
   final index = chart.points.indexWhere((point) => point.id == 'groceries');
   expect(
@@ -407,6 +410,7 @@ Future<void> _analyticsJourney(_Journey journey) async {
           find.byWidgetPredicate(
             (widget) =>
                 widget is DsText && widget.text.contains('RUB · Москва'),
+            skipOffstage: false,
           ),
         )
         .text,
@@ -418,6 +422,7 @@ Future<void> _analyticsJourney(_Journey journey) async {
           find.byWidgetPredicate(
             (widget) =>
                 widget is DsMetric && widget.label == 'Расходы за период',
+            skipOffstage: false,
           ),
         )
         .value,
@@ -440,6 +445,7 @@ Future<void> _analyticsJourney(_Journey journey) async {
 DsChoice _choice(WidgetTester tester, String label) => tester.widget<DsChoice>(
   find.byWidgetPredicate(
     (widget) => widget is DsChoice && widget.label == label,
+    skipOffstage: false,
   ),
 );
 
@@ -570,11 +576,7 @@ final class _Journey {
 
   Future<void> ready() => waitForJourneyReadiness(tester, stage: stage);
 
-  Future<void> reveal(Finder finder) async {
-    await waitFor(finder);
-    await tester.ensureVisible(finder);
-    await tester.pumpAndSettle();
-  }
+  Future<void> reveal(Finder finder) => revealJourneyElement(tester, finder);
 
   Future<void> press(Finder finder) async {
     await reveal(finder);

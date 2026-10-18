@@ -3,6 +3,20 @@ import 'package:ledger_data/ledger_data.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('card identity survives filter changes and separates cached pages', () {
+    final first = LedgerFilter(accounts: ['main'], cardId: 'main-card-0');
+    final second = LedgerFilter(accounts: ['main'], cardId: 'main-card-1');
+    expect(first, isNot(second));
+    expect(first.hashCode, isNot(second.hashCode));
+    expect(first.cacheKey, isNot(second.cacheKey));
+    expect(first.toQuery()['cardId'], 'main-card-0');
+    expect(first.copyWith(category: 'dining').cardId, 'main-card-0');
+    expect(
+      first.copyWith(category: 'dining').toQuery()['cardId'],
+      'main-card-0',
+    );
+  });
+
   test(
     'query carries currency, UTC boundaries, all identities and canonical account membership',
     () {

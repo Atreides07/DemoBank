@@ -85,7 +85,7 @@ class DsArtwork extends StatelessWidget {
           .clamp(1, DsTokens.artworkDecodeLimit);
       return ExcludeSemantics(
         child: Image.asset(
-          'assets/art/${art.file}.png',
+          'assets/art/${art.file}.webp',
           package: DsArtworkSource.of(context),
           fit: fit,
           width: double.infinity,
@@ -387,7 +387,7 @@ class DsBankCards extends StatelessWidget {
   final VoidCallback? onAdd;
   @override
   Widget build(BuildContext context) => SizedBox(
-    height: DsTokens.bankCardHeight,
+    height: kMinInteractiveDimension,
     child: ListView.separated(
       key: PageStorageKey(
         'bank-cards:${cards.map((card) => card.id).join(',')}',
@@ -423,40 +423,48 @@ class DsBankCards extends StatelessWidget {
               context,
             ).card(card.digits, frozen: card.frozen),
             excludeSemantics: true,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Material(
-                color: Colors.black,
-                child: InkWell(
-                  onTap: () => onCard(card.id),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Opacity(
-                        opacity: card.frozen ? .5 : 1,
-                        child: const DsArtwork(DsArt.cardPlastic),
-                      ),
-                      Positioned(
-                        left: 6,
-                        bottom: 5,
-                        child: Text(
-                          card.digits,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                          ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => onCard(card.id),
+                child: Center(
+                  child: SizedBox(
+                    height: DsTokens.bankCardHeight,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: ColoredBox(
+                        color: Colors.black,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            Opacity(
+                              opacity: card.frozen ? .5 : 1,
+                              child: const DsArtwork(DsArt.cardPlastic),
+                            ),
+                            Positioned(
+                              left: 6,
+                              bottom: 5,
+                              child: Text(
+                                card.digits,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ),
+                            if (card.frozen)
+                              const Align(
+                                alignment: Alignment.topRight,
+                                child: Icon(
+                                  Icons.lock_rounded,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
+                              ),
+                          ],
                         ),
                       ),
-                      if (card.frozen)
-                        const Align(
-                          alignment: Alignment.topRight,
-                          child: Icon(
-                            Icons.lock_rounded,
-                            size: 16,
-                            color: Colors.white,
-                          ),
-                        ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -466,6 +474,191 @@ class DsBankCards extends StatelessWidget {
       },
     ),
   );
+}
+
+class DsBankCardCarousel extends StatefulWidget {
+  const DsBankCardCarousel({
+    super.key,
+    required this.cards,
+    required this.selectedId,
+    required this.onCard,
+  });
+  final List<DsBankCardData> cards;
+  final String selectedId;
+  final ValueChanged<String>? onCard;
+
+  @override
+  State<DsBankCardCarousel> createState() => _DsBankCardCarouselState();
+}
+
+class _DsBankCardCarouselState extends State<DsBankCardCarousel> {
+  late int _selected = _index;
+  late final _controller = PageController(
+    initialPage: _selected,
+    viewportFraction: .88,
+  );
+  int get _index => widget.cards
+      .indexWhere((c) => c.id == widget.selectedId)
+      .clamp(0, widget.cards.isEmpty ? 0 : widget.cards.length - 1);
+
+  @override
+  void didUpdateWidget(covariant DsBankCardCarousel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_selected != _index) {
+      _selected = _index;
+      if (_controller.hasClients) _controller.jumpToPage(_selected);
+    }
+  }
+
+  void _select(int index) {
+    _controller.animateToPage(
+      index,
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.cards.isEmpty) return const SizedBox.shrink();
+    return Column(
+      children: [
+        LayoutBuilder(
+          builder: (context, constraints) => SizedBox(
+            height: constraints.maxWidth * .88 * .65,
+            child: PageView.builder(
+              controller: _controller,
+              physics: widget.onCard == null
+                  ? const NeverScrollableScrollPhysics()
+                  : null,
+              itemCount: widget.cards.length,
+              onPageChanged: (index) {
+                setState(() => _selected = index);
+                widget.onCard?.call(widget.cards[index].id);
+              },
+              itemBuilder: (context, index) {
+                final card = widget.cards[index];
+                return AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, child) {
+                    final page =
+                        _controller.hasClients &&
+                            _controller.position.hasContentDimensions
+                        ? _controller.page ?? _selected.toDouble()
+                        : _selected.toDouble();
+                    final distance = (page - index).abs().clamp(0.0, 1.0);
+                    return Transform.scale(
+                      scale: 1 - .14 * distance,
+                      alignment: index < page
+                          ? Alignment.centerRight
+                          : Alignment.centerLeft,
+                      child: child,
+                    );
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    child: Semantics(
+                      selected: index == _selected,
+                      label: DsLocalizations.of(
+                        context,
+                      ).card(card.digits, frozen: card.frozen),
+                      excludeSemantics: true,
+                      child: Material(
+                        color: Colors.black,
+                        borderRadius: BorderRadius.circular(16),
+                        clipBehavior: Clip.antiAlias,
+                        child: InkWell(
+                          onTap: widget.onCard == null
+                              ? null
+                              : () => _select(index),
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              Opacity(
+                                opacity: card.frozen ? .5 : 1,
+                                child: const DsArtwork(DsArt.cardPlastic),
+                              ),
+                              Positioned(
+                                left: 16,
+                                bottom: 16,
+                                child: Text(
+                                  card.digits,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 22,
+                                  ),
+                                ),
+                              ),
+                              if (card.frozen)
+                                const Positioned(
+                                  right: 16,
+                                  top: 16,
+                                  child: Icon(
+                                    Icons.lock_rounded,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var i = 0; i < widget.cards.length; i++)
+                Semantics(
+                  selected: i == _selected,
+                  label: DsLocalizations.of(context).card(
+                    widget.cards[i].digits,
+                    frozen: widget.cards[i].frozen,
+                  ),
+                  value: '${i + 1}/${widget.cards.length}',
+                  child: SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: InkResponse(
+                      onTap: widget.onCard == null ? null : () => _select(i),
+                      child: Center(
+                        child: AnimatedContainer(
+                          duration: MediaQuery.disableAnimationsOf(context)
+                              ? Duration.zero
+                              : const Duration(milliseconds: 200),
+                          width: i == _selected ? 20 : 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: i == _selected
+                                ? context.dsPalette.ink
+                                : context.dsPalette.border,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class DsAccountProduct extends StatelessWidget {

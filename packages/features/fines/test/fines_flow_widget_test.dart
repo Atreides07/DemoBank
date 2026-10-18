@@ -30,6 +30,29 @@ Future<void> _settle(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> _reveal(WidgetTester tester, Finder finder) async {
+  if (finder.evaluate().isEmpty) {
+    final scrollable = find
+        .descendant(
+          of: find.byType(CustomScrollView).last,
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    tester.state<ScrollableState>(scrollable).position.jumpTo(0);
+    await _settle(tester);
+    if (finder.evaluate().isEmpty) {
+      await tester.scrollUntilVisible(
+        finder,
+        250,
+        scrollable: scrollable,
+        maxScrolls: 40,
+      );
+    }
+  }
+  await tester.ensureVisible(finder);
+  await _settle(tester);
+}
+
 void main() {
   testWidgets('document → fine → confirmation → receipt → paid list', (
     tester,
@@ -71,7 +94,13 @@ void main() {
     await tester.enterText(find.byType(TextField), '7712345678');
     await tester.tap(find.text('Найти штрафы'));
     await _settle(tester);
-    await tester.ensureVisible(find.text('Превышение скорости'));
+    await tester.enterText(find.byType(TextField), '8812345678');
+    await _settle(tester);
+    expect(find.text('Превышение скорости'), findsNothing);
+    await tester.enterText(find.byType(TextField), '7712345678');
+    await tester.tap(find.text('Найти штрафы'));
+    await _settle(tester);
+    await _reveal(tester, find.text('Превышение скорости'));
     await _settle(tester);
     await tester.tap(find.text('Превышение скорости'));
     await _settle(tester);
@@ -86,7 +115,7 @@ void main() {
     );
     await tester.tap(find.text('Превышение скорости'));
     await _settle(tester);
-    await tester.ensureVisible(find.text('Перейти к оплате'));
+    await _reveal(tester, find.text('Перейти к оплате'));
     await _settle(tester);
     await tester.tap(find.text('Перейти к оплате'));
     await _settle(tester);
@@ -99,10 +128,10 @@ void main() {
       ),
       isEmpty,
     );
-    await tester.ensureVisible(find.text('Перейти к оплате'));
+    await _reveal(tester, find.text('Перейти к оплате'));
     await tester.tap(find.text('Перейти к оплате'));
     await _settle(tester);
-    await tester.ensureVisible(find.text('Подтвердить оплату'));
+    await _reveal(tester, find.text('Подтвердить оплату'));
     await _settle(tester);
     await tester.tap(find.text('Подтвердить оплату'));
     await tester.tap(find.text('Подтвердить оплату'));
@@ -119,7 +148,7 @@ void main() {
       ),
       hasLength(1),
     );
-    await tester.ensureVisible(find.text('Готово'));
+    await _reveal(tester, find.text('Готово'));
     await _settle(tester);
     await tester.tap(find.text('Готово'));
     await _settle(tester);
@@ -166,7 +195,7 @@ void main() {
       );
       await _settle(tester);
       await tester.enterText(find.byType(TextField), '0000000000');
-      await tester.ensureVisible(find.text('Найти штрафы'));
+      await _reveal(tester, find.text('Найти штрафы'));
       await _settle(tester);
       await tester.tap(find.text('Найти штрафы'));
       await _settle(tester);

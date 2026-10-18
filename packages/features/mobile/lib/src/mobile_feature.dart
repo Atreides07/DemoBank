@@ -211,7 +211,9 @@ final class _MobileScreenState extends State<_MobileScreen> {
         null => null,
         MobilePhoneProblem.characters => l10n.mobilePhoneCharacters,
         MobilePhoneProblem.length => l10n.mobilePhoneLength,
-        MobilePhoneProblem.lookupFailed =>
-          state.lookupFailure?.serverMessage ?? l10n.mobileLookupFailed,
+        MobilePhoneProblem.lookupFailed => l10n.loadFailure(
+          state.lookupFailure,
+          l10n.mobileLookupFailed,
+        ),
       };
 }

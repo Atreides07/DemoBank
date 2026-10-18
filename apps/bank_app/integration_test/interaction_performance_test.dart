@@ -17,6 +17,7 @@ import 'package:spending_analytics/spending_analytics.dart';
 import 'package:transactions/transactions.dart';
 
 import 'support/profile_trace_storage.dart';
+import 'support/journey_readiness.dart';
 
 /// Separate from the 60-second scroll gate. Run on the same physical Android:
 /// flutter drive --profile --no-dds --driver=test_driver/interaction_performance_driver.dart
@@ -278,6 +279,7 @@ Future<void> _analytics(WidgetTester tester, _Probe probe) async {
     'timePoints': overview.state.summary!.timeline.length,
   });
   final rankedFinder = find.byType(DsRankedBars, skipOffstage: false);
+  await _reveal(tester, find.text('На что потрачено', skipOffstage: false));
   var ranked = tester.widget<DsRankedBars>(rankedFinder);
   final categoryIndex = ranked.points.indexWhere((point) => point.value > 0);
   expect(categoryIndex, isNonNegative);
@@ -304,7 +306,7 @@ Future<void> _analytics(WidgetTester tester, _Probe probe) async {
   expect(_overviewScroll(tester), closeTo(categoryScroll, 2));
 
   final chartFinder = find.byType(DsBarChart, skipOffstage: false);
-  await _reveal(tester, chartFinder);
+  await _reveal(tester, find.text('Динамика расходов', skipOffstage: false));
   final chart = tester.widget<DsBarChart>(chartFinder);
   final point = chart.points.firstWhere((point) => point.value > 0);
   await _reveal(
@@ -541,34 +543,8 @@ Future<void> _settle(WidgetTester tester) => tester
     )
     .then((_) {});
 Future<void> _reveal(WidgetTester tester, Finder finder) async {
-  if (finder.evaluate().isEmpty) {
-    // A lazy child cannot be found by waiting for a frame at the same offset.
-    // Scroll only the active route; hidden IndexedStack pages must stay put.
-    final scrollable = find.byWidgetPredicate(
-      (widget) =>
-          widget is Scrollable &&
-          axisDirectionToAxis(widget.axisDirection) == Axis.vertical,
-    );
-    await tester.scrollUntilVisible(
-      finder,
-      240,
-      scrollable: scrollable.first,
-      maxScrolls: 40,
-    );
-  }
-  if (finder.hitTestable().evaluate().isEmpty) {
-    await Scrollable.ensureVisible(
-      tester.element(finder),
-      alignment: .5,
-      duration: const Duration(milliseconds: 240),
-    );
-  }
+  await revealJourneyElement(tester, finder);
   await _settle(tester);
-  expect(
-    finder.hitTestable(),
-    findsOneWidget,
-    reason: 'Interaction setup must expose the real control before tracing.',
-  );
 }
 
 double _ms(Duration value) => value.inMicroseconds / 1000;
@@ -678,6 +654,8 @@ final class _Probe {
         settledMs = _ms(measured!.watch.elapsed);
         sample();
         lastFrame = binding.platformDispatcher.frameData.frameNumber;
+        // Drain the in-flight raster before timeline export/compression.
+        await tester.pump(const Duration(seconds: 1));
       },
       streams: ['Dart', 'Embedder', 'GC'],
       reportKey: 'interaction_$name',

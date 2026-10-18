@@ -2039,4 +2039,98 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get qrSampleTopUp => 'Пример · пополнение счёта';
+
+  @override
+  String get checkoutPreviousPaymentTitle =>
+      'Сначала завершим предыдущий платёж';
+
+  @override
+  String get checkoutPreviousPaymentMessage =>
+      'Предыдущая оплата ещё не подтверждена, поэтому новая не отправлена. Ниже — её статус. Когда он станет окончательным, можно продолжить новый платёж.';
+
+  @override
+  String get checkoutContinueNew => 'Перейти к новому платежу';
+
+  @override
+  String get accountListUnavailable => 'Не удалось загрузить счета';
+
+  @override
+  String get operationRecipientsUnavailable =>
+      'Не удалось загрузить контакты. Ничего не отправлено — повторите попытку.';
+
+  @override
+  String get operationLoadingContacts => 'Загружаем контакты';
+
+  @override
+  String get cardDetails => 'Реквизиты карты';
+
+  @override
+  String get cardFreeze => 'Заморозить';
+
+  @override
+  String get cardUnfreeze => 'Разморозить';
+
+  @override
+  String get cardLimits => 'Лимиты';
+
+  @override
+  String get cardLinkedAccount => 'Связанный счёт';
+
+  @override
+  String get cardSharedBalance => 'Доступно на общем счёте';
+
+  @override
+  String get cardSharedBalanceHint =>
+      'Это общий баланс для всех карт этого счёта.';
+
+  @override
+  String get cardTransactions => 'Операции по карте';
+
+  @override
+  String get cardAllTransactions => 'Все операции по карте';
+
+  @override
+  String get cardNoTransactions => 'По этой карте пока нет операций';
+
+  @override
+  String get cardTransactionsFailed => 'Не удалось загрузить операции карты';
+
+  @override
+  String get cardNumber => 'Номер карты';
+
+  @override
+  String get cardExpiry => 'Срок действия';
+
+  @override
+  String get cardCopyNumber => 'Скопировать номер';
+
+  @override
+  String get cardDemoDetails =>
+      'Демонстрационные реквизиты. Не подходят для реальных платежей.';
+
+  @override
+  String get cardDetailsFailed => 'Не удалось загрузить реквизиты карты';
+
+  @override
+  String get cardMonthlyLimit => 'Лимит покупок в месяц';
+
+  @override
+  String get cardLimitHint =>
+      'Лимит действует только для выбранной карты. Ноль запрещает покупки.';
+
+  @override
+  String get cardLimitInvalid => 'Введите сумму от 0 до 9 999 999,99';
+
+  @override
+  String get cardSaveLimit => 'Сохранить лимит';
+
+  @override
+  String get cardLimitUnavailable => 'Лимит карты недоступен';
+
+  @override
+  String get cardFreezeTitle => 'Заморозить эту карту?';
+
+  @override
+  String get cardFreezeDescription =>
+      'Заморозка обратима и касается только выбранной карты. Счёт и остальные карты останутся доступны.';
 }

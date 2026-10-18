@@ -15,7 +15,16 @@ enum DsStatusKind { loading, empty, error, success, info }
 
 enum DsDensity { comfortable, compact }
 
-enum DsInset { none, page, horizontal, card, compact, section, listHeader }
+enum DsInset {
+  none,
+  page,
+  horizontal,
+  card,
+  compact,
+  section,
+  listHeader,
+  bottomSheet,
+}
 
 /// Icon meaning is shared across features; screens choose a purpose, never a
 /// font, drawing size, or ad-hoc icon variant.
@@ -23,6 +32,7 @@ abstract final class DsIcons {
   static const search = Icons.search_rounded;
   static const receipt = Icons.receipt_long_outlined;
   static const home = Icons.home_outlined;
+  static const bank = Icons.account_balance_outlined;
   static const cinema = Icons.movie_outlined;
   static const schedule = Icons.schedule_rounded;
   static const success = Icons.check_circle_outline_rounded;
@@ -56,6 +66,8 @@ abstract final class DsIcons {
   static const link = Icons.link_rounded;
   static const copy = Icons.copy_rounded;
   static const lock = Icons.lock_outline_rounded;
+  static const unlock = Icons.lock_open_rounded;
+  static const freeze = Icons.ac_unit_rounded;
   static const investments = Icons.work_outline_rounded;
   static const currencyUsd = Icons.attach_money_rounded;
   static const currencyGbp = Icons.currency_pound_rounded;
@@ -90,8 +102,8 @@ abstract final class DsTokens {
   static const referenceHomeCollapsed = 60.0;
   static const referenceAccountExpanded = 280.0;
   static const referenceAccountCollapsed = 72.0;
-  static const bankCardWidth = 80.0;
-  static const bankCardHeight = 52.0;
+  static const bankCardWidth = 56.0;
+  static const bankCardHeight = 36.4;
   static const controlRadius = 14.0;
   static const pillRadius = 100.0;
   static const borderWidth = 1.0;
@@ -160,6 +172,12 @@ abstract final class DsTokens {
   static EdgeInsets inset(BuildContext context, DsInset value) =>
       switch (value) {
         DsInset.none => EdgeInsets.zero,
+        DsInset.bottomSheet => EdgeInsets.fromLTRB(
+          space(DsSpace.page),
+          0,
+          space(DsSpace.page),
+          space(DsSpace.page) + MediaQuery.viewInsetsOf(context).bottom,
+        ),
         DsInset.page => EdgeInsets.all(pagePadding(context)),
         DsInset.horizontal => EdgeInsets.symmetric(
           horizontal: pagePadding(context),

@@ -92,11 +92,10 @@ final class _CheckoutViewState extends State<CheckoutView> {
         final l10n = context.l10n;
         final formats = context.formats;
         return DsPage(
-          onBack: switch (state.phase) {
-            CheckoutPhase.loadingQuote ||
-            CheckoutPhase.review => widget.onBack ?? widget.onFinished,
-            _ => widget.onFinished,
-          },
+          onBack: _back(state),
+          // Leaving while the request is on its way would hide its outcome;
+          // the journal keeps it, but the person should see it settle.
+          backEnabled: state.phase != CheckoutPhase.submitting,
           title: switch (state.phase) {
             CheckoutPhase.succeeded =>
               state.payment?.ticket == null
@@ -108,6 +107,11 @@ final class _CheckoutViewState extends State<CheckoutView> {
           },
           subtitle: l10n.commonDemoDisclaimer,
           children: [
+            if (state.resumed)
+              DsStatus(
+                title: l10n.checkoutPreviousPaymentTitle,
+                message: l10n.checkoutPreviousPaymentMessage,
+              ),
             if (state.quote case final quote?)
               DsPaymentSummary(
                 title: quote.recipient,
@@ -199,7 +203,18 @@ final class _CheckoutViewState extends State<CheckoutView> {
       ),
       if (state.payment?.ticket case final ticket?)
         DsCard(child: DsText(ticket, style: DsTextStyle.title)),
-      DsButton(label: l10n.commonDone, onPressed: widget.onFinished),
+      if (_canContinueWithNew(state))
+        DsButton(
+          label: l10n.checkoutContinueNew,
+          onPressed: _controller.continueWithNew,
+        ),
+      DsButton(
+        label: l10n.commonDone,
+        onPressed: widget.onFinished,
+        variant: _canContinueWithNew(state)
+            ? DsButtonVariant.quiet
+            : DsButtonVariant.primary,
+      ),
     ],
     CheckoutPhase.failed => [
       DsStatus(
@@ -209,25 +224,43 @@ final class _CheckoutViewState extends State<CheckoutView> {
           null => null,
         },
         kind: DsStatusKind.error,
-        action: switch (state.failure?.code) {
-          PaymentFailureCode.seatConflict ||
-          PaymentFailureCode.billStale => DsButton(
-            label: l10n.checkoutRefreshSelection,
-            onPressed: widget.onFinished,
-          ),
-          PaymentFailureCode.storage ||
-          PaymentFailureCode.journalUnreadable ||
-          PaymentFailureCode.journalDiscardFailed => DsButton(
-            label: l10n.checkoutRecheck,
-            onPressed: _controller.restore,
-          ),
-          _ => DsButton(
-            label: l10n.checkoutRefreshTerms,
-            onPressed: widget.intent == null
-                ? _controller.restore
-                : _controller.refreshQuote,
-          ),
-        },
+        action: _canContinueWithNew(state)
+            ? DsButton(
+                label: l10n.checkoutContinueNew,
+                onPressed: _controller.continueWithNew,
+              )
+            : switch (state.failure?.code) {
+                PaymentFailureCode.seatConflict ||
+                PaymentFailureCode.billStale => DsButton(
+                  label: l10n.checkoutRefreshSelection,
+                  onPressed: widget.onFinished,
+                ),
+                PaymentFailureCode.storage ||
+                PaymentFailureCode.journalUnreadable ||
+                PaymentFailureCode.journalDiscardFailed => DsButton(
+                  label: l10n.checkoutRecheck,
+                  onPressed: widget.intent == null
+                      ? _controller.restore
+                      : _controller.refreshQuote,
+                ),
+                // Fresh terms cannot fix these: the details or the balance
+                // have to change first.
+                PaymentFailureCode.insufficientFunds ||
+                PaymentFailureCode.validation ||
+                PaymentFailureCode.declined => switch (widget.onBack) {
+                  final onBack? => DsButton(
+                    label: l10n.checkoutChangeDetails,
+                    onPressed: onBack,
+                  ),
+                  null => null,
+                },
+                _ => DsButton(
+                  label: l10n.checkoutRefreshTerms,
+                  onPressed: widget.intent == null
+                      ? _controller.restore
+                      : _controller.refreshQuote,
+                ),
+              },
       ),
       if (state.failure?.code == PaymentFailureCode.journalUnreadable)
         DsButton(
@@ -237,10 +270,25 @@ final class _CheckoutViewState extends State<CheckoutView> {
         ),
       DsButton(
         label: l10n.commonBack,
-        onPressed: widget.onFinished,
+        onPressed: _back(state),
         variant: DsButtonVariant.quiet,
       ),
     ],
+  };
+
+  /// The resolved earlier payment no longer blocks the one this screen was
+  /// opened for.
+  bool _canContinueWithNew(CheckoutState state) =>
+      state.resumed && state.pending == null && widget.intent != null;
+
+  /// Before anything was charged, back returns to the details the person
+  /// entered; once a payment exists, the flow is finished.
+  VoidCallback _back(CheckoutState state) => switch (state.phase) {
+    CheckoutPhase.loadingQuote ||
+    CheckoutPhase.review => widget.onBack ?? widget.onFinished,
+    CheckoutPhase.failed when state.payment == null && !state.resumed =>
+      widget.onBack ?? widget.onFinished,
+    _ => widget.onFinished,
   };
 }
 

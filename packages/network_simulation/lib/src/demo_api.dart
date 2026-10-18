@@ -172,6 +172,10 @@ final class DemoApi {
         'categoryId': category,
         'merchantId': '$category-$merchantIndex',
         'accountId': index % 5 == 0 ? 'savings' : 'main',
+        if (kind == 'expense' || kind == 'refund')
+          'cardId': index % 5 == 0
+              ? 'savings-card-0'
+              : 'main-card-${const [0, 1, 3, 4, 5][(index ~/ 5) % 5]}',
         'kind': kind,
         'status': status,
       });
@@ -420,6 +424,7 @@ final class DemoApi {
           return (fromUs == null || instant >= fromUs) &&
               (toUs == null || instant < toUs) &&
               (accounts == null || accounts.contains(item['accountId'])) &&
+              (query['cardId'] == null || query['cardId'] == item['cardId']) &&
               (query['category'] == null ||
                   query['category'] == item['categoryId']) &&
               (query['merchant'] == null ||

@@ -18,22 +18,28 @@ void main() {
 
   group('money', () {
     test('keeps every kopeck and follows the language', () {
-      expect(ru.money(const Money(123456789)), '1${_nbsp}234${_nbsp}567,89 ₽');
+      expect(
+        ru.money(const Money(123456789)),
+        '1${_nbsp}234${_nbsp}567,89$_nbsp₽',
+      );
       expect(en.money(const Money(123456789)), '₽1,234,567.89');
-      expect(uz.money(const Money(123456789)), '1${_nbsp}234${_nbsp}567,89 ₽');
-      expect(ru.money(const Money(1000)), '10 ₽');
+      expect(
+        uz.money(const Money(123456789)),
+        '1${_nbsp}234${_nbsp}567,89$_nbsp₽',
+      );
+      expect(ru.money(const Money(1000)), '10$_nbsp₽');
       expect(en.money(const Money(1)), '₽0.01');
     });
 
     test('names the sum in each language', () {
       const sum = Money(1275000000, currency: 'UZS');
-      expect(ru.money(sum), '12${_nbsp}750${_nbsp}000 сум');
-      expect(uz.money(sum), '12${_nbsp}750${_nbsp}000 soʻm');
-      expect(en.money(sum), 'UZS 12,750,000');
+      expect(ru.money(sum), '12${_nbsp}750${_nbsp}000$_nbspсум');
+      expect(uz.money(sum), '12${_nbsp}750${_nbsp}000${_nbsp}soʻm');
+      expect(en.money(sum), 'UZS${_nbsp}12,750,000');
     });
 
     test('uses a typographic minus and an explicit plus on request', () {
-      expect(ru.money(const Money(-5000)), '${AppFormats.minus}50 ₽');
+      expect(ru.money(const Money(-5000)), '${AppFormats.minus}50$_nbsp₽');
       expect(en.money(const Money(5000), signed: true), '+₽50');
       expect(en.money(const Money(0), signed: true), '₽0');
     });
@@ -53,7 +59,7 @@ void main() {
       );
       expect(en.entryAmount(entry(EntryKind.expense, 1000)), '−₽10');
       expect(en.entryAmount(entry(EntryKind.refund, 1000)), '+₽10');
-      expect(ru.entryAmount(entry(EntryKind.transfer, -1000)), '−10 ₽');
+      expect(ru.entryAmount(entry(EntryKind.transfer, -1000)), '−10$_nbsp₽');
     });
   });
 
@@ -62,6 +68,17 @@ void main() {
     expect(en.percent(12.4, signed: true), '+12.4%');
     expect(uz.percent(-3), '${AppFormats.minus}3,0%');
     expect(en.percent(30, fractionDigits: 0), '30%');
+  });
+
+  test('reused formatters preserve locale and percentage precision', () {
+    for (var i = 0; i < 3; i++) {
+      expect(en.percent(12.345, fractionDigits: 2), '12.35%');
+      expect(ru.percent(12.345, fractionDigits: 0), '12$_nbsp%');
+      expect(en.percent(12.345), '12.3%');
+      expect(ru.percent(12.345, fractionDigits: 2), '12,35$_nbsp%');
+      expect(en.date(DateTime(2026, 10, 18)), '10/18/2026');
+      expect(ru.date(DateTime(2026, 10, 19)), '19.10.2026');
+    }
   });
 
   test('reporting instants are shown in Moscow time', () {
@@ -89,6 +106,8 @@ void main() {
       expect(uz.parseAmount('15000'), 1500000);
       expect(en.parseAmount('1,234.05'), 123405);
       expect(en.parseAmount('0.01'), 1);
+      expect(en.parseAmount('12,500'), 1250000);
+      expect(en.parseAmount('1,234,567.5'), 123456750);
     });
 
     test('reject what is not an amount', () {
@@ -96,6 +115,32 @@ void main() {
         expect(ru.parseAmount(value), isNull, reason: value);
       }
       expect(ru.parseAmount('1234567', maxIntegerDigits: 6), isNull);
+    });
+
+    test('an English comma that is not grouping is not silently dropped', () {
+      // `12,5` would otherwise become 125 — ten times the intended amount.
+      for (final value in [
+        '12,5',
+        '1,23',
+        '1,2345',
+        ',500',
+        '1,,000',
+        '12,50',
+      ]) {
+        expect(en.parseAmount(value), isNull, reason: value);
+      }
+    });
+
+    test('a parsed amount round-trips through the input format', () {
+      for (final language in [ru, en, uz]) {
+        for (final minor in [1, 50, 15550, 123456789]) {
+          expect(
+            language.parseAmount(language.amountInput(minor)),
+            minor,
+            reason: '${language.languageCode} $minor',
+          );
+        }
+      }
     });
 
     test('are written back with the language separator', () {

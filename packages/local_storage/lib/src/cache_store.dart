@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 
 import 'cache_factory_native.dart'
     if (dart.library.js_interop) 'cache_factory_web.dart'
@@ -71,8 +72,43 @@ abstract class CacheStore {
   Future<void> close();
 }
 
+/// A store whose keys depend on a changing context, such as the content
+/// language of responses.
+abstract interface class ScopedCacheStore implements CacheStore {
+  /// A view bound to the current context. A response requested now must be
+  /// written through it: if the context changes while the request is in
+  /// flight, the late response stays under the context it was asked in.
+  CacheStore pinned();
+}
+
+extension CacheStoreScope on CacheStore {
+  /// The store bound to the context of a request that starts now; a plain
+  /// store is returned as it is.
+  CacheStore pinned() => switch (this) {
+    final ScopedCacheStore scoped => scoped.pinned(),
+    _ => this,
+  };
+}
+
 /// Reading a cached representation is an optimization, never a prerequisite.
 extension CacheStoreDecoding on CacheStore {
+  /// Optional response caching only; recovery journals must use [write].
+  Future<void> writeResponse(
+    String key,
+    Map<String, dynamic> value, {
+    String? revision,
+  }) async {
+    try {
+      await write(key, value, revision: revision);
+    } on Object catch (error) {
+      developer.log(
+        'Response cache write failed: ${error.runtimeType}',
+        name: 'demobank',
+        level: 900,
+      );
+    }
+  }
+
   /// Returns `null` for a miss. A stored value that [decode] rejects with a
   /// [FormatException] (an older app version, a partial write, a malformed
   /// response) is deleted and also reported as a miss, so a bad cache entry

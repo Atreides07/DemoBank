@@ -21,13 +21,23 @@ final class AnalyticsState {
 }
 
 final class AnalyticsCubit extends Cubit<AnalyticsState> {
-  AnalyticsCubit(this.reader, {required LedgerFilter filter})
-    : super(AnalyticsState(filter: filter));
+  AnalyticsCubit(AnalyticsReader reader, {required LedgerFilter filter})
+    : reader = reader is ScopedAnalyticsReader ? reader.createScope() : reader,
+      super(AnalyticsState(filter: filter));
   final AnalyticsReader reader;
   int _epoch = 0;
+  LedgerFilter? _failedFilter;
+
+  Future<void> retry() async {
+    if (state.loading) return;
+    await load(filter: _failedFilter ?? state.filter);
+  }
+
   Future<void> load({LedgerFilter? filter}) async {
-    final epoch = ++_epoch;
     final query = filter ?? state.filter;
+    final epoch = ++_epoch;
+    _failedFilter = null;
+    if (reader case final ScopedAnalyticsReader scoped) scoped.cancelPending();
     emit(
       AnalyticsState(
         filter: state.filter,
@@ -59,6 +69,7 @@ final class AnalyticsCubit extends Cubit<AnalyticsState> {
     } catch (error, stackTrace) {
       addError(error, stackTrace);
       if (!isClosed && epoch == _epoch) {
+        _failedFilter = query;
         emit(
           AnalyticsState(
             filter: state.filter,
@@ -69,6 +80,13 @@ final class AnalyticsCubit extends Cubit<AnalyticsState> {
         );
       }
     }
+  }
+
+  @override
+  Future<void> close() {
+    _epoch++;
+    if (reader case final ScopedAnalyticsReader scoped) scoped.cancelPending();
+    return super.close();
   }
 
   /// The cache only speeds up the first frame; its failure never skips the

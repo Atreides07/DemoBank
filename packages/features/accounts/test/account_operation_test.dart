@@ -23,11 +23,15 @@ class _Reader implements AccountManagement {
   final sent = <AccountOperation>[];
   Completer<AccountOperationResult>? pending;
   bool reject = false;
+  AccountOperationResult? result;
+  bool recipientsOffline = false;
+  int recipientRequests = 0;
   @override
   Future<AccountOperationResult> execute(AccountOperation op) async {
     sent.add(op);
     if (reject) throw const AccountOperationRejected('Недостаточно средств');
     if (pending != null) return pending!.future;
+    if (result != null) return result!;
     if (sent.length == 1) throw StateError('response lost after commit');
     return AccountOperationResult(
       id: 'one',
@@ -37,9 +41,19 @@ class _Reader implements AccountManagement {
   }
 
   @override
-  Future<List<AccountRecipient>> recipients(String accountId) async => const [
-    AccountRecipient(id: 'anna', name: 'Анна', bank: 'Демо', phone: '+7 (000)'),
-  ];
+  Future<List<AccountRecipient>> recipients(String accountId) async {
+    recipientRequests++;
+    if (recipientsOffline) throw StateError('server unavailable');
+    return const [
+      AccountRecipient(
+        id: 'anna',
+        name: 'Анна',
+        bank: 'Демо',
+        phone: '+7 (000)',
+      ),
+    ];
+  }
+
   @override
   Future<AccountProfile?> cachedProfile(String id) async => null;
   @override
@@ -51,7 +65,96 @@ class _Reader implements AccountManagement {
   void close() {}
 }
 
+/// Contacts are unreachable until [online] is set.
+class _OfflineContacts extends _Reader {
+  bool online = false;
+  @override
+  Future<List<AccountRecipient>> recipients(String accountId) async {
+    if (!online) throw StateError('offline');
+    return super.recipients(accountId);
+  }
+}
+
 void main() {
+  for (final (index, result) in const [
+    AccountOperationResult(id: 'one', requestId: 'wrong', amount: Money(100)),
+    AccountOperationResult(id: 'one', requestId: 'key', amount: Money(999)),
+    AccountOperationResult(
+      id: 'one',
+      requestId: 'key',
+      amount: Money(100, currency: 'USD'),
+    ),
+    AccountOperationResult(id: '', requestId: 'key', amount: Money(100)),
+  ].indexed) {
+    test(
+      'inconsistent operation result retains the original journal: $index',
+      () async {
+        final store = MemoryCacheStore();
+        addTearDown(store.close);
+        final journal = CachedAccountOperationJournal(store);
+        final cubit = AccountOperationCubit(
+          reader: _Reader()..result = result,
+          account: mainAccount,
+          kind: AccountOperationKind.topUp,
+          accounts: const [mainAccount],
+          nextId: () => 'key',
+          journal: journal,
+        );
+        addTearDown(cubit.close);
+        await cubit.restore();
+        cubit.review(100, null);
+        expect(await cubit.submit(), isFalse);
+        expect(cubit.state.problem, AccountOperationProblem.resultUnknown);
+        expect(cubit.canEdit, isFalse);
+        expect((await journal.load('main'))!.requestId, 'key');
+      },
+    );
+  }
+
+  test(
+    'recipient failure is retryable and never blocks a restored transfer',
+    () async {
+      final store = MemoryCacheStore();
+      addTearDown(store.close);
+      final journal = CachedAccountOperationJournal(store);
+      final reader = _Reader()..recipientsOffline = true;
+      final cubit = AccountOperationCubit(
+        reader: reader,
+        account: mainAccount,
+        kind: AccountOperationKind.phoneTransfer,
+        accounts: const [mainAccount],
+        nextId: () => 'key',
+        journal: journal,
+      );
+      addTearDown(cubit.close);
+      await cubit.restore();
+      expect(
+        cubit.state.problem,
+        AccountOperationProblem.recipientsUnavailable,
+      );
+      reader.recipientsOffline = false;
+      await cubit.restore();
+      expect(cubit.state.step, AccountOperationStep.editing);
+      expect(cubit.recipients.single.id, 'anna');
+      await journal.reserve(
+        const AccountOperation(
+          requestId: 'saved',
+          accountId: 'main',
+          kind: AccountOperationKind.phoneTransfer,
+          destinationId: 'anna',
+          amount: Money(100),
+        ),
+      );
+      reader.recipientsOffline = true;
+      final requests = reader.recipientRequests;
+      await cubit.restore();
+      expect(reader.recipientRequests, requests);
+      expect(cubit.state.operation!.requestId, 'saved');
+      expect(cubit.state.problem, AccountOperationProblem.restored);
+      expect(cubit.canEdit, isFalse);
+    },
+  );
+
   test(
     'lost response restores same key after route and process restart',
     () async {
@@ -232,4 +335,62 @@ void main() {
     expect(reader.sent, isEmpty);
     await cubit.close();
   });
+
+  test('unreachable contacts are not reported as a damaged journal', () async {
+    final cache = MemoryCacheStore();
+    addTearDown(cache.close);
+    final reader = _OfflineContacts();
+    final cubit = AccountOperationCubit(
+      reader: reader,
+      account: mainAccount,
+      kind: AccountOperationKind.phoneTransfer,
+      accounts: const [mainAccount, savings],
+      nextId: () => 'key',
+      journal: CachedAccountOperationJournal(cache),
+    );
+    await cubit.restore();
+    expect(cubit.state.step, AccountOperationStep.editing);
+    expect(cubit.state.problem, AccountOperationProblem.recipientsUnavailable);
+    expect(cubit.recipients, isEmpty);
+
+    reader.online = true;
+    await cubit.retryRecipients();
+    expect(cubit.state.step, AccountOperationStep.editing);
+    expect(cubit.state.problem, isNull);
+    expect(cubit.recipients.single.id, 'anna');
+    cubit.review(100, 'anna');
+    expect(cubit.state.step, AccountOperationStep.review);
+    await cubit.close();
+  });
+
+  test(
+    'a saved request is restored even when contacts are unreachable',
+    () async {
+      final cache = MemoryCacheStore();
+      addTearDown(cache.close);
+      final journal = CachedAccountOperationJournal(cache);
+      await journal.reserve(
+        const AccountOperation(
+          requestId: 'saved',
+          kind: AccountOperationKind.phoneTransfer,
+          accountId: 'main',
+          amount: Money(500),
+          destinationId: 'anna',
+        ),
+      );
+      final cubit = AccountOperationCubit(
+        reader: _OfflineContacts(),
+        account: mainAccount,
+        kind: AccountOperationKind.phoneTransfer,
+        accounts: const [mainAccount, savings],
+        nextId: () => 'new',
+        journal: journal,
+      );
+      await cubit.restore();
+      expect(cubit.state.step, AccountOperationStep.review);
+      expect(cubit.state.operation?.requestId, 'saved');
+      expect(cubit.state.problem, AccountOperationProblem.restored);
+      await cubit.close();
+    },
+  );
 }

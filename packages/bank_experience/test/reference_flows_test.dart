@@ -283,6 +283,110 @@ void main() {
     },
   );
   testWidgets(
+    'card preview is reused on return and refreshed after data changes',
+    (tester) async {
+      final requests = <String>[];
+      final backend = DemoApi(
+        routes: [
+          (r) async {
+            if (r.path == '/transactions' && r.query['cardId'] != null) {
+              requests.add(r.query['cardId']!);
+            }
+            return null;
+          },
+        ],
+      );
+      final e = await _open(tester, api: backend);
+      final router = _router(tester);
+      unawaited(router.push('/account/main/freezeCard?card=main-card-0'));
+      await _ready(tester);
+      expect(requests, ['main-card-0']);
+      await tester.drag(find.byType(PageView), const Offset(-300, 0));
+      await _ready(tester);
+      await tester.drag(find.byType(PageView), const Offset(300, 0));
+      await _ready(tester);
+      expect(requests, ['main-card-0', 'main-card-1']);
+      unawaited(e.addActivity());
+      await _ready(tester);
+      expect(requests, ['main-card-0', 'main-card-1', 'main-card-0']);
+      await _close(tester);
+    },
+  );
+
+  testWidgets(
+    'card workspace reveals details, saves selected limit and scopes history',
+    (tester) async {
+      final e = await _open(tester);
+      final before = await _balances(e);
+      final router = _router(tester);
+      unawaited(router.push('/account/main/freezeCard?card=main-card-1'));
+      await _ready(tester);
+      expect(find.text('Карта •• 9364'), findsOneWidget);
+      expect(find.text('Связанный счёт'), findsOneWidget);
+      expect(
+        find.text('Это общий баланс для всех карт этого счёта.'),
+        findsOneWidget,
+      );
+      expect(find.text('Подтвердить заморозку'), findsNothing);
+      await _tap(tester, 'Реквизиты карты');
+      expect(find.text('0000 0000 0000 9364'), findsOneWidget);
+      expect(find.text('12/29'), findsOneWidget);
+      Navigator.of(tester.element(find.text('Номер карты'))).pop();
+      await _ready(tester);
+      await _tap(tester, 'Лимиты');
+      await tester.enterText(find.byType(TextField), '-1');
+      await _tap(tester, 'Сохранить лимит');
+      expect(find.text('Введите сумму от 0 до 9 999 999,99'), findsOneWidget);
+      await tester.enterText(find.byType(TextField), '1200,50');
+      await _tap(tester, 'Сохранить лимит');
+      expect(find.text('Изменения сохранены'), findsOneWidget);
+      final response = await e.simulation.transport.api.handle(
+        SimulatedRequest(
+          method: 'GET',
+          uri: Uri.parse('https://demo.invalid/v1/accounts/main/profile'),
+        ),
+      );
+      expect(
+        (response.body['cards'] as List).singleWhere(
+          (c) => c['id'] == 'main-card-1',
+        )['monthlyLimitMinor'],
+        120050,
+      );
+      expect(await _balances(e), before);
+      await tester.pump(const Duration(seconds: 4));
+      await tester.pumpAndSettle();
+      await _tap(tester, 'Все операции по карте');
+      final history = tester.widget<HistoryScreen>(find.byType(HistoryScreen));
+      expect(history.filter!.cardId, 'main-card-1');
+      expect(history.filter!.accounts, ['main']);
+      router.pop();
+      await _ready(tester);
+      await _tap(tester, 'Заморозить');
+      await _tap(tester, 'Отмена');
+      expect(find.text('Активна'), findsOneWidget);
+      e.setProfile(NetworkProfile.offline);
+      await tester.pump();
+      await _tap(tester, 'Лимиты');
+      await tester.enterText(find.byType(TextField), '0');
+      await _tap(tester, 'Сохранить лимит');
+      expect(find.text('Изменения сохранены'), findsNothing);
+      final unchanged = await e.simulation.transport.api.handle(
+        SimulatedRequest(
+          method: 'GET',
+          uri: Uri.parse('https://demo.invalid/v1/accounts/main/profile'),
+        ),
+      );
+      expect(
+        (unchanged.body['cards'] as List).singleWhere(
+          (c) => c['id'] == 'main-card-1',
+        )['monthlyLimitMinor'],
+        120050,
+      );
+      await _close(tester);
+    },
+  );
+
+  testWidgets(
     'rename, extra card and freeze persist, offline preference does not fake success',
     (tester) async {
       final e = await _open(tester);
@@ -302,6 +406,14 @@ void main() {
       await _ready(tester);
       unawaited(router.push('/account/main/freezeCard?card=main-card-2'));
       await _ready(tester);
+      expect(find.text('Карта •• 6057'), findsOneWidget);
+      await tester.drag(find.byType(PageView), const Offset(300, 0));
+      await _ready(tester);
+      expect(find.text('Карта •• 9364'), findsOneWidget);
+      await tester.drag(find.byType(PageView), const Offset(-300, 0));
+      await _ready(tester);
+      expect(find.text('Карта •• 6057'), findsOneWidget);
+      await _tap(tester, 'Заморозить');
       await _tap(tester, 'Подтвердить заморозку');
       expect(find.text('Заморожена'), findsOneWidget);
       router.pop();
@@ -320,7 +432,12 @@ void main() {
         ),
       );
       expect(profile.body['roundUp'], isFalse);
-      expect((profile.body['cards'] as List).last['frozen'], isTrue);
+      expect(
+        (profile.body['cards'] as List).singleWhere(
+          (c) => c['id'] == 'main-card-2',
+        )['frozen'],
+        isTrue,
+      );
       await _close(tester);
     },
   );

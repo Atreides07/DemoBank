@@ -5,10 +5,12 @@ final class AccountCard {
     required this.id,
     required this.lastDigits,
     this.frozen = false,
+    this.monthlyLimit,
   });
   final String id;
   final String lastDigits;
   final bool frozen;
+  final Money? monthlyLimit;
 }
 
 final class AccountLimit {
@@ -67,6 +69,8 @@ final class AccountPreferences {
     this.extraCard,
     this.frozenCardId,
     this.frozen,
+    this.limitCardId,
+    this.monthlyLimitMinor,
     this.linkedServicesEnabled,
   });
   final String? name;
@@ -77,6 +81,8 @@ final class AccountPreferences {
   final bool? extraCard;
   final String? frozenCardId;
   final bool? frozen;
+  final String? limitCardId;
+  final int? monthlyLimitMinor;
   final bool? linkedServicesEnabled;
 }
 
@@ -145,4 +151,13 @@ abstract interface class AccountOperationJournal {
   Future<AccountOperation?> load(String accountId);
   Future<AccountOperation> reserve(AccountOperation operation);
   Future<void> clear(AccountOperation operation);
+}
+
+final class CardRequisites {
+  const CardRequisites({
+    required this.number,
+    required this.expiry,
+    required this.cvc,
+  });
+  final String number, expiry, cvc;
 }

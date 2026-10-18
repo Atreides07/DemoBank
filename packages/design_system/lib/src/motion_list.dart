@@ -431,7 +431,10 @@ class _MovingRowState extends State<_MovingRow>
         : null;
   }
 
+  _ReadingAnchorBox? _anchorBox;
   _ReadingAnchorBox? get _contentAnchor {
+    final cached = _anchorBox;
+    if (cached != null && cached.attached && cached.hasSize) return cached;
     _ReadingAnchorBox? found;
     void visit(RenderObject object) {
       if (found != null) return;
@@ -444,7 +447,7 @@ class _MovingRowState extends State<_MovingRow>
 
     final box = _box;
     if (box != null) visit(box);
-    return found;
+    return _anchorBox = found;
   }
 
   // A date label can migrate to a newly inserted transaction. Preserve the
@@ -457,7 +460,10 @@ class _MovingRowState extends State<_MovingRow>
   }
 
   double? get visualHeight => (_contentAnchor ?? _box)?.size.height;
-  double? get visualTop => layoutTop == null ? null : layoutTop! + _translation;
+  double? get visualTop {
+    final top = layoutTop;
+    return top == null ? null : top + _translation;
+  }
 
   @override
   void initState() {
@@ -500,11 +506,11 @@ class _MovingRowState extends State<_MovingRow>
   }
 
   @override
-  Widget build(BuildContext context) => RepaintBoundary(
+  Widget build(BuildContext context) => SizedBox(
     key: _measureKey,
     child: AnimatedBuilder(
       animation: _controller,
-      child: widget.child,
+      child: RepaintBoundary(child: widget.child),
       builder: (context, child) => ExcludeSemantics(
         excluding: widget.departing,
         child: IgnorePointer(

@@ -28,10 +28,28 @@ final class HistoryState {
     this.loading = false,
     this.stale = false,
     this.pendingUpdate,
-  }) : pages = Map.unmodifiable(pages),
-       ids = Map.unmodifiable(ids),
-       days = Map.unmodifiable(days),
-       cursors = Map.unmodifiable(cursors),
+    HistoryState? previous,
+  }) : pages = identical(pages, previous?.pages)
+           ? previous!.pages
+           : Map.unmodifiable(pages),
+       ids = identical(ids, previous?.ids)
+           ? previous!.ids
+           : Map.unmodifiable(ids),
+       days = identical(days, previous?.days)
+           ? previous!.days
+           : Map.unmodifiable(days),
+       cursors = identical(cursors, previous?.cursors)
+           ? previous!.cursors
+           : Map.unmodifiable(cursors),
+       _slots =
+           rowCount == previous?.rowCount &&
+               revision == previous?.revision &&
+               identical(pages, previous?.pages) &&
+               identical(ids, previous?.ids) &&
+               identical(days, previous?.days)
+           ? previous?._slots
+           : null,
+       _previousSlots = previous?._slots,
        loadingPages = Set.unmodifiable(loadingPages),
        updatedIds = Set.unmodifiable(updatedIds),
        failedPages = Set.unmodifiable(failedPages);
@@ -62,15 +80,31 @@ final class HistoryState {
         : null;
   }
 
-  List<HistorySlot> get slots => List.generate(
-    rowCount,
-    (index) => HistorySlot(
-      index,
-      ids[index] ?? 'slot-$revision-$index',
-      at(index),
-      days[index],
-    ),
-  );
+  List<HistorySlot>? _slots;
+  List<HistorySlot>? _previousSlots;
+  List<HistorySlot> get slots {
+    if (_slots case final cached?) return cached;
+    final previous = _previousSlots;
+    _slots = List.unmodifiable(
+      List.generate(rowCount, (index) {
+        final id = ids[index] ?? 'slot-$revision-$index';
+        final entry = at(index);
+        final day = days[index];
+        final old = previous != null && index < previous.length
+            ? previous[index]
+            : null;
+        return old != null &&
+                old.id == id &&
+                identical(old.entry, entry) &&
+                old.day == day
+            ? old
+            : HistorySlot(index, id, entry, day);
+      }),
+    );
+    _previousSlots = null;
+    return _slots!;
+  }
+
   bool get hasMore => rowCount < total;
 
   /// The initial load failed.
@@ -81,20 +115,30 @@ final class HistoryState {
 /// cursors describe unloaded slots; a stable anchor resolves a fresh window
 /// before any visible old content is replaced.
 final class HistoryCubit extends Cubit<HistoryState> {
-  HistoryCubit(this.reader, {LedgerFilter? filter, this.maxPages = 5})
+  HistoryCubit(HistoryReader reader, {LedgerFilter? filter, this.maxPages = 5})
     : assert(maxPages > 0),
+      reader = reader is ScopedHistoryReader ? reader.createScope() : reader,
       super(HistoryState(filter: filter ?? LedgerFilter()));
   final HistoryReader reader;
   final int maxPages;
   int _epoch = 0;
+  LedgerFilter? _failedFilter;
+
   final List<int> _recent = [];
   _HistoryWindow? _pendingWindow;
   String? readingAnchorId;
   bool userIsReading = false;
 
+  Future<void> retry() async {
+    if (state.loading) return;
+    await load(filter: _failedFilter ?? state.filter);
+  }
+
   Future<void> load({LedgerFilter? filter, bool background = false}) async {
     final target = filter ?? state.filter;
     final epoch = ++_epoch;
+    if (reader case final ScopedHistoryReader scoped) scoped.cancelPending();
+    _failedFilter = null;
     final old = state;
     final anchor = readingAnchorId;
     _pendingWindow = null;
@@ -166,6 +210,7 @@ final class HistoryCubit extends Cubit<HistoryState> {
     } catch (error, stackTrace) {
       addError(error, stackTrace);
       if (_current(epoch)) {
+        _failedFilter = target;
         emit(_copy(loading: false, clearPendingFilter: true, failedPages: {0}));
       }
     }
@@ -421,6 +466,22 @@ final class HistoryCubit extends Cubit<HistoryState> {
           loadingPages: {...state.loadingPages}..remove(index),
         ),
       );
+    } on LedgerSnapshotExpired {
+      if (!_current(epoch)) return;
+      final revision = state.revision;
+      emit(_copy(loadingPages: {...state.loadingPages}..remove(index)));
+      // Retrying the same revision cannot succeed. A fresh first page
+      // resolves the current one and keeps the reading position; it is
+      // attempted once per revision so a misbehaving server cannot loop.
+      if (_refreshedRevision != revision) {
+        _refreshedRevision = revision;
+        await load(background: true);
+        // The old revision can serve nothing more, so the fresh window is
+        // applied even while the person is reading.
+        applyUpdate();
+      } else {
+        emit(_copy(failedPages: {...state.failedPages, index}));
+      }
     } catch (error, stackTrace) {
       addError(error, stackTrace);
       if (_current(epoch)) {
@@ -433,6 +494,8 @@ final class HistoryCubit extends Cubit<HistoryState> {
       }
     }
   }
+
+  String? _refreshedRevision;
 
   HistoryState _copy({
     bool? loading,
@@ -449,6 +512,7 @@ final class HistoryCubit extends Cubit<HistoryState> {
     Set<int>? failedPages,
     int? rowCount,
   }) => HistoryState(
+    previous: state,
     filter: state.filter,
     pendingFilter: clearPendingFilter
         ? null
@@ -474,6 +538,7 @@ final class HistoryCubit extends Cubit<HistoryState> {
   Future<void> close() {
     _epoch++;
     _pendingWindow = null;
+    if (reader case final ScopedHistoryReader scoped) scoped.cancelPending();
     return super.close();
   }
 }

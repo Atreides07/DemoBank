@@ -30,6 +30,29 @@ Future<void> _settle(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> _reveal(WidgetTester tester, Finder finder) async {
+  if (finder.evaluate().isEmpty) {
+    final scrollable = find
+        .descendant(
+          of: find.byType(CustomScrollView).last,
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    tester.state<ScrollableState>(scrollable).position.jumpTo(0);
+    await _settle(tester);
+    if (finder.evaluate().isEmpty) {
+      await tester.scrollUntilVisible(
+        finder,
+        250,
+        scrollable: scrollable,
+        maxScrolls: 40,
+      );
+    }
+  }
+  await tester.ensureVisible(finder);
+  await _settle(tester);
+}
+
 void main() {
   testWidgets('phone → detected operator → decimal amount → receipt', (
     tester,
@@ -67,15 +90,15 @@ void main() {
     await tester.tap(find.text('Определить оператора'));
     await _settle(tester);
     expect(find.text('МТС'), findsOneWidget);
-    await tester.ensureVisible(find.byType(TextField).last);
+    await _reveal(tester, find.byType(TextField).last);
     await _settle(tester);
     await tester.enterText(find.byType(TextField).last, '155,55');
-    await tester.ensureVisible(find.text('Продолжить'));
+    await _reveal(tester, find.text('Продолжить'));
     await _settle(tester);
     await tester.tap(find.text('Продолжить'));
     await _settle(tester);
     expect(find.text('МТС'), findsOneWidget);
-    await tester.ensureVisible(find.text('Подтвердить оплату'));
+    await _reveal(tester, find.text('Подтвердить оплату'));
     await _settle(tester);
     await tester.tap(find.text('Подтвердить оплату'));
     await _settle(tester);

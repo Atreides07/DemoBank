@@ -38,25 +38,39 @@ class DsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final content = <Widget>[
+      if (subtitle != null)
+        DsText(subtitle!, style: DsTextStyle.caption, tone: DsTone.muted),
+      if (body != null) body!,
+      ...?children,
+    ];
+    // Keep a GlobalKey on its original child, not on both wrapper and child.
+    final sectionKeys = <Key?>[
+      for (final child in content)
+        child.key == null ? null : ValueKey<Key>(child.key!),
+    ];
+    final inset = DsTokens.inset(context, DsInset.page);
     Widget scroll = CustomScrollView(
       controller: scrollController,
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
-        SliverToBoxAdapter(
-          child: DsConstrained(
-            child: DsPadding(
-              child: DsColumn(
-                gap: DsSpace.section,
-                children: [
-                  if (subtitle != null)
-                    DsText(
-                      subtitle!,
-                      style: DsTextStyle.caption,
-                      tone: DsTone.muted,
-                    ),
-                  if (body != null) body!,
-                  ...?children,
-                ],
+        SliverList.builder(
+          itemCount: content.length,
+          findChildIndexCallback: (key) {
+            final index = sectionKeys.indexOf(key);
+            return index < 0 ? null : index;
+          },
+          itemBuilder: (context, index) => _PageSection(
+            key: sectionKeys[index],
+            child: DsConstrained(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  inset.left,
+                  index == 0 ? inset.top : DsTokens.space(DsSpace.section),
+                  inset.right,
+                  index == content.length - 1 ? inset.bottom : 0,
+                ),
+                child: content[index],
               ),
             ),
           ),
@@ -82,6 +96,25 @@ class DsPage extends StatelessWidget {
       ),
       bottomNavigationBar: bottomNavigation,
     );
+  }
+}
+
+// Keep visited controls alive, as on the former single-column page.
+class _PageSection extends StatefulWidget {
+  const _PageSection({super.key, required this.child});
+  final Widget child;
+  @override
+  State<_PageSection> createState() => _PageSectionState();
+}
+
+class _PageSectionState extends State<_PageSection>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }
 

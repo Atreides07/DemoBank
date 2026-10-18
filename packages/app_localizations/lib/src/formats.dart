@@ -32,6 +32,13 @@ final class AppFormats {
   final String languageCode;
   final NumberFormat _integer;
   final String _decimalSeparator;
+  late final _date = DateFormat.yMd(languageCode);
+  late final _time = DateFormat.jm(languageCode);
+  late final _dayMonth = DateFormat.Md(languageCode);
+  late final _dayMonthLong = DateFormat.MMMMd(languageCode);
+  late final _monthYear = DateFormat.yM(languageCode);
+  late final _compact = NumberFormat.compact(locale: languageCode);
+  final _percent = <int, NumberFormat>{};
 
   /// `1 234,56 ₽` (ru), `₽1,234.56` (en), `1 234,56 ₽` (uz). Whole amounts
   /// omit the fraction: `1 250 000 сум`.
@@ -66,16 +73,20 @@ final class AppFormats {
   String _withCurrency(String number, String currency) {
     final symbol = currencySymbol(currency);
     if (languageCode == 'en') {
-      return symbol.length == 1 ? '$symbol$number' : '$symbol $number';
+      return symbol.length == 1 ? '$symbol$number' : '$symbol\u00a0$number';
     }
-    return '$number $symbol';
+    // A no-break space keeps the currency on the line of its number.
+    return '$number\u00a0$symbol';
   }
 
   /// [value] is in percent: `12.4` → `+12,4 %` (ru) or `+12.4%` (en).
   String percent(num value, {int fractionDigits = 1, bool signed = false}) {
-    final format = NumberFormat.decimalPercentPattern(
-      locale: languageCode,
-      decimalDigits: fractionDigits,
+    final format = _percent.putIfAbsent(
+      fractionDigits,
+      () => NumberFormat.decimalPercentPattern(
+        locale: languageCode,
+        decimalDigits: fractionDigits,
+      ),
     );
     return '${_sign(value, signed)}${format.format(value.abs() / 100)}';
   }
@@ -99,8 +110,7 @@ final class AppFormats {
   ][(month - 1) % 12];
 
   /// Short value for chart scales: `1,2 млн`, `1.2M`, `1,2 mln`.
-  String compact(num value) =>
-      NumberFormat.compact(locale: languageCode).format(value);
+  String compact(num value) => _compact.format(value);
 
   String _sign(num value, bool signed) => value < 0
       ? minus
@@ -114,24 +124,19 @@ final class AppFormats {
       value.isUtc ? value.add(reportingOffset) : value;
 
   /// `16.10.2026` (ru), `10/16/2026` (en), `16/10/2026` (uz).
-  String date(DateTime value) =>
-      DateFormat.yMd(languageCode).format(reporting(value));
+  String date(DateTime value) => _date.format(reporting(value));
 
   /// `14:59` (ru, uz), `2:59 PM` (en).
-  String time(DateTime value) =>
-      DateFormat.jm(languageCode).format(reporting(value));
+  String time(DateTime value) => _time.format(reporting(value));
 
   /// Short day for chart axes: `16.10`, `10/16`.
-  String dayMonth(DateTime value) =>
-      DateFormat.Md(languageCode).format(reporting(value));
+  String dayMonth(DateTime value) => _dayMonth.format(reporting(value));
 
   /// Day and month name: `22 октября`, `October 22`, `22-oktabr`.
-  String dayMonthLong(DateTime value) =>
-      DateFormat.MMMMd(languageCode).format(reporting(value));
+  String dayMonthLong(DateTime value) => _dayMonthLong.format(reporting(value));
 
   /// Short month for chart axes: `10.2026`, `10/2026`.
-  String monthYear(DateTime value) =>
-      DateFormat.yM(languageCode).format(reporting(value));
+  String monthYear(DateTime value) => _monthYear.format(reporting(value));
 
   /// Inclusive date range of a half-open reporting interval.
   String period(DateTime from, DateTime toExclusive) =>
@@ -140,13 +145,21 @@ final class AppFormats {
   /// Parses an amount typed by a person into exact minor units, or `null`.
   ///
   /// Spaces are grouping. In English a comma is grouping and a point the
-  /// decimal separator; in Russian and Uzbek either a comma or a point is
-  /// accepted as the decimal separator. At most two fractional digits.
+  /// decimal separator; a comma that is not a thousands separator (`12,5`)
+  /// is ambiguous and rejected rather than read as `125`. In Russian and
+  /// Uzbek either a comma or a point is accepted as the decimal separator.
+  /// At most two fractional digits.
   int? parseAmount(String input, {int maxIntegerDigits = 9}) {
-    var text = input.trim().replaceAll(RegExp(r'[\s  ]'), '');
-    text = languageCode == 'en'
-        ? text.replaceAll(',', '')
-        : text.replaceAll(',', '.');
+    var text = input.trim().replaceAll(RegExp(r'[\s\u00a0\u202f]'), '');
+    if (languageCode == 'en') {
+      if (text.contains(',') &&
+          !RegExp(r'^\d{1,3}(?:,\d{3})+(?:\.\d*)?$').hasMatch(text)) {
+        return null;
+      }
+      text = text.replaceAll(',', '');
+    } else {
+      text = text.replaceAll(',', '.');
+    }
     final match = RegExp(
       '^(\\d{1,$maxIntegerDigits})(?:\\.(\\d{1,2}))?\$',
     ).firstMatch(text);

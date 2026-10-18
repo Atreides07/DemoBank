@@ -17,6 +17,10 @@ AccountProfile decodeAccountProfile(Map<String, dynamic> json) {
           id: card.string('id'),
           lastDigits: card.string('lastDigits'),
           frozen: card.boolean('frozen'),
+          monthlyLimit: switch (card.optionalInteger('monthlyLimitMinor')) {
+            final minor? => Money(minor, currency: currency),
+            null => null,
+          },
         ),
     ],
     limits: [
@@ -46,6 +50,8 @@ Map<String, dynamic> encodeAccountPreferences(AccountPreferences p) => {
   if (p.extraCard != null) 'extraCard': p.extraCard,
   if (p.frozenCardId != null) 'frozenCardId': p.frozenCardId,
   if (p.frozen != null) 'frozen': p.frozen,
+  if (p.limitCardId != null) 'limitCardId': p.limitCardId,
+  if (p.monthlyLimitMinor != null) 'monthlyLimitMinor': p.monthlyLimitMinor,
   if (p.linkedServicesEnabled != null)
     'linkedServicesEnabled': p.linkedServicesEnabled,
 };

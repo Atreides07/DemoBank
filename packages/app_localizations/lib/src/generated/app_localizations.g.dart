@@ -3188,6 +3188,180 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Пример · пополнение счёта'**
   String get qrSampleTopUp;
+
+  /// No description provided for @checkoutPreviousPaymentTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сначала завершим предыдущий платёж'**
+  String get checkoutPreviousPaymentTitle;
+
+  /// No description provided for @checkoutPreviousPaymentMessage.
+  ///
+  /// In ru, this message translates to:
+  /// **'Предыдущая оплата ещё не подтверждена, поэтому новая не отправлена. Ниже — её статус. Когда он станет окончательным, можно продолжить новый платёж.'**
+  String get checkoutPreviousPaymentMessage;
+
+  /// No description provided for @checkoutContinueNew.
+  ///
+  /// In ru, this message translates to:
+  /// **'Перейти к новому платежу'**
+  String get checkoutContinueNew;
+
+  /// No description provided for @accountListUnavailable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось загрузить счета'**
+  String get accountListUnavailable;
+
+  /// No description provided for @operationRecipientsUnavailable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось загрузить контакты. Ничего не отправлено — повторите попытку.'**
+  String get operationRecipientsUnavailable;
+
+  /// No description provided for @operationLoadingContacts.
+  ///
+  /// In ru, this message translates to:
+  /// **'Загружаем контакты'**
+  String get operationLoadingContacts;
+
+  /// No description provided for @cardDetails.
+  ///
+  /// In ru, this message translates to:
+  /// **'Реквизиты карты'**
+  String get cardDetails;
+
+  /// No description provided for @cardFreeze.
+  ///
+  /// In ru, this message translates to:
+  /// **'Заморозить'**
+  String get cardFreeze;
+
+  /// No description provided for @cardUnfreeze.
+  ///
+  /// In ru, this message translates to:
+  /// **'Разморозить'**
+  String get cardUnfreeze;
+
+  /// No description provided for @cardLimits.
+  ///
+  /// In ru, this message translates to:
+  /// **'Лимиты'**
+  String get cardLimits;
+
+  /// No description provided for @cardLinkedAccount.
+  ///
+  /// In ru, this message translates to:
+  /// **'Связанный счёт'**
+  String get cardLinkedAccount;
+
+  /// No description provided for @cardSharedBalance.
+  ///
+  /// In ru, this message translates to:
+  /// **'Доступно на общем счёте'**
+  String get cardSharedBalance;
+
+  /// No description provided for @cardSharedBalanceHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Это общий баланс для всех карт этого счёта.'**
+  String get cardSharedBalanceHint;
+
+  /// No description provided for @cardTransactions.
+  ///
+  /// In ru, this message translates to:
+  /// **'Операции по карте'**
+  String get cardTransactions;
+
+  /// No description provided for @cardAllTransactions.
+  ///
+  /// In ru, this message translates to:
+  /// **'Все операции по карте'**
+  String get cardAllTransactions;
+
+  /// No description provided for @cardNoTransactions.
+  ///
+  /// In ru, this message translates to:
+  /// **'По этой карте пока нет операций'**
+  String get cardNoTransactions;
+
+  /// No description provided for @cardTransactionsFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось загрузить операции карты'**
+  String get cardTransactionsFailed;
+
+  /// No description provided for @cardNumber.
+  ///
+  /// In ru, this message translates to:
+  /// **'Номер карты'**
+  String get cardNumber;
+
+  /// No description provided for @cardExpiry.
+  ///
+  /// In ru, this message translates to:
+  /// **'Срок действия'**
+  String get cardExpiry;
+
+  /// No description provided for @cardCopyNumber.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скопировать номер'**
+  String get cardCopyNumber;
+
+  /// No description provided for @cardDemoDetails.
+  ///
+  /// In ru, this message translates to:
+  /// **'Демонстрационные реквизиты. Не подходят для реальных платежей.'**
+  String get cardDemoDetails;
+
+  /// No description provided for @cardDetailsFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось загрузить реквизиты карты'**
+  String get cardDetailsFailed;
+
+  /// No description provided for @cardMonthlyLimit.
+  ///
+  /// In ru, this message translates to:
+  /// **'Лимит покупок в месяц'**
+  String get cardMonthlyLimit;
+
+  /// No description provided for @cardLimitHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Лимит действует только для выбранной карты. Ноль запрещает покупки.'**
+  String get cardLimitHint;
+
+  /// No description provided for @cardLimitInvalid.
+  ///
+  /// In ru, this message translates to:
+  /// **'Введите сумму от 0 до 9 999 999,99'**
+  String get cardLimitInvalid;
+
+  /// No description provided for @cardSaveLimit.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сохранить лимит'**
+  String get cardSaveLimit;
+
+  /// No description provided for @cardLimitUnavailable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Лимит карты недоступен'**
+  String get cardLimitUnavailable;
+
+  /// No description provided for @cardFreezeTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Заморозить эту карту?'**
+  String get cardFreezeTitle;
+
+  /// No description provided for @cardFreezeDescription.
+  ///
+  /// In ru, this message translates to:
+  /// **'Заморозка обратима и касается только выбранной карты. Счёт и остальные карты останутся доступны.'**
+  String get cardFreezeDescription;
 }
 
 class _AppLocalizationsDelegate

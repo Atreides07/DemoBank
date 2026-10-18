@@ -32,21 +32,29 @@ Future<AppEnvironment> _open(WidgetTester tester, AppLanguage language) async {
   return environment;
 }
 
-/// Texts of every built text widget, including those scrolled out of view.
+/// Texts of every built text widget, including those scrolled out of view,
+/// and whole amounts, which are laid out in several pieces but announced as
+/// one label.
 List<String> _texts(WidgetTester tester) => [
   for (final element
       in find
           .byWidgetPredicate(
-            (widget) => widget is Text || widget is RichText,
+            (widget) =>
+                widget is Text ||
+                widget is RichText ||
+                widget is Semantics && widget.properties.label != null,
             skipOffstage: false,
           )
           .evaluate())
     switch (element.widget) {
       final Text text => text.data ?? text.textSpan?.toPlainText() ?? '',
       final RichText text => text.text.toPlainText(),
+      final Semantics semantics => semantics.properties.label!,
       _ => '',
     },
 ];
+
+const _nbsp = '\u00a0';
 
 GoRouter _router(WidgetTester tester) =>
     GoRouter.of(tester.element(find.byType(DsHomeHeader, skipOffstage: false)));
@@ -102,7 +110,7 @@ void main() {
     await _open(tester, AppLanguage.en);
     final texts = _texts(tester);
     expect(texts.any(RegExp(r'^₽\d{1,3}(,\d{3})*(\.\d\d)?$').hasMatch), isTrue);
-    expect(texts.any((text) => text.startsWith('UZS ')), isTrue);
+    expect(texts.any((text) => text.startsWith('UZS$_nbsp')), isTrue);
     expect(texts, contains('UZS account'));
     await tester.pumpWidget(const SizedBox.shrink());
   });
@@ -119,7 +127,10 @@ void main() {
     expect(find.text('Bosh sahifa'), findsOneWidget);
     expect(find.text('Asosiy hisob', skipOffstage: false), findsWidgets);
     expect(find.text('Soʻm hisobi', skipOffstage: false), findsOneWidget);
-    expect(find.textContaining(' soʻm', skipOffstage: false), findsWidgets);
+    expect(
+      find.textContaining('${_nbsp}soʻm', skipOffstage: false),
+      findsWidgets,
+    );
     final history = _texts(tester).where(_cyrillic.hasMatch).toList();
     expect(history, isEmpty, reason: 'server texts still in Russian');
 

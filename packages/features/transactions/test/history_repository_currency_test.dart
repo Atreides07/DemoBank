@@ -17,6 +17,56 @@ Map<String, dynamic> _page(String currency) => {
 
 void main() {
   test(
+    'card history refuses mismatched attribution from network and cache',
+    () async {
+      final json = {
+        ..._page('RUB'),
+        'total': 1,
+        'items': [
+          {
+            'id': 'wrong-card-entry',
+            'title': 'Purchase',
+            'subtitle': '',
+            'amountMinor': 100,
+            'currency': 'RUB',
+            'occurredAt': '2026-10-16T12:00:00.000Z',
+            'categoryId': 'shopping',
+            'merchantId': 'shop',
+            'accountId': 'main',
+            'cardId': 'main-card-0',
+            'kind': 'expense',
+            'status': 'posted',
+          },
+        ],
+      };
+      final backend = DemoApi(
+        routes: [
+          (request) async =>
+              request.path == '/transactions' ? SimulatedResponse(json) : null,
+        ],
+      );
+      final client = ApiClient(
+        baseUri: Uri.parse('https://demo.invalid'),
+        adapter: SimulationAdapter(
+          api: backend,
+          profile: NetworkProfile.normal,
+        ),
+      );
+      final cache = MemoryCacheStore();
+      addTearDown(client.close);
+      addTearDown(cache.close);
+      final repository = ApiHistoryRepository(client, cache);
+      final filter = LedgerFilter(accounts: ['main'], cardId: 'main-card-1');
+      await expectLater(repository.page(filter), throwsFormatException);
+      final key = 'history:${filter.cacheKey}:first';
+      expect(await cache.read(key), isNull);
+      await cache.write(key, json);
+      expect(await repository.cached(filter), isNull);
+      expect(await cache.read(key), isNull);
+    },
+  );
+
+  test(
     'history cache is currency scoped and insensitive to account ordering',
     () async {
       final cache = MemoryCacheStore();
