@@ -162,6 +162,8 @@ void main() {
       await _tap(tester, 'Продолжить');
       await _tap(tester, 'Подтвердить');
       expect(find.text('Счёт пополнен'), findsOneWidget);
+      expect(find.text('Операция сохранена в истории.'), findsOneWidget);
+      expect(find.textContaining('account-'), findsNothing);
       await _tap(tester, 'К счёту');
       expect(find.byKey(const ValueKey('home-operations')), findsNothing);
       await tester.scrollUntilVisible(

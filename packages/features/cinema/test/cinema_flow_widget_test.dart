@@ -105,7 +105,16 @@ void main() {
     await tester.tap(find.text('Подтвердить оплату'));
     await _settle(tester);
     expect(find.text('Ваш билет'), findsOneWidget);
-    expect(completed.single.ticket, contains('seat-1'));
+    final ticket = completed.single.ticket!;
+    expect(ticket, contains('Орбита света'));
+    expect(ticket, contains('17.10.2026 · 19:00 (UTC+3)'));
+    expect(ticket, contains('Ряд 1 · место 1'));
+    await _reveal(tester, find.text('Оплата выполнена'));
+    expect(find.textContaining('receipt-payment-'), findsNothing);
+    await _reveal(tester, find.text(ticket));
+    for (final technical in ['movie-', 'seat-', 'payment-']) {
+      expect(find.textContaining(technical), findsNothing);
+    }
     expect(completed.single.amount.minor, 65000);
     await _reveal(tester, find.text('Готово'));
     await _settle(tester);

@@ -7,6 +7,30 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../../apps/bank_app/integration_test/support/journey_readiness.dart';
 
 void main() {
+  testWidgets('reveals controls in horizontal filters', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DsPage(
+          children: [
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: const [
+                  Text('All accounts'),
+                  SizedBox(width: 1200),
+                  Text('Main account'),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    expect(find.text('Main account').hitTestable(), findsNothing);
+    await revealJourneyElement(tester, find.text('Main account'));
+    expect(find.text('Main account').hitTestable(), findsOneWidget);
+  });
+
   testWidgets(
     'reveals relocated kept-alive controls by scrolling the viewport',
     (tester) async {

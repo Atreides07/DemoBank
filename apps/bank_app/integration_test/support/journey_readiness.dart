@@ -13,7 +13,15 @@ Future<void> revealJourneyElement(WidgetTester tester, Finder finder) async {
         onstage.hitTestable().evaluate().isNotEmpty;
   }
 
+  Future<void> revealMounted() async {
+    if (!visible() && finder.evaluate().length == 1) {
+      await tester.ensureVisible(finder);
+      await tester.pumpAndSettle();
+    }
+  }
+
   await tester.pumpAndSettle();
+  await revealMounted();
   if (!visible()) {
     final scrollable = find
         .descendant(
@@ -26,6 +34,7 @@ Future<void> revealJourneyElement(WidgetTester tester, Finder finder) async {
     for (var step = 0; step < 60 && !visible(); step++) {
       await tester.drag(scrollable, const Offset(0, -240));
       await tester.pumpAndSettle();
+      await revealMounted();
     }
   }
   expect(

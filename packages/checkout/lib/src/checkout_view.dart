@@ -196,9 +196,11 @@ final class _CheckoutViewState extends State<CheckoutView> {
     CheckoutPhase.succeeded => [
       DsStatus(
         title: l10n.checkoutSucceeded,
-        message: l10n.checkoutReceiptNumber(
-          state.payment?.receiptId ?? state.payment?.id ?? '',
-        ),
+        message: state.payment?.ticket == null
+            ? l10n.checkoutReceiptNumber(
+                state.payment?.receiptId ?? state.payment?.id ?? '',
+              )
+            : null,
         kind: DsStatusKind.success,
       ),
       if (state.payment?.ticket case final ticket?)

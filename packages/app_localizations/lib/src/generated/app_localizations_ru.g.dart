@@ -1963,9 +1963,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get operationTransferred => 'Перевод выполнен';
 
   @override
-  String operationSaved(String id) {
-    return 'Операция $id сохранена в истории.';
-  }
+  String get operationSaved => 'Операция сохранена в истории.';
 
   @override
   String get operationConfirm => 'Подтвердить';

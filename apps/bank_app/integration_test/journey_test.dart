@@ -176,6 +176,15 @@ Future<void> _referenceJourney(_Journey journey) async {
   await journey.press(find.byKey(const ValueKey('home-account-main')));
   await journey.waitFor(find.byType(AccountDashboard));
   await journey.ready();
+  await journey.waitFor(
+    find.byWidgetPredicate(
+      (widget) =>
+          widget is AccountDashboard &&
+          widget.summary != null &&
+          widget.profile != null &&
+          !widget.loading,
+    ),
+  );
   final account = tester.widget<AccountDashboard>(
     find.byType(AccountDashboard),
   );
@@ -211,6 +220,8 @@ Future<void> _referenceJourney(_Journey journey) async {
   await journey.pressText('Продолжить');
   await journey.pressText('Подтвердить');
   await journey.waitFor(find.text('Счёт пополнен'));
+  expect(find.text('Операция сохранена в истории.'), findsOneWidget);
+  expect(find.textContaining('account-'), findsNothing);
   await journey.capture('account_topup_result');
   await journey.pressText('К счёту');
   await journey.ready();
@@ -662,9 +673,16 @@ final class _Journey {
     );
     await pressText('Подтвердить оплату');
     await waitFor(find.text('Оплата выполнена'));
+    String? ticketText;
     if (ticket) {
       expect(find.text('Ваш билет'), findsOneWidget);
-      expect(find.textContaining('seat-1'), findsWidgets);
+      final content = find.textContaining('17.10.2026 · 19:00 (UTC+3)');
+      await reveal(content);
+      ticketText = tester.widget<Text>(content).data!;
+      expect(ticketText, contains('Орбита света'));
+      expect(ticketText, contains('зал 2'));
+      expect(ticketText, contains('Ряд 1 · место 1'));
+      expect(ticketText, isNot(matches(RegExp(r'(movie|seat|payment)-'))));
     } else {
       expect(find.text('Квитанция'), findsOneWidget);
     }
@@ -673,8 +691,9 @@ final class _Journey {
         (widget) => widget is DsStatus && widget.title == 'Оплата выполнена',
       ),
     );
-    expect(result.message, startsWith('Квитанция № '));
+    expect(result.message, ticket ? isNull : startsWith('Квитанция № '));
     await reveal(find.text('Оплата выполнена'));
+    if (ticket) await reveal(find.text(ticketText!));
     await capture('${kind}_${ticket ? 'ticket' : 'receipt'}');
     passed('${kind}_confirmed_${ticket ? 'ticket' : 'receipt'}', {
       'totalMinor': total.minor,
@@ -682,6 +701,7 @@ final class _Journey {
       'currency': total.currency,
       'serverReceipt': result.message,
       'ticketShown': ticket,
+      if (ticket) 'ticketText': ticketText,
     });
   }
 

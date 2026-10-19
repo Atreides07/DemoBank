@@ -345,8 +345,14 @@ void main() {
         );
         if (find.byType(DsBarChart).evaluate().isEmpty) {
           await tester.scrollUntilVisible(
-            find.byType(DsBarChart), 240,
-            scrollable: find.descendant(of: find.byType(CustomScrollView).last, matching: find.byType(Scrollable)).first,
+            find.byType(DsBarChart),
+            240,
+            scrollable: find
+                .descendant(
+                  of: find.byType(CustomScrollView).last,
+                  matching: find.byType(Scrollable),
+                )
+                .first,
           );
         }
         await tester.ensureVisible(find.byType(DsBarChart));

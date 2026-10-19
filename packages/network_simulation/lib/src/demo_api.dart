@@ -987,14 +987,34 @@ final class DemoApi {
     return {
       ..._public(payment),
       'description': _t('purpose.${quote['_kind']}'),
-      if (ticket is Map)
-        'ticket': _t('cinema.ticket', {
-          'session': ticket['session'],
-          'seats': (ticket['seats'] as List).join(', '),
-          'id': payment['id'],
-        }),
+      if (ticket is Map) 'ticket': _ticketText(ticket),
       if (payment['status'] == 'failed') 'failureMessage': _t('error.declined'),
     };
+  }
+
+  String _ticketText(Map<Object?, Object?> ticket) {
+    final sessionId = ticket['session'] as String;
+    final movieId = _movieOf(sessionId);
+    final session = (_sessions(movieId).body['items'] as List)
+        .cast<Map<String, dynamic>>()
+        .singleWhere((item) => item['id'] == sessionId);
+    final seats = (_seats(sessionId).body['items'] as List)
+        .cast<Map<String, dynamic>>();
+    // Session instants use the bank's reporting time zone, Moscow (UTC+3).
+    final start = DateTime.parse(
+      session['startsAt'] as String,
+    ).toUtc().add(const Duration(hours: 3));
+    String two(int value) => value.toString().padLeft(2, '0');
+    return _t('cinema.ticket', {
+      'cinema': session['cinema'],
+      'movie': _t('movie.$movieId.title'),
+      'date': '${two(start.day)}.${two(start.month)}.${start.year}',
+      'time': '${two(start.hour)}:${two(start.minute)}',
+      'seats': [
+        for (final id in ticket['seats'] as List)
+          seats.singleWhere((seat) => seat['id'] == id)['label'],
+      ].join(', '),
+    });
   }
 
   /// Expired quotes stay for an hour so a late confirmation still receives an

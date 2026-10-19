@@ -3060,8 +3060,8 @@ abstract class AppLocalizations {
   /// No description provided for @operationSaved.
   ///
   /// In ru, this message translates to:
-  /// **'Операция {id} сохранена в истории.'**
-  String operationSaved(String id);
+  /// **'Операция сохранена в истории.'**
+  String get operationSaved;
 
   /// No description provided for @operationConfirm.
   ///

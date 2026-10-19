@@ -1164,14 +1164,7 @@
   "operationSampleContact": "Учебный контакт",
   "operationToppedUp": "Счёт пополнен",
   "operationTransferred": "Перевод выполнен",
-  "operationSaved": "Операция {id} сохранена в истории.",
-  "@operationSaved": {
-    "placeholders": {
-      "id": {
-        "type": "String"
-      }
-    }
-  },
+  "operationSaved": "Операция сохранена в истории.",
   "operationConfirm": "Подтвердить",
   "operationRunning": "Выполняем…",
   "operationRetry": "Повторить запрос",

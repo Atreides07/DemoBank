@@ -1959,9 +1959,7 @@ class AppLocalizationsUz extends AppLocalizations {
   String get operationTransferred => 'Oʻtkazma bajarildi';
 
   @override
-  String operationSaved(String id) {
-    return '$id operatsiyasi tarixda saqlandi.';
-  }
+  String get operationSaved => 'Operatsiya tarixda saqlandi.';
 
   @override
   String get operationConfirm => 'Tasdiqlash';

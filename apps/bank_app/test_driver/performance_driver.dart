@@ -11,7 +11,8 @@ Future<void> main() => integrationDriver(
     final output = Directory('../../.artifacts/performance');
     await output.create(recursive: true);
     await File(
-      '${output.path}/android-profile.json',
+      Platform.environment['PERFORMANCE_OUTPUT_FILE'] ??
+          '${output.path}/android-profile.json',
     ).writeAsString(const JsonEncoder.withIndent('  ').convert(data));
   },
 );

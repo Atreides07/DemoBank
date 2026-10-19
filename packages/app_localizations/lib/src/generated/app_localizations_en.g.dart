@@ -1939,9 +1939,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get operationTransferred => 'Transfer completed';
 
   @override
-  String operationSaved(String id) {
-    return 'Transaction $id is saved in the history.';
-  }
+  String get operationSaved => 'The transaction is saved in the history.';
 
   @override
   String get operationConfirm => 'Confirm';

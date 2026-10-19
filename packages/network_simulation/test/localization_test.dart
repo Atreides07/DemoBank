@@ -151,6 +151,58 @@ void main() {
   });
 
   test(
+    'restored cinema ticket resolves session and seat IDs in each language',
+    () async {
+      Map<String, dynamic>? saved;
+      api = DemoApi(saveState: (state) async => saved = state);
+      await api.warmUp();
+      final quote = await _send(
+        api,
+        '/checkout/quotes',
+        method: 'POST',
+        body: {
+          'kind': 'cinema',
+          'referenceIds': ['seat-6', 'seat-7'],
+          'accountId': 'main',
+          'recipient': 'cinema',
+          'currency': 'RUB',
+          'details': {'sessionId': 'movie-002-night', 'seatVersion': '1'},
+        },
+      );
+      expect(quote.statusCode, 200);
+      final payment = await _send(
+        api,
+        '/checkout/payments',
+        method: 'POST',
+        body: {
+          'quoteId': quote.body['id'],
+          'idempotencyKey': 'ticket-language-1',
+        },
+      );
+      expect(payment.statusCode, 200);
+      api = DemoApi(loadState: () async => saved);
+      await api.warmUp();
+      for (final (language, movie, firstSeat, secondSeat) in [
+        ('ru', 'Город в деталях', 'Ряд 1 · место 6', 'Ряд 2 · место 1'),
+        ('en', 'The City in Detail', 'Row 1 · seat 6', 'Row 2 · seat 1'),
+        ('uz', 'Shahar tafsilotlari', '1-qator · 6-joy', '2-qator · 1-joy'),
+      ]) {
+        final status = await _get(
+          api,
+          '/checkout/payments/status?idempotencyKey=ticket-language-1',
+          language: language,
+        );
+        final ticket = status['ticket'] as String;
+        expect(ticket, contains(movie));
+        expect(ticket, contains('17.10.2026 · 21:30 (UTC+3)'));
+        expect(ticket, contains('$firstSeat, $secondSeat'));
+        expect(ticket, isNot(matches(RegExp(r'(movie|seat|payment)-'))));
+        expect(status['id'], payment.body['id']);
+      }
+    },
+  );
+
+  test(
     'the sum account has its own ledger and keeps the rouble dataset',
     () async {
       final accounts = (await _get(api, '/accounts'))['accounts'] as List;

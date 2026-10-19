@@ -217,8 +217,7 @@ abstract final class DemoTexts {
       'cinema.hall': 'Кинотеатр «Сфера» · зал {hall}',
       'cinema.seat': 'Ряд {row} · место {seat}',
       'cinema.recipient': 'Кинотеатр «Сфера» · {movie}',
-      'cinema.ticket':
-          'Кинотеатр «Сфера» · сеанс {session} · места {seats} · билет {id}',
+      'cinema.ticket': '{cinema}\n{movie}\n{date} · {time} (UTC+3)\n{seats}',
       'analytics.metricRule':
           'Проведённые расходы; возвраты отдельно по дате проведения. Комиссия включена один раз в сумму операции. Сравнение с непосредственно предыдущим интервалом той же длины.',
     },
@@ -402,8 +401,7 @@ abstract final class DemoTexts {
       'cinema.hall': 'Sfera Cinema · hall {hall}',
       'cinema.seat': 'Row {row} · seat {seat}',
       'cinema.recipient': 'Sfera Cinema · {movie}',
-      'cinema.ticket':
-          'Sfera Cinema · showtime {session} · seats {seats} · ticket {id}',
+      'cinema.ticket': '{cinema}\n{movie}\n{date} · {time} (UTC+3)\n{seats}',
       'analytics.metricRule':
           'Completed spending; refunds separately by posting date. A fee is included once in the transaction amount. Compared with the immediately preceding interval of the same length.',
     },
@@ -587,8 +585,7 @@ abstract final class DemoTexts {
       'cinema.hall': '“Sfera” kinoteatri · {hall}-zal',
       'cinema.seat': '{row}-qator · {seat}-joy',
       'cinema.recipient': '“Sfera” kinoteatri · {movie}',
-      'cinema.ticket':
-          '“Sfera” kinoteatri · seans {session} · joylar {seats} · chipta {id}',
+      'cinema.ticket': '{cinema}\n{movie}\n{date} · {time} (UTC+3)\n{seats}',
       'analytics.metricRule':
           'Bajarilgan xarajatlar; qaytarishlar oʻtkazilgan sanasi boʻyicha alohida. Komissiya operatsiya summasiga bir marta kiritiladi. Xuddi shu uzunlikdagi bevosita oldingi oraliq bilan taqqoslanadi.',
     },

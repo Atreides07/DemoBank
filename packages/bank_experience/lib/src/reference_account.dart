@@ -950,7 +950,7 @@ class _AccountOperationPageState extends State<_AccountOperationPage> {
                 title: topUp
                     ? l10n.operationToppedUp
                     : l10n.operationTransferred,
-                message: l10n.operationSaved(state.result!.id),
+                message: l10n.operationSaved,
                 kind: DsStatusKind.success,
               )
             else ...[

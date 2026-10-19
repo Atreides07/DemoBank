@@ -42,7 +42,7 @@ void main() {
           isTrue,
           reason: 'Frame budgets require a physical profile build.',
         );
-        expect(Platform.isAndroid, isTrue);
+        expect(Platform.isAndroid || Platform.isIOS, isTrue);
         expect(const bool.fromEnvironment('PERF_PROBE'), isTrue);
         expect(
           binding.platformDispatcher.accessibilityFeatures.disableAnimations,
@@ -99,7 +99,6 @@ void main() {
                   !_home(tester).state.loading,
             );
             await _reveal(tester, _choice('Транспорт'));
-            await _reveal(tester, _choice('Кафе и рестораны'));
             expect(_choice('Транспорт').hitTestable(), findsOneWidget);
             await probe.stage(
               '${prefix}_rapid_filters',
@@ -107,6 +106,8 @@ void main() {
                 _choose(tester, action, 'Транспорт');
                 await tester
                     .pump(); // One real vsync, no wait for the older response.
+                await tester.ensureVisible(_choice('Кафе и рестораны'));
+                await tester.pump();
                 _choose(tester, action, 'Кафе и рестораны');
               },
               ready: () =>

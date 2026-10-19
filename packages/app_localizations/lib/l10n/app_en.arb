@@ -492,7 +492,7 @@
   "operationSampleContact": "Sample contact",
   "operationToppedUp": "Account topped up",
   "operationTransferred": "Transfer completed",
-  "operationSaved": "Transaction {id} is saved in the history.",
+  "operationSaved": "The transaction is saved in the history.",
   "operationConfirm": "Confirm",
   "operationRunning": "Processing…",
   "operationRetry": "Retry request",

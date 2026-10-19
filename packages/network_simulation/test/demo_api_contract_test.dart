@@ -464,7 +464,11 @@ void main() {
         method: 'POST',
         body: {'quoteId': first['id'], 'idempotencyKey': 'seat-key-00001'},
       );
-      expect(payment['ticket'], contains('seat-1'));
+      expect(
+        payment['ticket'],
+        'Кинотеатр «Сфера» · зал 2\nОрбита света\n'
+        '17.10.2026 · 19:00 (UTC+3)\nРяд 1 · место 1',
+      );
       final conflict = await api.handle(
         SimulatedRequest(
           method: 'POST',

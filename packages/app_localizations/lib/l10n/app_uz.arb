@@ -492,7 +492,7 @@
   "operationSampleContact": "Oʻquv kontakti",
   "operationToppedUp": "Hisob toʻldirildi",
   "operationTransferred": "Oʻtkazma bajarildi",
-  "operationSaved": "{id} operatsiyasi tarixda saqlandi.",
+  "operationSaved": "Operatsiya tarixda saqlandi.",
   "operationConfirm": "Tasdiqlash",
   "operationRunning": "Bajarilmoqda…",
   "operationRetry": "Soʻrovni takrorlash",
