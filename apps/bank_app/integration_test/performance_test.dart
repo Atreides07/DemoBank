@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:ui';
+
 import 'package:app_foundation/app_foundation.dart';
 import 'package:app_localizations/app_localizations.dart';
 import 'package:bank_experience/bank_experience.dart';
@@ -247,8 +248,7 @@ void main() {
                 'rasterUs': t.rasterDuration.inMicroseconds,
               },
           ],
-          'notes':
-              'Cold/cache page metric is data-ready framework frame; rows may be below viewport. Handler metric excludes input dispatch and raster presentation. OS/process startup measured separately. RSS is process resident memory, not Android PSS.',
+          'notes': 'Cold/cache page metric is data-ready framework frame; rows may be below viewport. Handler metric excludes input dispatch and raster presentation. OS/process startup measured separately. RSS is process resident memory, not Android PSS.',
         },
       };
       expect(tester.takeException(), isNull);

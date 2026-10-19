@@ -32,9 +32,8 @@ AppEnvironment _environment({
 void main() {
   test('the first supported device language is used, otherwise Russian', () {
     expect(
-      _environment(
-        systemLocales: const [Locale('de'), Locale('uz', 'UZ')],
-      ).language,
+      _environment(systemLocales: const [Locale('de'), Locale('uz', 'UZ')])
+          .language,
       AppLanguage.uz,
     );
     expect(

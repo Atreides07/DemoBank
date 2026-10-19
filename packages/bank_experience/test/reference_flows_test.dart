@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:accounts/accounts.dart';
 import 'package:app_foundation/app_foundation.dart';
 import 'package:bank_core/bank_core.dart';

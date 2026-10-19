@@ -38,13 +38,11 @@ final class CheckoutDependencies {
 /// response never creates a fresh key or silently resubmits a payment.
 final class CheckoutCubit extends Cubit<CheckoutState> {
   CheckoutCubit({
-    required PaymentGateway gateway,
+    required this._gateway,
     required PendingPaymentStore pendingStore,
-    required PaymentClock clock,
+    required this._clock,
     required IdempotencyKeyFactory keyFactory,
-  }) : _gateway = gateway,
-       _store = pendingStore,
-       _clock = clock,
+  }) : _store = pendingStore,
        _keys = keyFactory,
        super(const CheckoutState());
 

@@ -32,7 +32,7 @@ final class ApiRequestEvent {
     'requestId': requestId,
     'phase': phase.name,
     'elapsedUs': elapsed.inMicroseconds,
-    if (bytes != null) 'bytes': bytes!,
+    'bytes': ?bytes,
     if (failureKind != null) 'failureKind': failureKind!.name,
   };
 }

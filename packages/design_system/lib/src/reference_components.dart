@@ -1,7 +1,10 @@
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+
 import 'amount.dart';
 import 'charts.dart';
 import 'components.dart';
@@ -283,9 +286,8 @@ class DsStory extends StatelessWidget {
                       title,
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodySmall?.copyWith(color: Colors.white),
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: Colors.white),
                     ),
                   ),
                 ),
@@ -349,19 +351,17 @@ class DsOverviewCard extends StatelessWidget {
         children: [
           Text(
             title,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontSize: DsTokens.overviewTitleSize,
-            ),
+            style: Theme.of(context).textTheme.titleLarge
+                ?.copyWith(fontSize: DsTokens.overviewTitleSize),
           ),
           Text(
             value,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              fontSize: DsTokens.overviewValueSize,
-            ),
+            style: Theme.of(context).textTheme.bodyLarge
+                ?.copyWith(fontSize: DsTokens.overviewValueSize),
           ),
           if (detail != null)
             DsText(detail!, style: DsTextStyle.caption, tone: DsTone.muted),
-          if (footer != null) footer!,
+          ?footer,
         ],
       ),
     ),
@@ -419,9 +419,8 @@ class DsBankCards extends StatelessWidget {
           width: DsTokens.bankCardWidth,
           child: Semantics(
             button: true,
-            label: DsLocalizations.of(
-              context,
-            ).card(card.digits, frozen: card.frozen),
+            label: DsLocalizations.of(context)
+                .card(card.digits, frozen: card.frozen),
             excludeSemantics: true,
             child: Material(
               color: Colors.transparent,
@@ -567,9 +566,8 @@ class _DsBankCardCarouselState extends State<DsBankCardCarousel> {
                     padding: const EdgeInsets.symmetric(horizontal: 6),
                     child: Semantics(
                       selected: index == _selected,
-                      label: DsLocalizations.of(
-                        context,
-                      ).card(card.digits, frozen: card.frozen),
+                      label: DsLocalizations.of(context)
+                          .card(card.digits, frozen: card.frozen),
                       excludeSemantics: true,
                       child: Material(
                         color: Colors.black,
@@ -1012,7 +1010,7 @@ class DsShowcaseHeading extends StatelessWidget {
             align: center ? TextAlign.center : TextAlign.start,
           ),
         ),
-        if (action != null) action!,
+        ?action,
       ],
     ),
   );
@@ -1046,7 +1044,9 @@ class DsSliverPage extends StatelessWidget {
       key: scrollKey,
       controller: controller,
       physics: const AlwaysScrollableScrollPhysics(),
-      cacheExtent: prebuildOffscreen ? null : 0,
+      scrollCacheExtent: prebuildOffscreen
+          ? null
+          : const ScrollCacheExtent.pixels(0),
       slivers: slivers,
     );
     return AnnotatedRegion<SystemUiOverlayStyle>(

@@ -12,12 +12,10 @@ import 'package:payment_domain/payment_domain.dart';
 /// that may already have been sent.
 final class CallbackPendingPaymentStore implements PendingPaymentStore {
   CallbackPendingPaymentStore({
-    required Future<String?> Function() read,
-    required Future<void> Function(String?) write,
-    Future<void> Function()? quarantine,
-  }) : _read = read,
-       _write = write,
-       _quarantine = quarantine;
+    required this._read,
+    required this._write,
+    this._quarantine,
+  });
 
   final Future<String?> Function() _read;
   final Future<void> Function(String?) _write;

@@ -4,7 +4,7 @@ version: 1.0.0
 publish_to: none
 resolution: workspace
 environment:
-  sdk: '>=3.9.2 <4.0.0'
+  sdk: '>=3.13.5 <4.0.0'
 dependencies:
   network_simulation:
     path: ../../packages/network_simulation
@@ -13,4 +13,4 @@ dev_dependencies:
   dio: 5.9.0
   network_client:
     path: ../../packages/network_client
-  test: 1.26.2
+  test: 1.31.1

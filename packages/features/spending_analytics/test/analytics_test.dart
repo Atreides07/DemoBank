@@ -155,100 +155,91 @@ void main() {
     expect(cubit.state.summary, isNull);
   });
 
-  test(
-    'API aggregates equal every page of parsed expense detail and cache is filter scoped',
-    () async {
-      final adapter = SimulationAdapter(
-        profile: const NetworkProfile(
-          name: 'analytics-contract',
-          firstByteLatency: Duration.zero,
-          jitter: Duration.zero,
-          bytesPerSecond: 1000000000,
+  test('API aggregates equal every page of parsed expense detail and cache is filter scoped', () async {
+    final adapter = SimulationAdapter(
+      profile: const NetworkProfile(
+        name: 'analytics-contract',
+        firstByteLatency: Duration.zero,
+        jitter: Duration.zero,
+        bytesPerSecond: 1000000000,
+      ),
+    );
+    final client = ApiClient(
+      baseUri: Uri.parse('https://demo.invalid'),
+      adapter: adapter,
+    );
+    final cache = MemoryCacheStore();
+    addTearDown(client.close);
+    addTearDown(cache.close);
+    final repository = ApiAnalyticsRepository(client, cache);
+    final filter = LedgerFilter(
+      from: DateTime.utc(2026, 9, 30, 21),
+      to: DateTime.utc(2026, 10, 16, 21),
+      accounts: const ['main'],
+    );
+    expect(await repository.cached(filter), isNull);
+    final summary = await repository.summary(filter);
+    expect(summary.total.minor, greaterThan(0));
+    expect(
+      summary.categories.fold<int>(0, (sum, point) => sum + point.amount.minor),
+      summary.total.minor,
+    );
+    expect(
+      summary.merchants.fold<int>(0, (sum, point) => sum + point.amount.minor),
+      summary.total.minor,
+    );
+    expect(
+      summary.timeline.fold<int>(0, (sum, point) => sum + point.amount.minor),
+      summary.total.minor,
+    );
+    var total = 0;
+    final ids = <String>{};
+    String? cursor;
+    do {
+      final page = decodeLedgerPage(
+        await client.get(
+          '/v1/transactions',
+          query: {
+            ...filter
+                .copyWith(kind: EntryKind.expense, revision: summary.revision)
+                .toQuery(),
+            'limit': 30,
+            'cursor': ?cursor,
+          },
         ),
       );
-      final client = ApiClient(
-        baseUri: Uri.parse('https://demo.invalid'),
-        adapter: adapter,
-      );
-      final cache = MemoryCacheStore();
-      addTearDown(client.close);
-      addTearDown(cache.close);
-      final repository = ApiAnalyticsRepository(client, cache);
-      final filter = LedgerFilter(
-        from: DateTime.utc(2026, 9, 30, 21),
-        to: DateTime.utc(2026, 10, 16, 21),
-        accounts: const ['main'],
-      );
-      expect(await repository.cached(filter), isNull);
-      final summary = await repository.summary(filter);
-      expect(summary.total.minor, greaterThan(0));
-      expect(
-        summary.categories.fold<int>(
-          0,
-          (sum, point) => sum + point.amount.minor,
-        ),
-        summary.total.minor,
-      );
-      expect(
-        summary.merchants.fold<int>(
-          0,
-          (sum, point) => sum + point.amount.minor,
-        ),
-        summary.total.minor,
-      );
-      expect(
-        summary.timeline.fold<int>(0, (sum, point) => sum + point.amount.minor),
-        summary.total.minor,
-      );
-      var total = 0;
-      final ids = <String>{};
-      String? cursor;
-      do {
-        final page = decodeLedgerPage(
-          await client.get(
-            '/v1/transactions',
-            query: {
-              ...filter
-                  .copyWith(kind: EntryKind.expense, revision: summary.revision)
-                  .toQuery(),
-              'limit': 30,
-              'cursor': ?cursor,
-            },
-          ),
-        );
-        expect(page.revision, summary.revision);
-        expect(page.totalAmount.minor, summary.total.minor);
-        for (final entry in page.items) {
-          expect(entry.status, EntryStatus.posted);
-          expect(entry.kind, EntryKind.expense);
-          expect(ids.add(entry.id), isTrue);
-          total += entry.amount.minor;
-        }
-        cursor = page.nextCursor;
-      } while (cursor != null);
-      expect(total, summary.total.minor);
-      expect(ids.length, summary.count);
-      final requestCount = adapter.events
-          .where((event) => event.phase == 'started')
-          .length;
-      final cached = (await repository.cached(filter))!;
-      expect(cached.total.minor, total);
-      expect(cached.revision, summary.revision);
-      expect(
-        adapter.events.where((event) => event.phase == 'started').length,
-        requestCount,
-      );
-      expect(
-        await repository.cached(filter.copyWith(category: 'dining')),
-        isNull,
-      );
-      final category = summary.categories.first;
-      final narrowed = await repository.summary(
-        filter.copyWith(category: category.id, revision: summary.revision),
-      );
-      expect(narrowed.total.minor, category.amount.minor);
-    },
-  );
+      expect(page.revision, summary.revision);
+      expect(page.totalAmount.minor, summary.total.minor);
+      for (final entry in page.items) {
+        expect(entry.status, EntryStatus.posted);
+        expect(entry.kind, EntryKind.expense);
+        expect(ids.add(entry.id), isTrue);
+        total += entry.amount.minor;
+      }
+      cursor = page.nextCursor;
+    } while (cursor != null);
+    expect(total, summary.total.minor);
+    expect(ids.length, summary.count);
+    final requestCount = adapter.events
+        .where((event) => event.phase == 'started')
+        .length;
+    final cached = (await repository.cached(filter))!;
+    expect(cached.total.minor, total);
+    expect(cached.revision, summary.revision);
+    expect(
+      adapter.events.where((event) => event.phase == 'started').length,
+      requestCount,
+    );
+    expect(
+      await repository.cached(filter.copyWith(category: 'dining')),
+      isNull,
+    );
+    final category = summary.categories.first;
+    final narrowed = await repository.summary(
+      filter.copyWith(category: category.id, revision: summary.revision),
+    );
+    expect(narrowed.total.minor, category.amount.minor);
+  });
 }
 
 Future<void> _turn() => Future<void>.delayed(Duration.zero);

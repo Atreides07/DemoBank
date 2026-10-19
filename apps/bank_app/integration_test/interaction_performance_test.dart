@@ -1,5 +1,7 @@
 import 'dart:async';
+
 import 'package:accounts/accounts.dart';
+
 import 'dart:io';
 import 'dart:ui';
 
@@ -721,8 +723,7 @@ final class _Probe {
         frames.map((frame) => _ms(frame.totalSpan)).toList(),
       ),
       'frameBudgetUs': budget,
-      'missDefinition':
-          'UI build or raster duration exceeds budget; idle vsync gaps are not classified as dropped frames',
+      'missDefinition': 'UI build or raster duration exceeds budget; idle vsync gaps are not classified as dropped frames',
       'uiMisses': uiMisses,
       'rasterMisses': rasterMisses,
       'eitherMisses': eitherMisses,
@@ -820,10 +821,8 @@ final class _Probe {
           defaultValue: 'Attach physical-device evidence externally',
         ),
         'stages': stages,
-        'statusMeaning':
-            'Scenario and instrumentation assertions; numerical performance budgets remain explicit measurements, assessed separately from the sustained scroll gate',
-        'notes':
-            'Raw traceAction traces are separate interaction_* report keys. Widget-callback handler metrics exclude input dispatch. Data-ready is observed by polling; dataReadyFrameworkFrameMs is the next framework pump after that observation, not guaranteed first physical presentation. UI/raster timings are actual engine FrameTiming. Applied page count is state.pages only; prepared pending windows also contribute to RSS. This is a scenario probe, not the sustained 60-second scroll gate or human animation-benefit test. RSS is not Android PSS.',
+        'statusMeaning': 'Scenario and instrumentation assertions; numerical performance budgets remain explicit measurements, assessed separately from the sustained scroll gate',
+        'notes': 'Raw traceAction traces are separate interaction_* report keys. Widget-callback handler metrics exclude input dispatch. Data-ready is observed by polling; dataReadyFrameworkFrameMs is the next framework pump after that observation, not guaranteed first physical presentation. UI/raster timings are actual engine FrameTiming. Applied page count is state.pages only; prepared pending windows also contribute to RSS. This is a scenario probe, not the sustained 60-second scroll gate or human animation-benefit test. RSS is not Android PSS.',
       },
     };
   }

@@ -367,158 +367,146 @@ void main() {
     },
   );
 
-  test(
-    'two graphs isolate settings, response data, simulator state and payment journals',
-    () async {
-      final cacheA = _CountingStore();
-      final journalA = _CountingStore();
-      final cacheB = _CountingStore();
-      final journalB = _CountingStore();
-      final first = AppEnvironment(
-        cache: cacheA,
-        journal: journalA,
-        profile: _fastProfile,
-      );
-      final second = AppEnvironment(
-        cache: cacheB,
-        journal: journalB,
-        profile: _fastProfile,
-      );
-      addTearDown(first.dispose);
-      addTearDown(second.dispose);
+  test('two graphs isolate settings, response data, simulator state and payment journals', () async {
+    final cacheA = _CountingStore();
+    final journalA = _CountingStore();
+    final cacheB = _CountingStore();
+    final journalB = _CountingStore();
+    final first = AppEnvironment(
+      cache: cacheA,
+      journal: journalA,
+      profile: _fastProfile,
+    );
+    final second = AppEnvironment(
+      cache: cacheB,
+      journal: journalB,
+      profile: _fastProfile,
+    );
+    addTearDown(first.dispose);
+    addTearDown(second.dispose);
 
-      first.setTheme(true);
-      first.setReducedMotion(true);
-      first.setComparison(true);
-      expect(second.theme, ThemeMode.light);
-      expect(second.reduceMotion, false);
-      expect(second.motionComparison, false);
+    first.setTheme(true);
+    first.setReducedMotion(true);
+    first.setComparison(true);
+    expect(second.theme, ThemeMode.light);
+    expect(second.reduceMotion, false);
+    expect(second.motionComparison, false);
 
-      await first.cache.write('accounts', {'owner': 'first'});
-      expect(await second.cache.read('accounts'), isNull);
-      await first.checkout.pendingStore.reserve(_pending('operation-A'));
-      expect(await second.checkout.pendingStore.load(), isNull);
-      await second.checkout.pendingStore.reserve(_pending('operation-B'));
-      expect(
-        (await first.checkout.pendingStore.load())?.idempotencyKey,
-        'operation-A',
-      );
-      expect(
-        (await second.checkout.pendingStore.load())?.idempotencyKey,
-        'operation-B',
-      );
+    await first.cache.write('accounts', {'owner': 'first'});
+    expect(await second.cache.read('accounts'), isNull);
+    await first.checkout.pendingStore.reserve(_pending('operation-A'));
+    expect(await second.checkout.pendingStore.load(), isNull);
+    await second.checkout.pendingStore.reserve(_pending('operation-B'));
+    expect(
+      (await first.checkout.pendingStore.load())?.idempotencyKey,
+      'operation-A',
+    );
+    expect(
+      (await second.checkout.pendingStore.load())?.idempotencyKey,
+      'operation-B',
+    );
 
-      final beforeA = await first.api.get(
-        '/v1/transactions',
-        query: {'limit': 1},
-      );
-      final beforeB = await second.api.get(
-        '/v1/transactions',
-        query: {'limit': 1},
-      );
-      expect(beforeA['revision'], beforeB['revision']);
-      await first.addActivity();
-      final afterA = await first.api.get(
-        '/v1/transactions',
-        query: {'limit': 1},
-      );
-      final afterB = await second.api.get(
-        '/v1/transactions',
-        query: {'limit': 1},
-      );
-      expect(afterA['total'], (beforeA['total']! as int) + 1);
-      expect(afterA['revision'], isNot(beforeA['revision']));
-      expect(afterB['revision'], beforeB['revision']);
-      expect(afterB['items'], beforeB['items']);
-      expect(await journalA.read('simulator_state'), isNotNull);
-      expect(await journalB.read('simulator_state'), isNull);
-      expect(
-        (await second.checkout.pendingStore.load())?.idempotencyKey,
-        'operation-B',
-      );
-    },
-  );
+    final beforeA = await first.api.get(
+      '/v1/transactions',
+      query: {'limit': 1},
+    );
+    final beforeB = await second.api.get(
+      '/v1/transactions',
+      query: {'limit': 1},
+    );
+    expect(beforeA['revision'], beforeB['revision']);
+    await first.addActivity();
+    final afterA = await first.api.get('/v1/transactions', query: {'limit': 1});
+    final afterB = await second.api.get(
+      '/v1/transactions',
+      query: {'limit': 1},
+    );
+    expect(afterA['total'], (beforeA['total']! as int) + 1);
+    expect(afterA['revision'], isNot(beforeA['revision']));
+    expect(afterB['revision'], beforeB['revision']);
+    expect(afterB['items'], beforeB['items']);
+    expect(await journalA.read('simulator_state'), isNotNull);
+    expect(await journalB.read('simulator_state'), isNull);
+    expect(
+      (await second.checkout.pendingStore.load())?.idempotencyKey,
+      'operation-B',
+    );
+  });
 
-  test(
-    'clearing response cache preserves recoverable payment and simulator journal',
-    () async {
-      final cache = _CountingStore();
-      final journal = _CountingStore();
-      final environment = AppEnvironment(
-        cache: cache,
-        journal: journal,
-        profile: _fastProfile,
-      );
-      addTearDown(environment.dispose);
-      await cache.write('accounts', {'cached': true});
-      await environment.checkout.pendingStore.reserve(_pending('recover-me'));
-      await environment.addActivity();
-      final persistedState = (await journal.read('simulator_state'))!.value;
+  test('clearing response cache preserves recoverable payment and simulator journal', () async {
+    final cache = _CountingStore();
+    final journal = _CountingStore();
+    final environment = AppEnvironment(
+      cache: cache,
+      journal: journal,
+      profile: _fastProfile,
+    );
+    addTearDown(environment.dispose);
+    await cache.write('accounts', {'cached': true});
+    await environment.checkout.pendingStore.reserve(_pending('recover-me'));
+    await environment.addActivity();
+    final persistedState = (await journal.read('simulator_state'))!.value;
 
-      await environment.clearCache();
+    await environment.clearCache();
 
-      expect(cache.clears, 1);
-      expect(await cache.read('accounts'), isNull);
-      expect(journal.clears, 0);
-      expect(journal.deletions, 0);
-      expect(
-        (await environment.checkout.pendingStore.load())?.idempotencyKey,
-        'recover-me',
-      );
-      expect((await journal.read('simulator_state'))?.value, persistedState);
-    },
-  );
+    expect(cache.clears, 1);
+    expect(await cache.read('accounts'), isNull);
+    expect(journal.clears, 0);
+    expect(journal.deletions, 0);
+    expect(
+      (await environment.checkout.pendingStore.load())?.idempotencyKey,
+      'recover-me',
+    );
+    expect((await journal.read('simulator_state'))?.value, persistedState);
+  });
 
-  test(
-    'scope identifiers are restart compatible and partition sources, fixtures and backends',
-    () {
-      // Persisted namespace compatibility vectors: changing these requires a
-      // deliberate migration, rather than silently losing a pending payment.
-      expect(AppEnvironment.storageScope(http: false), 'simulation_42');
-      expect(AppEnvironment.storageScope(http: true), 'http_a91b2b6f');
-      expect(
-        AppEnvironment.storageScope(
-          http: true,
-          baseUri: Uri.parse('https://api.example.test/v1'),
-        ),
-        'http_50b72a01',
-      );
+  test('scope identifiers are restart compatible and partition sources, fixtures and backends', () {
+    // Persisted namespace compatibility vectors: changing these requires a
+    // deliberate migration, rather than silently losing a pending payment.
+    expect(AppEnvironment.storageScope(http: false), 'simulation_42');
+    expect(AppEnvironment.storageScope(http: true), 'http_a91b2b6f');
+    expect(
+      AppEnvironment.storageScope(
+        http: true,
+        baseUri: Uri.parse('https://api.example.test/v1'),
+      ),
+      'http_50b72a01',
+    );
 
-      final scopes = {
-        AppEnvironment.storageScope(http: false),
-        AppEnvironment.storageScope(http: false, seed: 7),
-        AppEnvironment.storageScope(http: true),
-        AppEnvironment.storageScope(
-          http: true,
-          baseUri: Uri.parse('https://api.example.test/v1'),
-        ),
-        AppEnvironment.storageScope(
-          http: true,
-          baseUri: Uri.parse('https://api.example.test/v2'),
-        ),
-        AppEnvironment.storageScope(
-          http: true,
-          baseUri: Uri.parse('https://api.example.test:8443/v1'),
-        ),
-        AppEnvironment.storageScope(
-          http: true,
-          baseUri: Uri.parse('http://api.example.test/v1'),
-        ),
-        AppEnvironment.storageScope(
-          http: true,
-          baseUri: Uri.parse('https://other.example.test/v1'),
-        ),
-      };
-      expect(scopes, hasLength(8));
-      expect(
-        AppEnvironment.storageScope(
-          http: true,
-          baseUri: Uri.parse('https://api.example.test:443/v1'),
-        ),
-        'http_50b72a01',
-      );
-    },
-  );
+    final scopes = {
+      AppEnvironment.storageScope(http: false),
+      AppEnvironment.storageScope(http: false, seed: 7),
+      AppEnvironment.storageScope(http: true),
+      AppEnvironment.storageScope(
+        http: true,
+        baseUri: Uri.parse('https://api.example.test/v1'),
+      ),
+      AppEnvironment.storageScope(
+        http: true,
+        baseUri: Uri.parse('https://api.example.test/v2'),
+      ),
+      AppEnvironment.storageScope(
+        http: true,
+        baseUri: Uri.parse('https://api.example.test:8443/v1'),
+      ),
+      AppEnvironment.storageScope(
+        http: true,
+        baseUri: Uri.parse('http://api.example.test/v1'),
+      ),
+      AppEnvironment.storageScope(
+        http: true,
+        baseUri: Uri.parse('https://other.example.test/v1'),
+      ),
+    };
+    expect(scopes, hasLength(8));
+    expect(
+      AppEnvironment.storageScope(
+        http: true,
+        baseUri: Uri.parse('https://api.example.test:443/v1'),
+      ),
+      'http_50b72a01',
+    );
+  });
 
   test(
     'changing a latency profile preserves scope, cache and pending operation',
@@ -550,81 +538,73 @@ void main() {
     },
   );
 
-  test(
-    'offline activity reports an error state without throwing or mutating its journal',
-    () async {
-      final scheduler = ManualSimulationScheduler();
-      final journal = _CountingStore();
-      final environment = AppEnvironment(
-        cache: _CountingStore(),
-        journal: journal,
-        simulation: SimulationAdapter(
-          profile: NetworkProfile.offline,
-          scheduler: scheduler,
-        ),
-      );
-      addTearDown(environment.dispose);
-      final phases = <bool>[];
-      environment.addListener(() => phases.add(environment.activityInProgress));
+  test('offline activity reports an error state without throwing or mutating its journal', () async {
+    final scheduler = ManualSimulationScheduler();
+    final journal = _CountingStore();
+    final environment = AppEnvironment(
+      cache: _CountingStore(),
+      journal: journal,
+      simulation: SimulationAdapter(
+        profile: NetworkProfile.offline,
+        scheduler: scheduler,
+      ),
+    );
+    addTearDown(environment.dispose);
+    final phases = <bool>[];
+    environment.addListener(() => phases.add(environment.activityInProgress));
 
-      final operation = environment.addActivity();
-      final completion = expectLater(operation, completes);
-      expect(environment.activityInProgress, true);
-      await scheduler.runUntilIdle();
-      await completion;
+    final operation = environment.addActivity();
+    final completion = expectLater(operation, completes);
+    expect(environment.activityInProgress, true);
+    await scheduler.runUntilIdle();
+    await completion;
 
-      expect(phases, [true, false]);
-      expect(environment.activityInProgress, false);
-      expect(environment.activityOutcome, ActivityOutcome.failed);
-      expect(
-        environment.simulation.events.any((event) => event.phase == 'failed'),
-        true,
-      );
-      expect(journal.writes, 0);
-    },
-  );
+    expect(phases, [true, false]);
+    expect(environment.activityInProgress, false);
+    expect(environment.activityOutcome, ActivityOutcome.failed);
+    expect(
+      environment.simulation.events.any((event) => event.phase == 'failed'),
+      true,
+    );
+    expect(journal.writes, 0);
+  });
 
-  test(
-    'disposing during a request cancels it without notifications or late resource access',
-    () async {
-      final scheduler = ManualSimulationScheduler();
-      final cache = _CountingStore();
-      final journal = _CountingStore();
-      final environment = AppEnvironment(
-        cache: cache,
-        journal: journal,
-        simulation: SimulationAdapter(
-          profile: NetworkProfile.slow,
-          scheduler: scheduler,
-        ),
-      );
-      addTearDown(environment.dispose);
-      var notifications = 0;
-      environment.addListener(() => notifications++);
-      final operation = environment.addActivity();
-      final completion = expectLater(operation, completes);
-      await scheduler.elapse(Duration.zero);
-      expect(scheduler.pendingDelays, 1);
-      expect(notifications, 1);
+  test('disposing during a request cancels it without notifications or late resource access', () async {
+    final scheduler = ManualSimulationScheduler();
+    final cache = _CountingStore();
+    final journal = _CountingStore();
+    final environment = AppEnvironment(
+      cache: cache,
+      journal: journal,
+      simulation: SimulationAdapter(
+        profile: NetworkProfile.slow,
+        scheduler: scheduler,
+      ),
+    );
+    addTearDown(environment.dispose);
+    var notifications = 0;
+    environment.addListener(() => notifications++);
+    final operation = environment.addActivity();
+    final completion = expectLater(operation, completes);
+    await scheduler.elapse(Duration.zero);
+    expect(scheduler.pendingDelays, 1);
+    expect(notifications, 1);
 
-      environment.dispose();
-      environment.dispose();
-      await scheduler.runUntilIdle();
-      await completion;
+    environment.dispose();
+    environment.dispose();
+    await scheduler.runUntilIdle();
+    await completion;
 
-      expect(notifications, 1);
-      expect(environment.activityInProgress, false);
-      expect(scheduler.pendingDelays, 0);
-      expect(cache.closes, 1);
-      expect(journal.closes, 1);
-      expect(cache.ioCalls, 0);
-      expect(journal.ioCalls, 0);
-      expect(
-        environment.simulation.events.any(
-          (event) => event.phase == 'cancelled',
-        ),
-        true,
-      );
-    },
-  );
+    expect(notifications, 1);
+    expect(environment.activityInProgress, false);
+    expect(scheduler.pendingDelays, 0);
+    expect(cache.closes, 1);
+    expect(journal.closes, 1);
+    expect(cache.ioCalls, 0);
+    expect(journal.ioCalls, 0);
+    expect(
+      environment.simulation.events.any((event) => event.phase == 'cancelled'),
+      true,
+    );
+  });
 }

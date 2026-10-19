@@ -11,9 +11,9 @@ void main() {
     tester,
   ) async {
     final animation = _TrackedAnimation();
-    final route =
-        dsRoute<void>(builder: (_) => const SizedBox())
-            as PageRouteBuilder<void>;
+    final route = dsRoute<void>(
+      builder: (_) => const SizedBox(),
+    ) as PageRouteBuilder<void>;
     for (var i = 0; i < 20; i++) {
       await tester.pumpWidget(
         MaterialApp(
@@ -76,8 +76,7 @@ void main() {
                 ),
                 child: DsPage(
                   title: 'Платежи и операции',
-                  subtitle:
-                      'Длинное пояснение помогает проверить реальную компоновку',
+                  subtitle: 'Длинное пояснение помогает проверить реальную компоновку',
                   bottomNavigation: DsNavigationBar(
                     destinations: const [
                       DsDestination(label: 'Главная', icon: Icons.home),
@@ -476,8 +475,7 @@ void main() {
         expect(
           labelBoxes.every((box) => box.bottom <= label.size.height),
           true,
-          reason:
-              'The chip must grow to contain every line, not paint the second line outside its surface.',
+          reason: 'The chip must grow to contain every line, not paint the second line outside its surface.',
         );
         expect(find.bySemanticsLabel(account), findsOneWidget);
         await tester.tap(find.text(account));

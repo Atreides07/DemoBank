@@ -75,6 +75,6 @@ Iterable<Element> _activeLoaders() => find
       // tabs are excluded so retained background UI cannot block this journey.
       (element) =>
           (element.widget as CircularProgressIndicator).value == null &&
-          TickerMode.of(element) &&
+          TickerMode.valuesOf(element).enabled &&
           (ModalRoute.of(element)?.isCurrent ?? true),
     );

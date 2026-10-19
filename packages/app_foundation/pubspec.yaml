@@ -2,7 +2,7 @@ name: app_foundation
 publish_to: none
 resolution: workspace
 environment:
-  sdk: '>=3.9.2 <4.0.0'
+  sdk: '>=3.13.5 <4.0.0'
 dependencies:
   flutter:
     sdk: flutter

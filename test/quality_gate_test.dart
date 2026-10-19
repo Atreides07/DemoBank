@@ -1,4 +1,5 @@
 import 'package:test/test.dart';
+
 import '../tool/quality_gate.dart';
 
 void main() {
@@ -11,6 +12,18 @@ void main() {
     expect(issues.where((issue) => issue.contains('numeric visual')).length, 1);
     expect(issues.any((issue) => issue.contains('Padding belongs')), isTrue);
     expect(issues.any((issue) => issue.contains('EdgeInsets belongs')), isTrue);
+  });
+  test('scroll cache geometry remains owned by the design system', () {
+    final issues = inspectUiSource('''
+      void build() {
+        CustomScrollView(scrollCacheExtent: const ScrollCacheExtent.pixels(120));
+      }
+    ''', 'feature_view.dart');
+    expect(
+      issues.any((issue) => issue.contains('ScrollCacheExtent belongs')),
+      isTrue,
+    );
+    expect(issues.any((issue) => issue.contains('numeric visual')), isTrue);
   });
   test('permits semantic composition and business numbers', () {
     expect(

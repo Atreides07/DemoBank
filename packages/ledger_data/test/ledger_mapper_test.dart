@@ -95,31 +95,28 @@ void main() {
     },
   );
 
-  test(
-    'summary totals, refunds, comparison and every aggregate share response currency',
-    () {
-      final summary = decodeSpendingSummary(_summary());
-      expect(summary.total, const Money(12345, currency: 'USD'));
-      expect(summary.refunds, const Money(67, currency: 'USD'));
-      expect(summary.previous, const Money(10000, currency: 'USD'));
-      for (final point in [
-        ...summary.categories,
-        ...summary.merchants,
-        ...summary.timeline,
-      ]) {
-        expect(point.amount, const Money(12345, currency: 'USD'));
-        expect(point.from, DateTime.utc(2026, 10, 15, 21));
-        expect(point.to, DateTime.utc(2026, 10, 16, 21));
-      }
-      expect(summary.comparisonFrom, DateTime.utc(2026, 9));
-      expect(summary.comparisonTo, DateTime.utc(2026, 10));
-      expect(() => summary.categories.clear(), throwsUnsupportedError);
-      expect(
-        decodeAggregatePoint(_point(currency: 'GBP')).amount.currency,
-        'GBP',
-      );
-    },
-  );
+  test('summary totals, refunds, comparison and every aggregate share response currency', () {
+    final summary = decodeSpendingSummary(_summary());
+    expect(summary.total, const Money(12345, currency: 'USD'));
+    expect(summary.refunds, const Money(67, currency: 'USD'));
+    expect(summary.previous, const Money(10000, currency: 'USD'));
+    for (final point in [
+      ...summary.categories,
+      ...summary.merchants,
+      ...summary.timeline,
+    ]) {
+      expect(point.amount, const Money(12345, currency: 'USD'));
+      expect(point.from, DateTime.utc(2026, 10, 15, 21));
+      expect(point.to, DateTime.utc(2026, 10, 16, 21));
+    }
+    expect(summary.comparisonFrom, DateTime.utc(2026, 9));
+    expect(summary.comparisonTo, DateTime.utc(2026, 10));
+    expect(() => summary.categories.clear(), throwsUnsupportedError);
+    expect(
+      decodeAggregatePoint(_point(currency: 'GBP')).amount.currency,
+      'GBP',
+    );
+  });
 
   test(
     'missing currency is a broken API contract rather than a RUB fallback',

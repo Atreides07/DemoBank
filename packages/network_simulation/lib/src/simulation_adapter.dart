@@ -13,14 +13,13 @@ import 'scheduler.dart';
 /// is asynchronous; the body is rate-limited in independently awaited chunks.
 final class SimulatedTransport {
   SimulatedTransport({
-    DemoApi? api,
+    this._api,
     this.profile = NetworkProfile.normal,
     SimulationScheduler? scheduler,
     this.seed = 42,
     this.faults = const [],
     this.maxLogEntries = 1000,
-  }) : _api = api,
-       scheduler = scheduler ?? RealSimulationScheduler();
+  }) : scheduler = scheduler ?? RealSimulationScheduler();
 
   DemoApi? _api;
   DemoApi get api => _api ??= DemoApi();

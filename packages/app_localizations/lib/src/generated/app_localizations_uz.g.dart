@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.g.dart';
 
 // ignore_for_file: type=lint
@@ -1291,30 +1292,22 @@ class AppLocalizationsUz extends AppLocalizations {
           'Toifalarni tanlang va oddiy xaridlar uchun koʻproq bonus oling.',
       'gift':
           'Oktabrda toʻplangan bonuslarni hamkorlar sovgʻalariga almashtiring.',
-      'saving':
-          'Maqsadni tanlang va jamgʻarma hisobini muntazam toʻldirishni sozlang.',
+      'saving': 'Maqsadni tanlang va jamgʻarma hisobini muntazam toʻldirishni sozlang.',
       'card': 'Hisobingizga qoʻshimcha namoyish kartasi.',
-      'home':
-          'Uy hisoblarini toʻlang va barcha muhim narsalarni bir joyda saqlang.',
-      'coast':
-          'Sokin koʻrfaz, sayrlar va yangi joylar. Sanalar va narxlar namoyish uchun.',
-      'hotel':
-          'Dengiz boʻyida ikki kecha · nonushta kiritilgan. Namoyish uchun bron.',
-      'shopping':
-          'Uy, dam olish va oʻzingiz uchun hamma narsa. Namoyish vitrinasida chegirmalar va bonuslar.',
+      'home': 'Uy hisoblarini toʻlang va barcha muhim narsalarni bir joyda saqlang.',
+      'coast': 'Sokin koʻrfaz, sayrlar va yangi joylar. Sanalar va narxlar namoyish uchun.',
+      'hotel': 'Dengiz boʻyida ikki kecha · nonushta kiritilgan. Namoyish uchun bron.',
+      'shopping': 'Uy, dam olish va oʻzingiz uchun hamma narsa. Namoyish vitrinasida chegirmalar va bonuslar.',
       'electronics': 'Har kun uchun qurilmalar',
       'cosmetics': 'Kichik yoqimli kashfiyotlar',
       'clothes': 'Sayr uchun qulay kiyimlar',
       'appliances': 'Oʻzingiz uchun koʻproq vaqt',
-      'phone':
-          'Ixcham smartfon, 128 GB, yalpiz rang. Model va xususiyatlar oʻylab topilgan.',
-      'pillow':
-          'Ikkita yumshoq 50 × 70 sm yostiq. Gipoallergen toʻldirgich, yechiladigan gʻiloflar.',
+      'phone': 'Ixcham smartfon, 128 GB, yalpiz rang. Model va xususiyatlar oʻylab topilgan.',
+      'pillow': 'Ikkita yumshoq 50 × 70 sm yostiq. Gipoallergen toʻldirgich, yechiladigan gʻiloflar.',
       'shoes': 'Yumshoq taglik, yengil mato. Och lavanda rangi.',
       'perfume': 'Yengil gulli hid. Haqiqiy brendsiz namoyish mahsuloti.',
       'washer': 'Oʻquv modeli: 6 kg yuk, 12 dastur, sokin rejim.',
-      'airfryer':
-          'Sevimli taomlar uchun: harorat sozlagichi, taymer, yechiladigan idish.',
+      'airfryer': 'Sevimli taomlar uchun: harorat sozlagichi, taymer, yechiladigan idish.',
       'other': 'Namoyish taklifi.',
     });
     return '$_temp0';

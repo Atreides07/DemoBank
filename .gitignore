@@ -7,6 +7,7 @@ build/
 **/build/
 **/coverage/
 **/android/.gradle/
+**/android/.kotlin/
 **/android/local.properties
 **/android/key.properties
 **/android/**/GeneratedPluginRegistrant.java
@@ -23,3 +24,4 @@ build/
 __pycache__/
 *.py[cod]
 **/test/failures/
+.fvm/

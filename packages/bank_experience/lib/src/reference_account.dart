@@ -41,9 +41,8 @@ class _AccountWorkspaceState extends State<_AccountWorkspace> {
         'RUB';
     _overview = AnalyticsCubit(
       widget.analytics,
-      filter: ReportingPeriod.month(
-        widget.environment.now(),
-      ).copyWith(accounts: [widget.accountId], currency: currency),
+      filter: ReportingPeriod.month(widget.environment.now())
+          .copyWith(accounts: [widget.accountId], currency: currency),
     );
     unawaited(_profile.load());
     unawaited(_overview.load());
@@ -295,9 +294,8 @@ class _AccountActionPageState extends State<_AccountActionPage> {
       widget.onChanged();
       setState(() => _saved = true);
       if (widget.action == 'freezeCard') {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(context.l10n.accountSaved)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(context.l10n.accountSaved)));
       }
     }
     return saved;

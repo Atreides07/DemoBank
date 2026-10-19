@@ -5,8 +5,9 @@ import 'dart:math';
 part 'account_fixtures.dart';
 part 'demo_texts.dart';
 
-typedef DemoRoute =
-    Future<SimulatedResponse?> Function(SimulatedRequest request);
+typedef DemoRoute = Future<SimulatedResponse?> Function(
+  SimulatedRequest request,
+);
 typedef LoadDemoState = Future<Map<String, dynamic>?> Function();
 typedef SaveDemoState = Future<void> Function(Map<String, dynamic> state);
 
@@ -221,9 +222,8 @@ final class DemoApi {
   }
 
   int _newestFirst(Map<String, dynamic> a, Map<String, dynamic> b) {
-    final date = _instant(
-      b['occurredAt'] as String,
-    ).compareTo(_instant(a['occurredAt'] as String));
+    final date = _instant(b['occurredAt'] as String)
+        .compareTo(_instant(a['occurredAt'] as String));
     return date != 0 ? date : (b['id'] as String).compareTo(a['id'] as String);
   }
 
@@ -1001,9 +1001,9 @@ final class DemoApi {
     final seats = (_seats(sessionId).body['items'] as List)
         .cast<Map<String, dynamic>>();
     // Session instants use the bank's reporting time zone, Moscow (UTC+3).
-    final start = DateTime.parse(
-      session['startsAt'] as String,
-    ).toUtc().add(const Duration(hours: 3));
+    final start = DateTime.parse(session['startsAt'] as String)
+        .toUtc()
+        .add(const Duration(hours: 3));
     String two(int value) => value.toString().padLeft(2, '0');
     return _t('cinema.ticket', {
       'cinema': session['cinema'],
@@ -1174,9 +1174,8 @@ final class DemoApi {
           ..._snapshots[_revision]!.where((old) => old['id'] != item['id']),
           Map<String, dynamic>.unmodifiable(item),
         ]..sort((a, b) {
-          final date = _instant(
-            b['occurredAt'] as String,
-          ).compareTo(_instant(a['occurredAt'] as String));
+          final date = _instant(b['occurredAt'] as String)
+              .compareTo(_instant(a['occurredAt'] as String));
           return date != 0
               ? date
               : (b['id'] as String).compareTo(a['id'] as String);
@@ -1205,25 +1204,24 @@ final class DemoApi {
 
   Map<String, dynamic> exportState() => Map<String, dynamic>.from(
     jsonDecode(
-          jsonEncode({
-            'schema': 1,
-            'revision': _revision,
-            'quotes': _quotes,
-            'payments': _payments,
-            'paidBills': _paidBills.toList(growable: false),
-            'reservedSeats': _reservedSeats.toList(growable: false),
-            'seatRevision': _seatRevision,
-            'quoteSequence': _quoteSequence,
-            'paymentSequence': _paymentSequence,
-            'demoSequence': _demoSequence,
-            'ledgerSequence': _ledgerSequence,
-            'mutations': _mutations,
-            'accountAdjustments': _accountAdjustments,
-            'accountPreferences': _accountPreferences,
-            'accountOperations': _accountOperations,
-          }),
-        )
-        as Map,
+      jsonEncode({
+        'schema': 1,
+        'revision': _revision,
+        'quotes': _quotes,
+        'payments': _payments,
+        'paidBills': _paidBills.toList(growable: false),
+        'reservedSeats': _reservedSeats.toList(growable: false),
+        'seatRevision': _seatRevision,
+        'quoteSequence': _quoteSequence,
+        'paymentSequence': _paymentSequence,
+        'demoSequence': _demoSequence,
+        'ledgerSequence': _ledgerSequence,
+        'mutations': _mutations,
+        'accountAdjustments': _accountAdjustments,
+        'accountPreferences': _accountPreferences,
+        'accountOperations': _accountOperations,
+      }),
+    ) as Map,
   );
 
   Future<void> restoreState(Map<String, dynamic> state) async {
@@ -1283,9 +1281,8 @@ final class DemoApi {
             ),
             ..._mutations.values.where((item) => item['_removed'] != true),
           ]..sort((a, b) {
-            final date = DateTime.parse(
-              b['occurredAt'] as String,
-            ).compareTo(DateTime.parse(a['occurredAt'] as String));
+            final date = DateTime.parse(b['occurredAt'] as String)
+                .compareTo(DateTime.parse(a['occurredAt'] as String));
             return date != 0
                 ? date
                 : (b['id'] as String).compareTo(a['id'] as String);

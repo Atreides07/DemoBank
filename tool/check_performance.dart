@@ -77,9 +77,9 @@ void main(List<String> arguments) {
     exitCode = 64;
     return;
   }
-  final json =
-      jsonDecode(File(arguments.single).readAsStringSync())
-          as Map<String, dynamic>;
+  final json = jsonDecode(
+    File(arguments.single).readAsStringSync(),
+  ) as Map<String, dynamic>;
   final failures = inspectPerformance(json);
   if (failures.isNotEmpty) {
     stderr.writeln(failures.join('\n'));

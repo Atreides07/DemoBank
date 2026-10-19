@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.g.dart';
 
 // ignore_for_file: type=lint
@@ -1280,24 +1281,19 @@ class AppLocalizationsEn extends AppLocalizations {
           'Choose a goal and set up regular top-ups of your savings account.',
       'card': 'An additional demo card for your account.',
       'home': 'Pay home bills and keep everything important in one place.',
-      'coast':
-          'A quiet bay, walks and new places. Dates and prices are for demonstration.',
+      'coast': 'A quiet bay, walks and new places. Dates and prices are for demonstration.',
       'hotel': 'Two nights by the sea · breakfast included. A demo booking.',
-      'shopping':
-          'Everything for home, leisure and yourself. Discounts and rewards in a demo shop.',
+      'shopping': 'Everything for home, leisure and yourself. Discounts and rewards in a demo shop.',
       'electronics': 'Devices for every day',
       'cosmetics': 'Small pleasant discoveries',
       'clothes': 'Comfortable things for walks',
       'appliances': 'More time for yourself',
-      'phone':
-          'A compact 128 GB smartphone in mint. The model and specifications are fictional.',
-      'pillow':
-          'Two soft 50 × 70 cm pillows. Hypoallergenic filling, removable covers.',
+      'phone': 'A compact 128 GB smartphone in mint. The model and specifications are fictional.',
+      'pillow': 'Two soft 50 × 70 cm pillows. Hypoallergenic filling, removable covers.',
       'shoes': 'Soft soles, light fabric. Light lavender colour.',
       'perfume': 'A light floral scent. A demo product with no real brand.',
       'washer': 'A sample model: 6 kg load, 12 programmes, quiet mode.',
-      'airfryer':
-          'For your favourite dishes: temperature control, timer, removable basket.',
+      'airfryer': 'For your favourite dishes: temperature control, timer, removable basket.',
       'other': 'A demo offer.',
     });
     return '$_temp0';

@@ -213,72 +213,69 @@ void main() {
       expect(await _balances(api), after);
     },
   );
-  test(
-    'pending payments reserve funds against transfers and later payment submissions',
-    () async {
-      final initial = await _balances(api);
-      final quote = await _call(
+  test('pending payments reserve funds against transfers and later payment submissions', () async {
+    final initial = await _balances(api);
+    final quote = await _call(
+      api,
+      '/checkout/quotes',
+      body: {
+        'kind': 'mobile',
+        'accountId': 'main',
+        'recipient': 'Учебная связь',
+        'referenceIds': ['mts'],
+        'currency': 'RUB',
+        'amountMinor': 10000,
+        'details': {'phone': '79160000000', 'operatorId': 'mts'},
+      },
+    );
+    expect(quote.statusCode, 200);
+    api.pendingNextPayment = true;
+    final payment = await _call(
+      api,
+      '/checkout/payments',
+      body: {
+        'quoteId': quote.body['id'],
+        'idempotencyKey': 'pending-reservation-test',
+      },
+    );
+    expect(payment.body['status'], 'pending');
+    final account =
+        ((await _call(api, '/accounts')).body['accounts'] as List).first;
+    expect(account['balanceMinor'], initial['main']);
+    expect(account['availableMinor'], initial['main']! - 10000);
+    expect(
+      (await _call(
         api,
-        '/checkout/quotes',
-        body: {
-          'kind': 'mobile',
-          'accountId': 'main',
-          'recipient': 'Учебная связь',
-          'referenceIds': ['mts'],
-          'currency': 'RUB',
-          'amountMinor': 10000,
-          'details': {'phone': '79160000000', 'operatorId': 'mts'},
-        },
-      );
-      expect(quote.statusCode, 200);
-      api.pendingNextPayment = true;
-      final payment = await _call(
+        '/accounts/main/operations',
+        body: _operation('overspend', amount: initial['main']! - 9999),
+      )).statusCode,
+      422,
+    );
+    expect(
+      (await _call(
         api,
-        '/checkout/payments',
-        body: {
-          'quoteId': quote.body['id'],
-          'idempotencyKey': 'pending-reservation-test',
-        },
-      );
-      expect(payment.body['status'], 'pending');
-      final account =
-          ((await _call(api, '/accounts')).body['accounts'] as List).first;
-      expect(account['balanceMinor'], initial['main']);
-      expect(account['availableMinor'], initial['main']! - 10000);
-      expect(
-        (await _call(
-          api,
-          '/accounts/main/operations',
-          body: _operation('overspend', amount: initial['main']! - 9999),
-        )).statusCode,
-        422,
-      );
-      expect(
-        (await _call(
-          api,
-          '/accounts/main/operations',
-          body: _operation('remaining', amount: initial['main']! - 10000),
-        )).statusCode,
-        200,
-      );
-      final rejected = await _call(
-        api,
-        '/checkout/quotes',
-        body: {
-          'kind': 'mobile',
-          'accountId': 'main',
-          'recipient': 'Учебная связь',
-          'referenceIds': ['mts'],
-          'currency': 'RUB',
-          'amountMinor': 10000,
-          'details': {'phone': '79160000000', 'operatorId': 'mts'},
-        },
-      );
-      expect(rejected.statusCode, 422);
-      await api.settlePendingPayments();
-      expect((await _balances(api))['main'], 0);
-    },
-  );
+        '/accounts/main/operations',
+        body: _operation('remaining', amount: initial['main']! - 10000),
+      )).statusCode,
+      200,
+    );
+    final rejected = await _call(
+      api,
+      '/checkout/quotes',
+      body: {
+        'kind': 'mobile',
+        'accountId': 'main',
+        'recipient': 'Учебная связь',
+        'referenceIds': ['mts'],
+        'currency': 'RUB',
+        'amountMinor': 10000,
+        'details': {'phone': '79160000000', 'operatorId': 'mts'},
+      },
+    );
+    expect(rejected.statusCode, 422);
+    await api.settlePendingPayments();
+    expect((await _balances(api))['main'], 0);
+  });
   test('topup uses the account currency and adds exactly one income', () async {
     final before = await _balances(api);
     final result = await _call(
@@ -334,78 +331,64 @@ void main() {
       expect(await _balances(api), after);
     },
   );
-  test(
-    'invalid amount, cross currency, self transfer and insufficient funds never mutate',
-    () async {
-      final before = await _balances(api);
-      for (final body in [
-        _operation('zero', amount: 0),
-        _operation('negative', amount: -1),
-        _operation('fraction')..['amountMinor'] = 1.1,
-        _operation('currency', currency: 'USD'),
-        _operation('cross', target: 'usd'),
-        _operation('self', target: 'main'),
-        _operation('large', amount: before['main']! + 1),
-      ]) {
-        expect(
-          (await _call(
-            api,
-            '/accounts/main/operations',
-            body: body,
-          )).statusCode,
-          422,
-        );
-        expect(await _balances(api), before);
-      }
-    },
-  );
-  test(
-    'preferences and completed keys survive persistence, including renamed profile',
-    () async {
-      await _call(
-        api,
-        '/accounts/main/preferences',
-        body: {
-          'name': 'Семейный',
-          'roundUp': true,
-          'extraCard': true,
-          'autoTopUp': true,
-          'charity': true,
-          'frozenCardId': 'main-card-0',
-          'frozen': true,
-        },
-      );
-      final profile = (await _call(api, '/accounts/main/profile')).body;
-      expect(profile['name'], 'Семейный');
-      expect(profile['cards'], hasLength(6));
-      expect((profile['cards'] as List).first['frozen'], isTrue);
-      await _call(
-        api,
-        '/accounts/main/operations',
-        body: _operation('durable'),
-      );
-      final restored = DemoApi();
-      await restored.restoreState(api.exportState());
-      expect((await _call(restored, '/accounts/main/profile')).body, profile);
-      final before = await _balances(restored);
+  test('invalid amount, cross currency, self transfer and insufficient funds never mutate', () async {
+    final before = await _balances(api);
+    for (final body in [
+      _operation('zero', amount: 0),
+      _operation('negative', amount: -1),
+      _operation('fraction')..['amountMinor'] = 1.1,
+      _operation('currency', currency: 'USD'),
+      _operation('cross', target: 'usd'),
+      _operation('self', target: 'main'),
+      _operation('large', amount: before['main']! + 1),
+    ]) {
       expect(
-        (await _call(
-          restored,
-          '/accounts/main/operations',
-          body: _operation('durable'),
-        )).body['id'],
-        'account-1',
-      );
-      expect(await _balances(restored), before);
-      expect(
-        (await _call(
-          restored,
-          '/accounts/main/preferences',
-          body: {'name': ''},
-        )).statusCode,
+        (await _call(api, '/accounts/main/operations', body: body)).statusCode,
         422,
       );
-      expect((await _call(restored, '/accounts/main/profile')).body, profile);
-    },
-  );
+      expect(await _balances(api), before);
+    }
+  });
+  test('preferences and completed keys survive persistence, including renamed profile', () async {
+    await _call(
+      api,
+      '/accounts/main/preferences',
+      body: {
+        'name': 'Семейный',
+        'roundUp': true,
+        'extraCard': true,
+        'autoTopUp': true,
+        'charity': true,
+        'frozenCardId': 'main-card-0',
+        'frozen': true,
+      },
+    );
+    final profile = (await _call(api, '/accounts/main/profile')).body;
+    expect(profile['name'], 'Семейный');
+    expect(profile['cards'], hasLength(6));
+    expect((profile['cards'] as List).first['frozen'], isTrue);
+    await _call(api, '/accounts/main/operations', body: _operation('durable'));
+    final restored = DemoApi();
+    await restored.restoreState(api.exportState());
+    expect((await _call(restored, '/accounts/main/profile')).body, profile);
+    final before = await _balances(restored);
+    expect(
+      (await _call(
+        restored,
+        '/accounts/main/operations',
+        body: _operation('durable'),
+      )).body['id'],
+      'account-1',
+    );
+    expect(await _balances(restored), before);
+    expect(
+      (await _call(
+        restored,
+        '/accounts/main/preferences',
+        body: {'name': ''},
+      )).statusCode,
+      422,
+    );
+    expect((await _call(restored, '/accounts/main/profile')).body, profile);
+  });
 }

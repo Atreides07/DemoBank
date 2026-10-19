@@ -20,13 +20,9 @@ void restoreProfileTraces(Map<String, dynamic> report) {
     if (value is! Map || value['traceStorage'] != 'gzip-base64-json-v1') {
       continue;
     }
-    final trace =
-        jsonDecode(
-              utf8.decode(
-                gzip.decode(base64Decode(value['payload'] as String)),
-              ),
-            )
-            as Map<String, dynamic>;
+    final trace = jsonDecode(
+      utf8.decode(gzip.decode(base64Decode(value['payload'] as String))),
+    ) as Map<String, dynamic>;
     if ((trace['traceEvents'] as List).length != value['eventCount']) {
       throw StateError('Incomplete profile trace: $key');
     }

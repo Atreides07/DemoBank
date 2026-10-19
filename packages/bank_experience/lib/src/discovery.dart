@@ -22,8 +22,8 @@ class _Discovery {
     this.price,
     this.oldPrice,
     this.category,
-    _Label? description,
-  }) : _description = description;
+    this._description,
+  });
   final String id;
   final DsArt art;
   final List<_Option> options;

@@ -37,8 +37,7 @@ void main() {
                   builder: (context, visible, child) => DsReadingSurface(
                     notice: visible
                         ? DsNotice(
-                            message:
-                                'Есть новые операции. Текущее место чтения сохранено.',
+                            message: 'Есть новые операции. Текущее место чтения сохранено.',
                             action: DsButton(
                               label: 'Показать обновления',
                               onPressed: () {

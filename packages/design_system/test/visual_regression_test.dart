@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -23,17 +24,17 @@ Future<void> _loadSdkFonts() async {
   final roboto = FontLoader('packages/design_system/DsSans');
   for (final weight in ['Regular', 'Medium', 'Bold']) {
     roboto.addFont(
-      File('${fonts.path}/Roboto-$weight.ttf').readAsBytes().then(
-        (bytes) => ByteData.sublistView(Uint8List.fromList(bytes)),
-      ),
+      File('${fonts.path}/Roboto-$weight.ttf')
+          .readAsBytes()
+          .then((bytes) => ByteData.sublistView(Uint8List.fromList(bytes))),
     );
   }
   await roboto.load();
   final icons = FontLoader('MaterialIcons')
     ..addFont(
-      File('${fonts.path}/MaterialIcons-Regular.otf').readAsBytes().then(
-        (bytes) => ByteData.sublistView(Uint8List.fromList(bytes)),
-      ),
+      File('${fonts.path}/MaterialIcons-Regular.otf')
+          .readAsBytes()
+          .then((bytes) => ByteData.sublistView(Uint8List.fromList(bytes))),
     );
   await icons.load();
 }

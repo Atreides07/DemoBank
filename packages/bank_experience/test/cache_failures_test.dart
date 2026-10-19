@@ -53,58 +53,55 @@ final class _FailingWrites implements CacheStore {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test(
-    'response cache write failures preserve server reads and saved preferences',
-    () async {
-      final cache = _FailingWrites();
-      final environment = AppEnvironment(
-        cache: cache,
-        journal: MemoryCacheStore(durable: true),
-        simulation: SimulationAdapter(scheduler: _InstantScheduler()),
-      );
-      addTearDown(environment.dispose);
-      final accounts = await ApiAccountsRepository(
+  test('response cache write failures preserve server reads and saved preferences', () async {
+    final cache = _FailingWrites();
+    final environment = AppEnvironment(
+      cache: cache,
+      journal: MemoryCacheStore(durable: true),
+      simulation: SimulationAdapter(scheduler: _InstantScheduler()),
+    );
+    addTearDown(environment.dispose);
+    final accounts = await ApiAccountsRepository(
+      environment.api,
+      environment.cache,
+    ).accounts();
+    final account = accounts.first;
+    final profile = ApiAccountManagement(environment.api, environment.cache);
+    addTearDown(profile.close);
+    expect((await profile.profile(account.id)).id, account.id);
+    final controller = AccountManagementCubit(profile, account.id);
+    addTearDown(controller.close);
+    expect(
+      await controller.update(const AccountPreferences(name: 'Saved name')),
+      isTrue,
+    );
+    expect(controller.state.profile!.name, 'Saved name');
+    expect((await profile.profile(account.id)).name, 'Saved name');
+    final filter = LedgerFilter(
+      accounts: [account.id],
+      currency: account.balance.currency,
+    );
+    final history = ApiHistoryRepository(environment.api, environment.cache);
+    final page = await history.page(filter);
+    expect(page.items, isNotEmpty);
+    expect(
+      (await history.around(
+        filter.copyWith(revision: page.revision),
+        page.items.first.id,
+      )).items,
+      isNotEmpty,
+    );
+    expect(
+      (await ApiAnalyticsRepository(
         environment.api,
         environment.cache,
-      ).accounts();
-      final account = accounts.first;
-      final profile = ApiAccountManagement(environment.api, environment.cache);
-      addTearDown(profile.close);
-      expect((await profile.profile(account.id)).id, account.id);
-      final controller = AccountManagementCubit(profile, account.id);
-      addTearDown(controller.close);
-      expect(
-        await controller.update(const AccountPreferences(name: 'Saved name')),
-        isTrue,
-      );
-      expect(controller.state.profile!.name, 'Saved name');
-      expect((await profile.profile(account.id)).name, 'Saved name');
-      final filter = LedgerFilter(
-        accounts: [account.id],
-        currency: account.balance.currency,
-      );
-      final history = ApiHistoryRepository(environment.api, environment.cache);
-      final page = await history.page(filter);
-      expect(page.items, isNotEmpty);
-      expect(
-        (await history.around(
-          filter.copyWith(revision: page.revision),
-          page.items.first.id,
-        )).items,
-        isNotEmpty,
-      );
-      expect(
-        (await ApiAnalyticsRepository(
-          environment.api,
-          environment.cache,
-        ).summary(filter)).revision,
-        isNotEmpty,
-      );
-      expect(cache.writes, 7);
-      // Recovery writes remain mandatory, even with the response-cache extension.
-      await expectLater(cache.write('journal', {}), throwsStateError);
-    },
-  );
+      ).summary(filter)).revision,
+      isNotEmpty,
+    );
+    expect(cache.writes, 7);
+    // Recovery writes remain mandatory, even with the response-cache extension.
+    await expectLater(cache.write('journal', {}), throwsStateError);
+  });
 
   test(
     'invalid or unreadable profile cache never blocks a fresh server profile',

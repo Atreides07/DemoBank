@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:bank_core/bank_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:local_storage/local_storage.dart';
@@ -69,21 +70,18 @@ void main() {
     await cache.close();
   });
 
-  test(
-    'identical scopes share a request and one cancellation leaves the other alive',
-    () async {
-      final first = repository.createScope(), second = repository.createScope();
-      final one = first.summary(LedgerFilter());
-      final two = second.summary(LedgerFilter());
-      await clock.elapse(Duration.zero);
-      expect(adapter.events.where((e) => e.phase == 'started'), hasLength(1));
-      first.cancelPending();
-      await clock.runUntilIdle();
-      expect(await one, same(await two));
-      expect(adapter.events.where((e) => e.phase == 'cancelled'), isEmpty);
-      expect(adapter.events.where((e) => e.phase == 'completed'), hasLength(1));
-    },
-  );
+  test('identical scopes share a request and one cancellation leaves the other alive', () async {
+    final first = repository.createScope(), second = repository.createScope();
+    final one = first.summary(LedgerFilter());
+    final two = second.summary(LedgerFilter());
+    await clock.elapse(Duration.zero);
+    expect(adapter.events.where((e) => e.phase == 'started'), hasLength(1));
+    first.cancelPending();
+    await clock.runUntilIdle();
+    expect(await one, same(await two));
+    expect(adapter.events.where((e) => e.phase == 'cancelled'), isEmpty);
+    expect(adapter.events.where((e) => e.phase == 'completed'), hasLength(1));
+  });
 
   test(
     'rapid filter changes cancel unneeded requests and keep the latest result',
@@ -128,34 +126,31 @@ void main() {
     expect(adapter.events.where((e) => e.phase == 'started'), hasLength(3));
   });
 
-  test(
-    'a data revision starts fresh work and retired responses do not overwrite its cache',
-    () async {
-      final pending = <Completer<SimulatedResponse>>[];
-      respond = (_) {
-        final gate = Completer<SimulatedResponse>();
-        pending.add(gate);
-        return gate.future;
-      };
-      final old = repository.createScope().summary(LedgerFilter());
-      await clock.elapse(const Duration(seconds: 1));
-      repository.invalidate();
-      final fresh = repository.createScope().summary(LedgerFilter());
-      await clock.elapse(const Duration(seconds: 1));
-      expect(pending, hasLength(2));
-      pending[1].complete(
-        SimulatedResponse({...summary('RUB'), 'revision': '2'}),
-      );
-      await clock.runUntilIdle();
-      await fresh;
-      pending[0].complete(
-        SimulatedResponse({...summary('RUB'), 'revision': '1'}),
-      );
-      await clock.runUntilIdle();
-      await old;
-      expect((await repository.cached(LedgerFilter()))!.revision, '2');
-    },
-  );
+  test('a data revision starts fresh work and retired responses do not overwrite its cache', () async {
+    final pending = <Completer<SimulatedResponse>>[];
+    respond = (_) {
+      final gate = Completer<SimulatedResponse>();
+      pending.add(gate);
+      return gate.future;
+    };
+    final old = repository.createScope().summary(LedgerFilter());
+    await clock.elapse(const Duration(seconds: 1));
+    repository.invalidate();
+    final fresh = repository.createScope().summary(LedgerFilter());
+    await clock.elapse(const Duration(seconds: 1));
+    expect(pending, hasLength(2));
+    pending[1].complete(
+      SimulatedResponse({...summary('RUB'), 'revision': '2'}),
+    );
+    await clock.runUntilIdle();
+    await fresh;
+    pending[0].complete(
+      SimulatedResponse({...summary('RUB'), 'revision': '1'}),
+    );
+    await clock.runUntilIdle();
+    await old;
+    expect((await repository.cached(LedgerFilter()))!.revision, '2');
+  });
 
   test(
     'failed shared requests are released so retry starts a new request',

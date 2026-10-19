@@ -41,7 +41,7 @@ class DsPage extends StatelessWidget {
     final content = <Widget>[
       if (subtitle != null)
         DsText(subtitle!, style: DsTextStyle.caption, tone: DsTone.muted),
-      if (body != null) body!,
+      ?body,
       ...?children,
     ];
     // Keep a GlobalKey on its original child, not on both wrapper and child.
@@ -390,7 +390,7 @@ class DsSection extends StatelessWidget {
                         Expanded(
                           child: DsText(title, style: DsTextStyle.title),
                         ),
-                        if (action != null) action!,
+                        ?action,
                       ],
                     );
             },
@@ -679,7 +679,7 @@ class _BalanceHeaderDelegate extends SliverPersistentHeaderDelegate {
                                               tone: DsTone.primary,
                                             ),
                                           ),
-                                          if (action != null) action!,
+                                          ?action,
                                         ],
                                       ),
                                       DsText(
@@ -711,20 +711,19 @@ class _BalanceHeaderDelegate extends SliverPersistentHeaderDelegate {
                             text: balance,
                             style: TextStyle.lerp(
                               (compact
-                                      ? Theme.of(
-                                          context,
-                                        ).textTheme.headlineLarge
+                                      ? Theme.of(context)
+                                            .textTheme
+                                            .headlineLarge
                                       : scale > 1.3
-                                      ? Theme.of(
-                                          context,
-                                        ).textTheme.headlineMedium
-                                      : Theme.of(
-                                          context,
-                                        ).textTheme.displayLarge)
+                                      ? Theme.of(context)
+                                            .textTheme
+                                            .headlineMedium
+                                      : Theme.of(context)
+                                            .textTheme
+                                            .displayLarge)
                                   ?.copyWith(color: colors.ink),
-                              Theme.of(context).textTheme.titleLarge?.copyWith(
-                                color: colors.ink,
-                              ),
+                              Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(color: colors.ink),
                               t,
                             ),
                           ),
@@ -751,7 +750,7 @@ class _BalanceHeaderDelegate extends SliverPersistentHeaderDelegate {
                                       style: DsTextStyle.caption,
                                       tone: DsTone.primary,
                                     ),
-                                  if (child != null) child!,
+                                  ?child,
                                 ],
                               ),
                             ),

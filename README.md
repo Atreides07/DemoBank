@@ -67,9 +67,11 @@ DsColumn(
 
 ## Запуск
 
-Нужны Flutter **3.35.7**, Dart **3.9.2**, для Android — JDK 17 и Android SDK. Версия Flutter записана в `.fvmrc`, зависимости зафиксированы в `pubspec.lock`.
+Нужны Flutter **3.47.7**, Dart **3.13.5**, для Android — JDK 17 и Android SDK, для iOS — Xcode и iOS 15+. Версия Flutter записана в `.fvmrc`, зависимости зафиксированы в `pubspec.lock`.
 
 ```sh
+fvm use 3.47.7
+export PATH="$PWD/.fvm/flutter_sdk/bin:$PATH"
 flutter pub get --enforce-lockfile
 cd apps/bank_app
 flutter run --dart-define=NETWORK_PROFILE=slow
@@ -186,7 +188,7 @@ Python-тесты проверяют протокол release-отчёта и ru
 flutter build apk --release
 ```
 
-Для каталога: `flutter build web --release --no-web-resources-cdn`. Команды Flutter для одного приложения запускаются последовательно, включая `drive` с готовым APK. В Flutter 3.35.7 Android release-команда должна выполнять свой pub/tooling refresh: `--no-pub` после интеграционных тестов может оставить dev-плагин в release-регистраторе. Сгенерированные Java-файлы вручную не редактируются.
+Для каталога: `flutter build web --release --no-web-resources-cdn`. Команды Flutter для одного приложения запускаются последовательно, включая `drive` с готовым APK. Android release-команды здесь запускаются с pub/tooling refresh: ранее, на Flutter 3.35.7, `--no-pub` после интеграционных тестов оставлял dev-плагин в release-регистраторе. Сгенерированные Java-файлы вручную не редактируются.
 
 Снимки эталонов лежат в `packages/design_system/test/goldens` и `packages/bank_experience/test/goldens`. При намеренном изменении внешнего вида запустите соответствующий `flutter test --update-goldens`, осмотрите PNG и выполните тесты повторно без обновления. Не утверждайте эталон только по успешной перезаписи.
 

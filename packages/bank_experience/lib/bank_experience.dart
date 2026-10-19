@@ -1,6 +1,7 @@
 library;
 
 import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:accounts/accounts.dart';
 import 'package:app_foundation/app_foundation.dart';
@@ -259,9 +260,8 @@ class _BankExperienceState extends State<BankExperience>
             reader: _analytics,
             now: _environment.now,
             accounts: _accounts.state.accounts,
-            initialFilter: ReportingPeriod.month(
-              _environment.now(),
-            ).copyWith(accounts: [state.pathParameters['id']!]),
+            initialFilter: ReportingPeriod.month(_environment.now())
+                .copyWith(accounts: [state.pathParameters['id']!]),
             refreshSignal: _dataRevision,
             onDrill: (filter) => context.push('/drill', extra: filter),
           ),

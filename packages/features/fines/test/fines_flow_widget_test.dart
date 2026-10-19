@@ -174,9 +174,8 @@ void main() {
           supportedLocales: AppLocalizations.supportedLocales,
           theme: DsAppTheme.dark(brand: DsBrand.fines),
           builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(
-              context,
-            ).copyWith(textScaler: const TextScaler.linear(1.6)),
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: const TextScaler.linear(1.6)),
             child: child!,
           ),
           home: Scaffold(

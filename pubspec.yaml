@@ -1,7 +1,7 @@
 name: demobank_workspace
 publish_to: none
 environment:
-  sdk: '>=3.9.2 <4.0.0'
+  sdk: '>=3.13.5 <4.0.0'
 workspace:
   - apps/bank_app
   - apps/fines_app
@@ -27,8 +27,8 @@ workspace:
   - packages/features/cinema
   - services/demo_api
 dev_dependencies:
-  analyzer: 7.7.1
+  analyzer: 10.1.0
   flutter_lints: 6.0.0
-  test: 1.26.2
+  test: 1.31.1
   flutter_test:
     sdk: flutter

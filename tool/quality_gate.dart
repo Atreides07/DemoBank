@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
@@ -100,6 +101,7 @@ final class _VisualPolicy extends RecursiveAstVisitor<void> {
     'minWidth',
     'maxWidth',
     'cacheExtent',
+    'scrollCacheExtent',
     'itemExtent',
   };
   static const forbidden = {
@@ -119,6 +121,7 @@ final class _VisualPolicy extends RecursiveAstVisitor<void> {
     'Tween',
     'Transform',
     'Offset',
+    'ScrollCacheExtent',
   };
   bool numeric(Expression expression, [Set<String> visited = const {}]) {
     if (expression is IntegerLiteral || expression is DoubleLiteral) {
@@ -128,6 +131,11 @@ final class _VisualPolicy extends RecursiveAstVisitor<void> {
       final name = expression.name;
       if (visited.contains(name) || !values.containsKey(name)) return false;
       return numeric(values[name]!, {...visited, name});
+    }
+    if (expression is InstanceCreationExpression) {
+      return expression.argumentList.arguments.any(
+        (argument) => numeric(argument, visited),
+      );
     }
     for (final child in expression.childEntities.whereType<Expression>()) {
       if (numeric(child, visited)) return true;
@@ -139,8 +147,13 @@ final class _VisualPolicy extends RecursiveAstVisitor<void> {
       issues.add('$path:${node.offset}: $message');
   @override
   void visitInstanceCreationExpression(InstanceCreationExpression node) {
-    final type = node.constructorName.type.name2.lexeme;
-    if (forbidden.contains(type)) {
+    final namedType = node.constructorName.type;
+    // Before resolution, a named constructor can be parsed as prefix.Type.
+    final candidates = {
+      namedType.name.lexeme,
+      ?namedType.importPrefix?.name.lexeme,
+    };
+    for (final type in candidates.intersection(forbidden)) {
       report(
         node,
         '$type belongs inside design_system; select a semantic component',

@@ -328,212 +328,191 @@ void main() {
     },
   );
 
-  test(
-    'API repository caches parsed first page and rereads it without another request',
-    () async {
-      final adapter = SimulationAdapter(
-        profile: const NetworkProfile(
-          name: 'repository-test',
-          firstByteLatency: Duration.zero,
-          jitter: Duration.zero,
-          bytesPerSecond: 1000000000,
-        ),
-      );
-      final api = ApiClient(
-        baseUri: Uri.parse('https://demo.invalid'),
-        adapter: adapter,
-      );
-      final cache = MemoryCacheStore();
-      addTearDown(api.close);
-      addTearDown(cache.close);
-      final repository = ApiHistoryRepository(api, cache);
-      final filter = LedgerFilter(category: 'dining');
-      expect(await repository.cached(filter), isNull);
-      final page = await repository.page(filter);
-      final requests = adapter.events
-          .where((event) => event.phase == 'started')
-          .length;
-      final cached = (await repository.cached(filter))!;
-      expect(
-        cached.items.map((item) => item.id),
-        page.items.map((item) => item.id),
-      );
-      expect(cached.revision, page.revision);
-      expect(
-        adapter.events.where((event) => event.phase == 'started').length,
-        requests,
-      );
-      expect(
-        await repository.cached(LedgerFilter(category: 'shopping')),
-        isNull,
-      );
-    },
-  );
+  test('API repository caches parsed first page and rereads it without another request', () async {
+    final adapter = SimulationAdapter(
+      profile: const NetworkProfile(
+        name: 'repository-test',
+        firstByteLatency: Duration.zero,
+        jitter: Duration.zero,
+        bytesPerSecond: 1000000000,
+      ),
+    );
+    final api = ApiClient(
+      baseUri: Uri.parse('https://demo.invalid'),
+      adapter: adapter,
+    );
+    final cache = MemoryCacheStore();
+    addTearDown(api.close);
+    addTearDown(cache.close);
+    final repository = ApiHistoryRepository(api, cache);
+    final filter = LedgerFilter(category: 'dining');
+    expect(await repository.cached(filter), isNull);
+    final page = await repository.page(filter);
+    final requests = adapter.events
+        .where((event) => event.phase == 'started')
+        .length;
+    final cached = (await repository.cached(filter))!;
+    expect(
+      cached.items.map((item) => item.id),
+      page.items.map((item) => item.id),
+    );
+    expect(cached.revision, page.revision);
+    expect(
+      adapter.events.where((event) => event.phase == 'started').length,
+      requests,
+    );
+    expect(await repository.cached(LedgerFilter(category: 'shopping')), isNull);
+  });
 }
 
 void _registerAnchorTests() {
-  test(
-    'actual status change marks only the retained identity after explicit apply and filter clears it',
-    () async {
-      final harness = _Harness();
-      addTearDown(harness.close);
-      final cubit = harness.cubit;
-      await cubit.load();
-      for (var index = 1; index < 4; index++) {
-        await cubit.loadNext();
-      }
-      final pending = cubit.state.pages.values
-          .expand((page) => page.items)
-          .firstWhere((entry) => entry.status == EntryStatus.pending);
-      cubit.readingAnchorId = pending.id;
-      cubit.userIsReading = true;
-      expect(cubit.state.updatedIds, isEmpty);
-      final mutation = await harness.client.post('/v1/demo/activity');
-      expect(mutation['updatedId'], pending.id);
-      final added = mutation['addedId'] as String;
-      await cubit.load(background: true);
-      expect(cubit.state.pendingUpdate, isNotNull);
-      expect(cubit.state.updatedIds, isEmpty);
-      expect(_entry(cubit.state, pending.id).status, EntryStatus.pending);
-      cubit.applyUpdate();
-      final updated = _entry(cubit.state, pending.id);
-      expect(updated.id, pending.id);
-      expect(updated.status, EntryStatus.posted);
-      expect(updated.amount, pending.amount);
-      expect(updated.kind, pending.kind);
-      expect(cubit.state.updatedIds, {pending.id});
-      expect(cubit.state.updatedIds, isNot(contains(added)));
-      expect(_entry(cubit.state, added).status, EntryStatus.posted);
-      await cubit.load(filter: LedgerFilter(category: pending.categoryId));
-      expect(cubit.state.ids.values, contains(pending.id));
-      expect(cubit.state.updatedIds, isEmpty);
-    },
-  );
+  test('actual status change marks only the retained identity after explicit apply and filter clears it', () async {
+    final harness = _Harness();
+    addTearDown(harness.close);
+    final cubit = harness.cubit;
+    await cubit.load();
+    for (var index = 1; index < 4; index++) {
+      await cubit.loadNext();
+    }
+    final pending = cubit.state.pages.values
+        .expand((page) => page.items)
+        .firstWhere((entry) => entry.status == EntryStatus.pending);
+    cubit.readingAnchorId = pending.id;
+    cubit.userIsReading = true;
+    expect(cubit.state.updatedIds, isEmpty);
+    final mutation = await harness.client.post('/v1/demo/activity');
+    expect(mutation['updatedId'], pending.id);
+    final added = mutation['addedId'] as String;
+    await cubit.load(background: true);
+    expect(cubit.state.pendingUpdate, isNotNull);
+    expect(cubit.state.updatedIds, isEmpty);
+    expect(_entry(cubit.state, pending.id).status, EntryStatus.pending);
+    cubit.applyUpdate();
+    final updated = _entry(cubit.state, pending.id);
+    expect(updated.id, pending.id);
+    expect(updated.status, EntryStatus.posted);
+    expect(updated.amount, pending.amount);
+    expect(updated.kind, pending.kind);
+    expect(cubit.state.updatedIds, {pending.id});
+    expect(cubit.state.updatedIds, isNot(contains(added)));
+    expect(_entry(cubit.state, added).status, EntryStatus.posted);
+    await cubit.load(filter: LedgerFilter(category: pending.categoryId));
+    expect(cubit.state.ids.values, contains(pending.id));
+    expect(cubit.state.updatedIds, isEmpty);
+  });
 
-  test(
-    'pending next revision keeps current markers scoped to old data and does not replay them on apply',
-    () async {
-      final harness = _Harness();
-      addTearDown(harness.close);
-      final cubit = harness.cubit;
-      await cubit.load();
-      for (var index = 1; index < 4; index++) {
-        await cubit.loadNext();
-      }
-      final pending = cubit.state.pages.values
-          .expand((page) => page.items)
-          .firstWhere((entry) => entry.status == EntryStatus.pending);
-      cubit.readingAnchorId = pending.id;
-      cubit.userIsReading = true;
-      await harness.client.post('/v1/demo/activity');
-      await cubit.load(background: true);
-      cubit.applyUpdate();
-      expect(cubit.state.updatedIds, {pending.id});
-      final appliedRevision = cubit.state.revision;
-      final next = await harness.client.post(
-        '/v1/demo/activity',
-        data: {'changeStatus': false},
-      );
-      await cubit.load(background: true);
-      expect(cubit.state.revision, appliedRevision);
-      expect(cubit.state.pendingUpdate?.revision, next['revision']);
-      expect(cubit.state.updatedIds, {pending.id});
-      expect(cubit.state.ids.values, isNot(contains(next['addedId'])));
-      cubit.applyUpdate();
-      expect(cubit.state.revision, next['revision']);
-      expect(cubit.state.updatedIds, isEmpty);
-      expect(_entry(cubit.state, pending.id).status, EntryStatus.posted);
-      expect(cubit.state.ids.values, contains(next['addedId']));
-    },
-  );
+  test('pending next revision keeps current markers scoped to old data and does not replay them on apply', () async {
+    final harness = _Harness();
+    addTearDown(harness.close);
+    final cubit = harness.cubit;
+    await cubit.load();
+    for (var index = 1; index < 4; index++) {
+      await cubit.loadNext();
+    }
+    final pending = cubit.state.pages.values
+        .expand((page) => page.items)
+        .firstWhere((entry) => entry.status == EntryStatus.pending);
+    cubit.readingAnchorId = pending.id;
+    cubit.userIsReading = true;
+    await harness.client.post('/v1/demo/activity');
+    await cubit.load(background: true);
+    cubit.applyUpdate();
+    expect(cubit.state.updatedIds, {pending.id});
+    final appliedRevision = cubit.state.revision;
+    final next = await harness.client.post(
+      '/v1/demo/activity',
+      data: {'changeStatus': false},
+    );
+    await cubit.load(background: true);
+    expect(cubit.state.revision, appliedRevision);
+    expect(cubit.state.pendingUpdate?.revision, next['revision']);
+    expect(cubit.state.updatedIds, {pending.id});
+    expect(cubit.state.ids.values, isNot(contains(next['addedId'])));
+    cubit.applyUpdate();
+    expect(cubit.state.revision, next['revision']);
+    expect(cubit.state.updatedIds, isEmpty);
+    expect(_entry(cubit.state, pending.id).status, EntryStatus.posted);
+    expect(cubit.state.ids.values, contains(next['addedId']));
+  });
 
-  test(
-    'new revision preserves a reading anchor past 600 rows and seeks evicted gaps',
-    () async {
-      final harness = _Harness();
-      addTearDown(harness.close);
-      final cubit = harness.cubit;
-      await cubit.load();
-      for (var index = 1; index < 25; index++) {
-        await cubit.loadNext();
-      }
-      expect(cubit.state.pages.length, 5);
-      final anchor = cubit.state.ids[600]!;
-      final expectedGapEntry = cubit.state.ids[299]!;
-      cubit.readingAnchorId = anchor;
-      cubit.userIsReading = true;
-      await harness.client.post(
-        '/v1/demo/activity',
-        data: {'changeStatus': false},
-      );
-      await cubit.load(background: true);
-      expect(cubit.state.revision, '1');
-      expect(cubit.state.rowCount, 750);
-      expect(cubit.state.pendingUpdate?.revision, '2');
-      expect(cubit.state.ids[600], anchor);
-      cubit.applyUpdate();
-      expect(cubit.state.revision, '2');
-      expect(cubit.state.pendingUpdate, isNull);
-      expect(cubit.state.rowCount, 750);
-      expect(cubit.state.at(601)?.id, anchor);
-      expect(cubit.state.pages.keys, containsAll([0, 19, 20, 21]));
-      expect(cubit.state.pages.length, lessThanOrEqualTo(5));
-      expect(cubit.state.at(300), isNull);
-      expect(cubit.state.cursors.containsKey(10), isFalse);
-      await cubit.ensureIndex(300);
-      expect(cubit.state.at(300)?.id, expectedGapEntry);
-      expect(cubit.state.ids.values.toSet().length, cubit.state.ids.length);
-      expect(cubit.state.pages.length, lessThanOrEqualTo(5));
-    },
-  );
+  test('new revision preserves a reading anchor past 600 rows and seeks evicted gaps', () async {
+    final harness = _Harness();
+    addTearDown(harness.close);
+    final cubit = harness.cubit;
+    await cubit.load();
+    for (var index = 1; index < 25; index++) {
+      await cubit.loadNext();
+    }
+    expect(cubit.state.pages.length, 5);
+    final anchor = cubit.state.ids[600]!;
+    final expectedGapEntry = cubit.state.ids[299]!;
+    cubit.readingAnchorId = anchor;
+    cubit.userIsReading = true;
+    await harness.client.post(
+      '/v1/demo/activity',
+      data: {'changeStatus': false},
+    );
+    await cubit.load(background: true);
+    expect(cubit.state.revision, '1');
+    expect(cubit.state.rowCount, 750);
+    expect(cubit.state.pendingUpdate?.revision, '2');
+    expect(cubit.state.ids[600], anchor);
+    cubit.applyUpdate();
+    expect(cubit.state.revision, '2');
+    expect(cubit.state.pendingUpdate, isNull);
+    expect(cubit.state.rowCount, 750);
+    expect(cubit.state.at(601)?.id, anchor);
+    expect(cubit.state.pages.keys, containsAll([0, 19, 20, 21]));
+    expect(cubit.state.pages.length, lessThanOrEqualTo(5));
+    expect(cubit.state.at(300), isNull);
+    expect(cubit.state.cursors.containsKey(10), isFalse);
+    await cubit.ensureIndex(300);
+    expect(cubit.state.at(300)?.id, expectedGapEntry);
+    expect(cubit.state.ids.values.toSet().length, cubit.state.ids.length);
+    expect(cubit.state.pages.length, lessThanOrEqualTo(5));
+  });
 
-  test(
-    'removed anchor resolves the nearest surviving window with a stable neighbor',
-    () async {
-      final harness = _Harness();
-      addTearDown(harness.close);
-      final cubit = harness.cubit;
-      await cubit.load();
-      for (var page = 1; page < 4; page++) {
-        await cubit.loadNext();
-      }
-      final removed = cubit.state.at(95)!.id;
-      final neighbor = cubit.state.at(96)!.id;
-      cubit.readingAnchorId = removed;
-      cubit.userIsReading = true;
-      await harness.client.post(
-        '/v1/demo/activity',
-        data: {'changeStatus': false, 'removeId': removed},
-      );
-      await cubit.load(background: true);
-      expect(cubit.state.at(95)?.id, removed);
-      cubit.applyUpdate();
-      expect(cubit.state.ids.values, isNot(contains(removed)));
-      expect(cubit.state.at(96)?.id, neighbor);
-      expect(cubit.state.pages.keys, contains(3));
-      expect(cubit.state.pages.length, lessThanOrEqualTo(5));
-    },
-  );
+  test('removed anchor resolves the nearest surviving window with a stable neighbor', () async {
+    final harness = _Harness();
+    addTearDown(harness.close);
+    final cubit = harness.cubit;
+    await cubit.load();
+    for (var page = 1; page < 4; page++) {
+      await cubit.loadNext();
+    }
+    final removed = cubit.state.at(95)!.id;
+    final neighbor = cubit.state.at(96)!.id;
+    cubit.readingAnchorId = removed;
+    cubit.userIsReading = true;
+    await harness.client.post(
+      '/v1/demo/activity',
+      data: {'changeStatus': false, 'removeId': removed},
+    );
+    await cubit.load(background: true);
+    expect(cubit.state.at(95)?.id, removed);
+    cubit.applyUpdate();
+    expect(cubit.state.ids.values, isNot(contains(removed)));
+    expect(cubit.state.at(96)?.id, neighbor);
+    expect(cubit.state.pages.keys, contains(3));
+    expect(cubit.state.pages.length, lessThanOrEqualTo(5));
+  });
 
-  test(
-    'filter preserves an included identity and starts at zero when it excludes it',
-    () async {
-      final harness = _Harness();
-      addTearDown(harness.close);
-      final cubit = harness.cubit;
-      await cubit.load();
-      final anchor = cubit.state.at(12)!;
-      cubit.readingAnchorId = anchor.id;
-      await cubit.load(filter: LedgerFilter(category: anchor.categoryId));
-      expect(cubit.state.ids.values, contains(anchor.id));
-      final excluded = anchor.categoryId == 'dining' ? 'groceries' : 'dining';
-      await cubit.load(filter: LedgerFilter(category: excluded));
-      expect(cubit.state.filter.category, excluded);
-      expect(cubit.state.ids.values, isNot(contains(anchor.id)));
-      expect(cubit.state.rowCount, 30);
-      expect(cubit.state.pages.keys, [0]);
-    },
-  );
+  test('filter preserves an included identity and starts at zero when it excludes it', () async {
+    final harness = _Harness();
+    addTearDown(harness.close);
+    final cubit = harness.cubit;
+    await cubit.load();
+    final anchor = cubit.state.at(12)!;
+    cubit.readingAnchorId = anchor.id;
+    await cubit.load(filter: LedgerFilter(category: anchor.categoryId));
+    expect(cubit.state.ids.values, contains(anchor.id));
+    final excluded = anchor.categoryId == 'dining' ? 'groceries' : 'dining';
+    await cubit.load(filter: LedgerFilter(category: excluded));
+    expect(cubit.state.filter.category, excluded);
+    expect(cubit.state.ids.values, isNot(contains(anchor.id)));
+    expect(cubit.state.rowCount, 30);
+    expect(cubit.state.pages.keys, [0]);
+  });
 
   test(
     'obsolete anchor window cannot apply after a newer filter completes',

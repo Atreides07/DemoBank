@@ -49,35 +49,32 @@ void main() {
     },
   );
 
-  test(
-    'real repository preserves selected response currency throughout aggregate models',
-    () async {
-      final client = ApiClient(
-        baseUri: Uri.parse('https://demo.invalid'),
-        adapter: SimulationAdapter(
-          profile: const NetworkProfile(
-            name: 'analytics-currency',
-            firstByteLatency: Duration.zero,
-            jitter: Duration.zero,
-            bytesPerSecond: 1000000000,
-          ),
+  test('real repository preserves selected response currency throughout aggregate models', () async {
+    final client = ApiClient(
+      baseUri: Uri.parse('https://demo.invalid'),
+      adapter: SimulationAdapter(
+        profile: const NetworkProfile(
+          name: 'analytics-currency',
+          firstByteLatency: Duration.zero,
+          jitter: Duration.zero,
+          bytesPerSecond: 1000000000,
         ),
-      );
-      final cache = MemoryCacheStore();
-      addTearDown(client.close);
-      addTearDown(cache.close);
-      final repository = ApiAnalyticsRepository(client, cache);
-      final summary = await repository.summary(LedgerFilter(currency: 'USD'));
-      expect(summary.total.currency, 'USD');
-      expect(summary.refunds.currency, 'USD');
-      expect(summary.previous.currency, 'USD');
-      for (final point in [
-        ...summary.categories,
-        ...summary.merchants,
-        ...summary.timeline,
-      ]) {
-        expect(point.amount.currency, 'USD');
-      }
-    },
-  );
+      ),
+    );
+    final cache = MemoryCacheStore();
+    addTearDown(client.close);
+    addTearDown(cache.close);
+    final repository = ApiAnalyticsRepository(client, cache);
+    final summary = await repository.summary(LedgerFilter(currency: 'USD'));
+    expect(summary.total.currency, 'USD');
+    expect(summary.refunds.currency, 'USD');
+    expect(summary.previous.currency, 'USD');
+    for (final point in [
+      ...summary.categories,
+      ...summary.merchants,
+      ...summary.timeline,
+    ]) {
+      expect(point.amount.currency, 'USD');
+    }
+  });
 }

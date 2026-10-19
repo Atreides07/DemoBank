@@ -292,9 +292,8 @@ void main() {
   testWidgets(
     'pending filters retain coherent old charts and only the latest response becomes visible',
     (tester) async {
-      final initial = ReportingPeriod.month(
-        _now,
-      ).copyWith(currency: 'EUR', accounts: ['euro']);
+      final initial = ReportingPeriod.month(_now)
+          .copyWith(currency: 'EUR', accounts: ['euro']);
       final previous = ReportingPeriod.month(_now, offset: -1);
       final year = ReportingPeriod.year(_now);
       final older = Completer<SpendingSummary>();

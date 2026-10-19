@@ -9,13 +9,12 @@ import 'package:payment_domain/payment_domain.dart';
 /// Receives every error that would otherwise go unobserved. [expected] marks
 /// a domain outcome the UI already explains (offline, validation, a declined
 /// payment); anything else is a defect.
-typedef ErrorSink =
-    void Function(
-      Object error,
-      StackTrace stackTrace, {
-      required String source,
-      required bool expected,
-    });
+typedef ErrorSink = void Function(
+  Object error,
+  StackTrace stackTrace, {
+  required String source,
+  required bool expected,
+});
 
 /// Domain failures are part of normal operation and are shown to the user.
 bool isExpectedFailure(Object error) =>

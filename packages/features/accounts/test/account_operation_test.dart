@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:accounts/accounts.dart';
 import 'package:bank_core/bank_core.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -253,62 +254,56 @@ void main() {
       await cubit.close();
     },
   );
-  test(
-    'concurrent reservations retain the first request and late clear cannot delete a new one',
-    () async {
-      final cache = MemoryCacheStore();
-      addTearDown(cache.close);
-      final journal = CachedAccountOperationJournal(cache);
-      const a = AccountOperation(
-        requestId: 'a',
-        kind: AccountOperationKind.topUp,
-        accountId: 'main',
-        amount: Money(1),
-      );
-      const b = AccountOperation(
-        requestId: 'b',
-        kind: AccountOperationKind.topUp,
-        accountId: 'main',
-        amount: Money(2),
-      );
-      final reserved = await Future.wait([
-        journal.reserve(a),
-        journal.reserve(b),
-      ]);
-      expect(reserved.map((o) => o.requestId), ['a', 'a']);
-      await journal.clear(a);
-      await journal.reserve(b);
-      await journal.clear(a);
-      expect((await journal.load('main'))!.requestId, 'b');
-    },
-  );
-  test(
-    'a corrupt durable journal blocks new submissions instead of replacing the key',
-    () async {
-      final cache = MemoryCacheStore();
-      addTearDown(cache.close);
-      await cache.write('pending-account-operation:main', {
-        'schema': 999,
-        'accountId': 'main',
-      });
-      final reader = _Reader();
-      final cubit = AccountOperationCubit(
-        reader: reader,
-        account: mainAccount,
-        kind: AccountOperationKind.topUp,
-        accounts: const [mainAccount, savings],
-        nextId: () => 'new',
-        journal: CachedAccountOperationJournal(cache),
-      );
-      await cubit.restore();
-      expect(cubit.state.step, AccountOperationStep.restoring);
-      expect(cubit.state.problem, AccountOperationProblem.journalUnreadable);
-      cubit.review(100, null);
-      expect(await cubit.submit(), isFalse);
-      expect(reader.sent, isEmpty);
-      await cubit.close();
-    },
-  );
+  test('concurrent reservations retain the first request and late clear cannot delete a new one', () async {
+    final cache = MemoryCacheStore();
+    addTearDown(cache.close);
+    final journal = CachedAccountOperationJournal(cache);
+    const a = AccountOperation(
+      requestId: 'a',
+      kind: AccountOperationKind.topUp,
+      accountId: 'main',
+      amount: Money(1),
+    );
+    const b = AccountOperation(
+      requestId: 'b',
+      kind: AccountOperationKind.topUp,
+      accountId: 'main',
+      amount: Money(2),
+    );
+    final reserved = await Future.wait([
+      journal.reserve(a),
+      journal.reserve(b),
+    ]);
+    expect(reserved.map((o) => o.requestId), ['a', 'a']);
+    await journal.clear(a);
+    await journal.reserve(b);
+    await journal.clear(a);
+    expect((await journal.load('main'))!.requestId, 'b');
+  });
+  test('a corrupt durable journal blocks new submissions instead of replacing the key', () async {
+    final cache = MemoryCacheStore();
+    addTearDown(cache.close);
+    await cache.write('pending-account-operation:main', {
+      'schema': 999,
+      'accountId': 'main',
+    });
+    final reader = _Reader();
+    final cubit = AccountOperationCubit(
+      reader: reader,
+      account: mainAccount,
+      kind: AccountOperationKind.topUp,
+      accounts: const [mainAccount, savings],
+      nextId: () => 'new',
+      journal: CachedAccountOperationJournal(cache),
+    );
+    await cubit.restore();
+    expect(cubit.state.step, AccountOperationStep.restoring);
+    expect(cubit.state.problem, AccountOperationProblem.journalUnreadable);
+    cubit.review(100, null);
+    expect(await cubit.submit(), isFalse);
+    expect(reader.sent, isEmpty);
+    await cubit.close();
+  });
   test('invalid input and recipient do not reach the repository', () async {
     final cache = MemoryCacheStore();
     addTearDown(cache.close);

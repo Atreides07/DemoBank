@@ -31,9 +31,8 @@ void main() {
       final ids = <String>{};
       String? cursor;
       do {
-        final query = Uri(
-          queryParameters: {'limit': '100', 'cursor': ?cursor},
-        ).query;
+        final query = Uri(queryParameters: {'limit': '100', 'cursor': ?cursor})
+            .query;
         final page = await request(api, '/transactions?$query');
         for (final item in page['items'] as List) {
           expect(ids.add((item as Map)['id'] as String), isTrue);
@@ -172,50 +171,47 @@ void main() {
     expect(expired.body['code'], 'snapshot_expired');
   });
 
-  test(
-    'stable anchors, neighboring cursors and revision-locked seeks align pages',
-    () async {
-      final first = await request(api, '/transactions?limit=100');
-      final anchor = ((first['items'] as List)[95] as Map)['id'] as String;
-      final around = await request(
-        api,
-        '/transactions?anchor=$anchor&near=95&revision=1',
-      );
-      expect(around['startIndex'], 90);
-      expect(around['anchorFound'], isTrue);
-      expect(
-        (around['items'] as List).any((item) => (item as Map)['id'] == anchor),
-        isTrue,
-      );
-      final previous = await request(
-        api,
-        '/transactions?cursor=${Uri.encodeQueryComponent(around['prevCursor'] as String)}&revision=1',
-      );
-      expect(previous['startIndex'], 60);
-      final sought = await request(api, '/transactions?at=600&revision=1');
-      expect(sought['startIndex'], 600);
-      final missing = await request(
-        api,
-        '/transactions?anchor=removed&near=999999&revision=1',
-      );
-      expect(missing['anchorFound'], isFalse);
-      expect(missing['startIndex'], 11970);
-      final empty = await request(
-        api,
-        '/transactions?category=nonexistent&anchor=removed&near=100&revision=1',
-      );
-      expect(empty['startIndex'], 0);
-      expect(empty['total'], 0);
-      final unversioned = await api.handle(
-        SimulatedRequest(
-          method: 'GET',
-          uri: Uri.parse('https://demo.invalid/v1/transactions?at=600'),
-        ),
-      );
-      expect(unversioned.statusCode, 400);
-      expect(unversioned.body['code'], 'revision_required');
-    },
-  );
+  test('stable anchors, neighboring cursors and revision-locked seeks align pages', () async {
+    final first = await request(api, '/transactions?limit=100');
+    final anchor = ((first['items'] as List)[95] as Map)['id'] as String;
+    final around = await request(
+      api,
+      '/transactions?anchor=$anchor&near=95&revision=1',
+    );
+    expect(around['startIndex'], 90);
+    expect(around['anchorFound'], isTrue);
+    expect(
+      (around['items'] as List).any((item) => (item as Map)['id'] == anchor),
+      isTrue,
+    );
+    final previous = await request(
+      api,
+      '/transactions?cursor=${Uri.encodeQueryComponent(around['prevCursor'] as String)}&revision=1',
+    );
+    expect(previous['startIndex'], 60);
+    final sought = await request(api, '/transactions?at=600&revision=1');
+    expect(sought['startIndex'], 600);
+    final missing = await request(
+      api,
+      '/transactions?anchor=removed&near=999999&revision=1',
+    );
+    expect(missing['anchorFound'], isFalse);
+    expect(missing['startIndex'], 11970);
+    final empty = await request(
+      api,
+      '/transactions?category=nonexistent&anchor=removed&near=100&revision=1',
+    );
+    expect(empty['startIndex'], 0);
+    expect(empty['total'], 0);
+    final unversioned = await api.handle(
+      SimulatedRequest(
+        method: 'GET',
+        uri: Uri.parse('https://demo.invalid/v1/transactions?at=600'),
+      ),
+    );
+    expect(unversioned.statusCode, 400);
+    expect(unversioned.body['code'], 'revision_required');
+  });
 
   test(
     'removed transactions retain old snapshots and persist as tombstones',
@@ -255,75 +251,71 @@ void main() {
       );
       for (final bucket in timeline) {
         expect(
-          DateTime.parse(
-            bucket['from'] as String,
-          ).isBefore(DateTime.parse(bucket['to'] as String)),
+          DateTime.parse(bucket['from'] as String)
+              .isBefore(DateTime.parse(bucket['to'] as String)),
           isTrue,
         );
       }
     },
   );
 
-  test(
-    'durable simulation state restores pending payment after process replacement',
-    () async {
-      Map<String, dynamic>? saved;
-      var saves = 0;
-      api = DemoApi(
-        saveState: (state) async {
-          saved = state;
-          saves++;
-        },
-      );
-      api.pendingNextPayment = true;
-      final quote = await request(
-        api,
-        '/checkout/quotes',
-        method: 'POST',
-        body: {
-          'kind': 'fines',
-          'referenceIds': ['fine-001'],
-          'accountId': 'main',
-          'recipient': 'Штраф',
-          'currency': 'RUB',
-        },
-      );
-      final command = {
-        'quoteId': quote['id'],
-        'idempotencyKey': 'restart-payment-001',
-      };
-      final payment = await request(
-        api,
-        '/checkout/payments',
-        method: 'POST',
-        body: command,
-      );
-      expect(payment['status'], 'pending');
-      expect(saves, 2);
-      final replaced = DemoApi(loadState: () async => saved);
-      final status = await request(
-        replaced,
-        '/checkout/payments/status?idempotencyKey=restart-payment-001',
-      );
-      expect(status, payment);
-      await replaced.settlePendingPayments();
-      final repeated = await request(
-        replaced,
-        '/checkout/payments',
-        method: 'POST',
-        body: command,
-      );
-      expect(repeated['id'], payment['id']);
-      expect(repeated['status'], 'succeeded');
-      final ledger = await request(
-        replaced,
-        '/transactions?merchant=provider-fines',
-      );
-      expect(ledger['total'], 1);
-      expect(ledger['totalMinor'], 75000);
-      expect(replaced.revision, '2');
-    },
-  );
+  test('durable simulation state restores pending payment after process replacement', () async {
+    Map<String, dynamic>? saved;
+    var saves = 0;
+    api = DemoApi(
+      saveState: (state) async {
+        saved = state;
+        saves++;
+      },
+    );
+    api.pendingNextPayment = true;
+    final quote = await request(
+      api,
+      '/checkout/quotes',
+      method: 'POST',
+      body: {
+        'kind': 'fines',
+        'referenceIds': ['fine-001'],
+        'accountId': 'main',
+        'recipient': 'Штраф',
+        'currency': 'RUB',
+      },
+    );
+    final command = {
+      'quoteId': quote['id'],
+      'idempotencyKey': 'restart-payment-001',
+    };
+    final payment = await request(
+      api,
+      '/checkout/payments',
+      method: 'POST',
+      body: command,
+    );
+    expect(payment['status'], 'pending');
+    expect(saves, 2);
+    final replaced = DemoApi(loadState: () async => saved);
+    final status = await request(
+      replaced,
+      '/checkout/payments/status?idempotencyKey=restart-payment-001',
+    );
+    expect(status, payment);
+    await replaced.settlePendingPayments();
+    final repeated = await request(
+      replaced,
+      '/checkout/payments',
+      method: 'POST',
+      body: command,
+    );
+    expect(repeated['id'], payment['id']);
+    expect(repeated['status'], 'succeeded');
+    final ledger = await request(
+      replaced,
+      '/transactions?merchant=provider-fines',
+    );
+    expect(ledger['total'], 1);
+    expect(ledger['totalMinor'], 75000);
+    expect(replaced.revision, '2');
+  });
 
   test(
     'payment idempotency, fee, revision and bill change are one commit',

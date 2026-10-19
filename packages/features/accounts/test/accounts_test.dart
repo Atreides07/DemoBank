@@ -34,31 +34,28 @@ void main() {
     expect(() => state.balances.clear(), throwsUnsupportedError);
   });
 
-  test(
-    'cached account DTO uses data mapper and preserves currency without transport',
-    () async {
-      final cache = MemoryCacheStore();
-      final client = ApiClient(baseUri: Uri.parse('https://not-used.invalid'));
-      addTearDown(cache.close);
-      addTearDown(client.close);
-      await cache.write('accounts', {
-        'accounts': [
-          {
-            'id': 'usd',
-            'name': 'Dollar',
-            'balanceMinor': 120099,
-            'currency': 'USD',
-          },
-        ],
-      });
-      final accounts = (await ApiAccountsRepository(
-        client,
-        cache,
-      ).cachedAccounts())!;
-      expect(accounts.single.balance, const Money(120099, currency: 'USD'));
-      expect(() => accounts.clear(), throwsUnsupportedError);
-    },
-  );
+  test('cached account DTO uses data mapper and preserves currency without transport', () async {
+    final cache = MemoryCacheStore();
+    final client = ApiClient(baseUri: Uri.parse('https://not-used.invalid'));
+    addTearDown(cache.close);
+    addTearDown(client.close);
+    await cache.write('accounts', {
+      'accounts': [
+        {
+          'id': 'usd',
+          'name': 'Dollar',
+          'balanceMinor': 120099,
+          'currency': 'USD',
+        },
+      ],
+    });
+    final accounts = (await ApiAccountsRepository(
+      client,
+      cache,
+    ).cachedAccounts())!;
+    expect(accounts.single.balance, const Money(120099, currency: 'USD'));
+    expect(() => accounts.clear(), throwsUnsupportedError);
+  });
 
   test('undecodable cached accounts are dropped as a miss', () async {
     final cache = MemoryCacheStore();

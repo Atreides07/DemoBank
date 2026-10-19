@@ -14,9 +14,9 @@ final class AppFormats {
 
   AppFormats._(this.languageCode)
     : _integer = NumberFormat.decimalPattern(languageCode),
-      _decimalSeparator = NumberFormat.decimalPattern(
-        languageCode,
-      ).symbols.DECIMAL_SEP;
+      _decimalSeparator = NumberFormat.decimalPattern(languageCode)
+          .symbols
+          .DECIMAL_SEP;
 
   static final Map<String, AppFormats> _cache = {};
 
@@ -160,9 +160,8 @@ final class AppFormats {
     } else {
       text = text.replaceAll(',', '.');
     }
-    final match = RegExp(
-      '^(\\d{1,$maxIntegerDigits})(?:\\.(\\d{1,2}))?\$',
-    ).firstMatch(text);
+    final match = RegExp('^(\\d{1,$maxIntegerDigits})(?:\\.(\\d{1,2}))?\$')
+        .firstMatch(text);
     if (match == null) return null;
     return int.parse(match[1]!) * 100 +
         int.parse((match[2] ?? '0').padRight(2, '0'));

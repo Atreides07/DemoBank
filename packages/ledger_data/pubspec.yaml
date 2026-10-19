@@ -3,8 +3,8 @@ description: Pure Dart codecs for the shared ledger API and cache contract.
 publish_to: none
 resolution: workspace
 environment:
-  sdk: '>=3.9.2 <4.0.0'
+  sdk: '>=3.13.5 <4.0.0'
 dependencies:
   bank_core: any
 dev_dependencies:
-  test: 1.26.2
+  test: 1.31.1

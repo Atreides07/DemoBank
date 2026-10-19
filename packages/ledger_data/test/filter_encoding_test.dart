@@ -17,35 +17,32 @@ void main() {
     );
   });
 
-  test(
-    'query carries currency, UTC boundaries, all identities and canonical account membership',
-    () {
-      final filter = LedgerFilter(
-        from: DateTime.parse('2026-10-01T00:00:00+03:00'),
-        to: DateTime.utc(2026, 10, 16, 21),
-        category: 'кафе & еда',
-        merchant: 'cafe=one',
-        accounts: const ['savings', 'main', 'main'],
-        kind: EntryKind.expense,
-        revision: 'revision:7',
-        currency: 'USD',
-      );
-      expect(filter.toQuery(), {
-        'currency': 'USD',
-        'from': '2026-09-30T21:00:00.000Z',
-        'to': '2026-10-16T21:00:00.000Z',
-        'category': 'кафе & еда',
-        'merchant': 'cafe=one',
-        'accounts': 'main,savings',
-        'kind': 'expense',
-        'revision': 'revision:7',
-      });
-      expect(
-        Uri.splitQueryString(filter.cacheKey),
-        filter.toQuery().map((key, value) => MapEntry(key, value.toString())),
-      );
-    },
-  );
+  test('query carries currency, UTC boundaries, all identities and canonical account membership', () {
+    final filter = LedgerFilter(
+      from: DateTime.parse('2026-10-01T00:00:00+03:00'),
+      to: DateTime.utc(2026, 10, 16, 21),
+      category: 'кафе & еда',
+      merchant: 'cafe=one',
+      accounts: const ['savings', 'main', 'main'],
+      kind: EntryKind.expense,
+      revision: 'revision:7',
+      currency: 'USD',
+    );
+    expect(filter.toQuery(), {
+      'currency': 'USD',
+      'from': '2026-09-30T21:00:00.000Z',
+      'to': '2026-10-16T21:00:00.000Z',
+      'category': 'кафе & еда',
+      'merchant': 'cafe=one',
+      'accounts': 'main,savings',
+      'kind': 'expense',
+      'revision': 'revision:7',
+    });
+    expect(
+      Uri.splitQueryString(filter.cacheKey),
+      filter.toQuery().map((key, value) => MapEntry(key, value.toString())),
+    );
+  });
 
   test(
     'same filter in another account order or time zone reuses one cache key',

@@ -31,11 +31,10 @@ final class _DriftCacheStore implements CacheStore {
     required String namespace,
     DateTime Function()? now,
     int maxEntries = 120,
-    bool durable = false,
+    this._durable = false,
   }) : assert(maxEntries > 0),
        _now = now ?? DateTime.now,
        _maxEntries = maxEntries,
-       _durable = durable,
        _database = _CacheDatabase(
          LazyDatabase(() async {
            final resolved =

@@ -28,8 +28,7 @@ void main() {
     expect(
       find.byType(DsTransactionTile).hitTestable(),
       findsNothing,
-      reason:
-          'History is opened from the overview or reached after the reference feed',
+      reason: 'History is opened from the overview or reached after the reference feed',
     );
     expect(find.byType(DsTransactionTile).evaluate().length, lessThan(30));
     final history = tester.widget<HistorySliver>(any).cubit;
@@ -323,9 +322,8 @@ void main() {
               (widget) =>
                   widget is DsChoice &&
                   widget.label ==
-                      lookupAppLocalizations(
-                        const Locale('ru'),
-                      ).categoryName(category) &&
+                      lookupAppLocalizations(const Locale('ru'))
+                          .categoryName(category) &&
                   widget.selected,
             )
             .hitTestable(),

@@ -118,39 +118,33 @@ void main() {
     },
   );
 
-  test(
-    'cancel during gradual response interrupts bytes without decoded partial JSON',
-    () async {
-      adapter.profile = const NetworkProfile(
-        name: 'cancel-stream',
-        firstByteLatency: Duration.zero,
-        jitter: Duration.zero,
-        bytesPerSecond: 100,
-        chunkBytes: 25,
-      );
-      final cancellation = RequestCancellation();
-      final pending = client.get('/v1/accounts', cancellation: cancellation);
-      final check = expectLater(
-        pending,
-        throwsA(
-          isA<ApiFailure>().having(
-            (e) => e.kind,
-            'kind',
-            ApiFailureKind.cancelled,
-          ),
+  test('cancel during gradual response interrupts bytes without decoded partial JSON', () async {
+    adapter.profile = const NetworkProfile(
+      name: 'cancel-stream',
+      firstByteLatency: Duration.zero,
+      jitter: Duration.zero,
+      bytesPerSecond: 100,
+      chunkBytes: 25,
+    );
+    final cancellation = RequestCancellation();
+    final pending = client.get('/v1/accounts', cancellation: cancellation);
+    final check = expectLater(
+      pending,
+      throwsA(
+        isA<ApiFailure>().having(
+          (e) => e.kind,
+          'kind',
+          ApiFailureKind.cancelled,
         ),
-      );
-      await clock.elapse(const Duration(milliseconds: 300));
-      expect(adapter.events.any((event) => event.phase == 'chunk'), isTrue);
-      cancellation.cancel();
-      await clock.elapse(Duration.zero);
-      await check;
-      expect(
-        adapter.events.any((event) => event.phase == 'completed'),
-        isFalse,
-      );
-    },
-  );
+      ),
+    );
+    await clock.elapse(const Duration(milliseconds: 300));
+    expect(adapter.events.any((event) => event.phase == 'chunk'), isTrue);
+    cancellation.cancel();
+    await clock.elapse(Duration.zero);
+    await check;
+    expect(adapter.events.any((event) => event.phase == 'completed'), isFalse);
+  });
 
   test(
     'separate request latencies produce genuinely out-of-order responses',

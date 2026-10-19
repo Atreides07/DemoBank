@@ -218,8 +218,7 @@ abstract final class DemoTexts {
       'cinema.seat': 'Ряд {row} · место {seat}',
       'cinema.recipient': 'Кинотеатр «Сфера» · {movie}',
       'cinema.ticket': '{cinema}\n{movie}\n{date} · {time} (UTC+3)\n{seats}',
-      'analytics.metricRule':
-          'Проведённые расходы; возвраты отдельно по дате проведения. Комиссия включена один раз в сумму операции. Сравнение с непосредственно предыдущим интервалом той же длины.',
+      'analytics.metricRule': 'Проведённые расходы; возвраты отдельно по дате проведения. Комиссия включена один раз в сумму операции. Сравнение с непосредственно предыдущим интервалом той же длины.',
     },
     'en': {
       'error.notFound': 'Resource not found',
@@ -402,8 +401,7 @@ abstract final class DemoTexts {
       'cinema.seat': 'Row {row} · seat {seat}',
       'cinema.recipient': 'Sfera Cinema · {movie}',
       'cinema.ticket': '{cinema}\n{movie}\n{date} · {time} (UTC+3)\n{seats}',
-      'analytics.metricRule':
-          'Completed spending; refunds separately by posting date. A fee is included once in the transaction amount. Compared with the immediately preceding interval of the same length.',
+      'analytics.metricRule': 'Completed spending; refunds separately by posting date. A fee is included once in the transaction amount. Compared with the immediately preceding interval of the same length.',
     },
     'uz': {
       'error.notFound': 'Resurs topilmadi',
@@ -586,8 +584,7 @@ abstract final class DemoTexts {
       'cinema.seat': '{row}-qator · {seat}-joy',
       'cinema.recipient': '“Sfera” kinoteatri · {movie}',
       'cinema.ticket': '{cinema}\n{movie}\n{date} · {time} (UTC+3)\n{seats}',
-      'analytics.metricRule':
-          'Bajarilgan xarajatlar; qaytarishlar oʻtkazilgan sanasi boʻyicha alohida. Komissiya operatsiya summasiga bir marta kiritiladi. Xuddi shu uzunlikdagi bevosita oldingi oraliq bilan taqqoslanadi.',
+      'analytics.metricRule': 'Bajarilgan xarajatlar; qaytarishlar oʻtkazilgan sanasi boʻyicha alohida. Komissiya operatsiya summasiga bir marta kiritiladi. Xuddi shu uzunlikdagi bevosita oldingi oraliq bilan taqqoslanadi.',
     },
   };
 }
