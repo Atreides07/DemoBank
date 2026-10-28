@@ -119,8 +119,10 @@ final class AppEnvironment extends ChangeNotifier {
     );
   }
 
-  /// Production composition: build-time defines, durable preferences and the
-  /// device language list. `--dart-define=APP_LANGUAGE=en` pins a language,
+  /// Application composition defaults to local demo data without a server.
+  /// `--dart-define=DATA_SOURCE=http` explicitly enables the real transport.
+  /// Durable preferences use the device language list.
+  /// `--dart-define=APP_LANGUAGE=en` pins a language,
   /// as does [language] (used by device tests that assert on text).
   factory AppEnvironment.fromDefines({
     ApiRequestObserver? onApiEvent,
@@ -132,7 +134,12 @@ final class AppEnvironment extends ChangeNotifier {
         language ??
         AppLanguage.tryParse(const String.fromEnvironment('APP_LANGUAGE')),
     systemLocales: PlatformDispatcher.instance.locales,
-    http: const String.fromEnvironment('DATA_SOURCE') == 'http',
+    http:
+        const String.fromEnvironment(
+          'DATA_SOURCE',
+          defaultValue: 'simulation',
+        ) ==
+        'http',
     httpKeepAlive: const bool.fromEnvironment(
       'HTTP_KEEP_ALIVE',
       defaultValue: true,
