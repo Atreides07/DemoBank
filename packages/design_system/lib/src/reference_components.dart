@@ -147,6 +147,76 @@ class DsShortcutBar extends StatelessWidget {
   final bool panel;
   @override
   Widget build(BuildContext context) {
+    Widget content(DsShortcut a) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      child: DsColumn(
+        gap: DsSpace.compact,
+        children: [
+          Container(
+            height: 48,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: panel ? Colors.transparent : context.dsPalette.background,
+              borderRadius: BorderRadius.circular(
+                DsTokens.referenceControlRadius,
+              ),
+            ),
+            child: Icon(a.icon, size: 30, color: context.dsPalette.link),
+          ),
+          Text(
+            a.label,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: panel ? context.dsPalette.link : context.dsPalette.ink,
+            ),
+          ),
+        ],
+      ),
+    );
+    if (panel) {
+      return DsActionGrid(
+        children: [
+          for (final action in actions)
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final inset = DsTokens.inset(context, DsInset.card);
+                final style = Theme.of(context).textTheme.labelLarge;
+                var labelHeight = 0.0;
+                for (final label in actions) {
+                  final painter =
+                      TextPainter(
+                        text: TextSpan(text: label.label, style: style),
+                        textDirection: Directionality.of(context),
+                        textScaler: MediaQuery.textScalerOf(context),
+                        locale: Localizations.maybeLocaleOf(context),
+                      )..layout(
+                        maxWidth: constraints.maxWidth - inset.horizontal - 8,
+                      );
+                  labelHeight = math.max(labelHeight, painter.height);
+                  painter.dispose();
+                }
+                return SizedBox(
+                  height:
+                      (inset.vertical +
+                              16 +
+                              48 +
+                              DsTokens.space(DsSpace.compact) +
+                              labelHeight)
+                          .ceilToDouble(),
+                  child: Semantics(
+                    button: true,
+                    enabled: action.onTap != null,
+                    label: action.label,
+                    onTap: action.onTap,
+                    excludeSemantics: true,
+                    child: DsPanel(onTap: action.onTap, child: content(action)),
+                  ),
+                );
+              },
+            ),
+        ],
+      );
+    }
     Widget item(DsShortcut a) => Semantics(
       button: true,
       label: a.label,
@@ -154,34 +224,7 @@ class DsShortcutBar extends StatelessWidget {
       child: InkWell(
         onTap: a.onTap,
         borderRadius: BorderRadius.circular(DsTokens.referenceControlRadius),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-          child: DsColumn(
-            gap: DsSpace.compact,
-            children: [
-              Container(
-                height: 48,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: panel
-                      ? Colors.transparent
-                      : context.dsPalette.background,
-                  borderRadius: BorderRadius.circular(
-                    DsTokens.referenceControlRadius,
-                  ),
-                ),
-                child: Icon(a.icon, size: 30, color: context.dsPalette.link),
-              ),
-              Text(
-                a.label,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: panel ? context.dsPalette.link : context.dsPalette.ink,
-                ),
-              ),
-            ],
-          ),
-        ),
+        child: content(a),
       ),
     );
     final large =
@@ -192,7 +235,7 @@ class DsShortcutBar extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [for (final a in actions) Expanded(child: item(a))],
           );
-    return panel ? DsPanel(child: row) : row;
+    return row;
   }
 }
 

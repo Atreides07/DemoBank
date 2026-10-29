@@ -66,6 +66,38 @@ Future<void> _close(WidgetTester tester) async {
 
 void main() {
   testWidgets(
+    'account primary actions have separate surfaces and destinations',
+    (tester) async {
+      await _open(tester);
+      final router = _router(tester);
+      unawaited(router.push('/account/main'));
+      await _ready(tester);
+      final topUp = find.text('Пополнить');
+      final pay = find.text('Оплатить или перевести');
+      Rect surface(Finder label) => tester.getRect(
+        find.ancestor(of: label, matching: find.byType(DsPanel)).first,
+      );
+      expect(surface(topUp).right, lessThan(surface(pay).left));
+      expect(surface(topUp).height, surface(pay).height);
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await tester.pumpAndSettle();
+      expect(surface(topUp).height, surface(pay).height);
+      expect(surface(topUp).bottom, lessThan(surface(pay).top));
+      tester.platformDispatcher.clearTextScaleFactorTestValue();
+      await tester.pumpAndSettle();
+      await tester.tap(topUp);
+      await _ready(tester);
+      expect(router.state.uri.path, '/account/main/topup');
+      router.pop();
+      await _ready(tester);
+      await tester.tap(pay);
+      await _ready(tester);
+      expect(router.state.uri.path, '/account/main/pay');
+      await _close(tester);
+    },
+  );
+  testWidgets(
     'account card management is a list item and opens card management',
     (tester) async {
       await _open(tester);

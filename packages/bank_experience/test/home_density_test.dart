@@ -13,6 +13,39 @@ Future<void> _ready(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('dark home panels remain distinct from the page background', (
+    tester,
+  ) async {
+    final environment = AppEnvironment(
+      cache: MemoryCacheStore(),
+      journal: MemoryCacheStore(),
+    )..theme = ThemeMode.dark;
+    addTearDown(environment.dispose);
+    await tester.pumpWidget(BankExperience(environment: environment));
+    await _ready(tester);
+    final background = tester
+        .widget<ColoredBox>(
+          find
+              .descendant(
+                of: find.byType(DsSliverPage),
+                matching: find.byType(ColoredBox),
+              )
+              .first,
+        )
+        .color;
+    final panel = tester
+        .widget<Material>(
+          find
+              .descendant(
+                of: find.byKey(const ValueKey('home-operations')),
+                matching: find.byType(Material),
+              )
+              .first,
+        )
+        .color;
+    expect(panel, isNot(background));
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
   setUpAll(() async {
     final font = FontLoader('packages/design_system/DsSans');
     for (final weight in ['Regular', 'Medium', 'Bold']) {

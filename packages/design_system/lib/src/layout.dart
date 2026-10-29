@@ -328,6 +328,7 @@ class DsActionGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
+      if (children.isEmpty) return const SizedBox.shrink();
       final columns =
           MediaQuery.textScalerOf(context).scale(1) >
               DsTokens.largeTextThreshold
@@ -337,11 +338,33 @@ class DsActionGrid extends StatelessWidget {
           : children.length.clamp(1, 2);
       final gap = DsTokens.space(DsSpace.regular);
       final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
-      return Wrap(
-        spacing: gap,
-        runSpacing: gap,
+      return Table(
+        defaultVerticalAlignment: TableCellVerticalAlignment.intrinsicHeight,
+        columnWidths: {
+          for (var column = 0; column < columns * 2 - 1; column++)
+            column: FixedColumnWidth(column.isOdd ? gap : width),
+        },
         children: [
-          for (final child in children) SizedBox(width: width, child: child),
+          for (var start = 0; start < children.length; start += columns) ...[
+            if (start > 0)
+              TableRow(
+                children: [
+                  for (var column = 0; column < columns * 2 - 1; column++)
+                    SizedBox(height: gap),
+                ],
+              ),
+            TableRow(
+              children: [
+                for (var column = 0; column < columns; column++) ...[
+                  if (column > 0) const SizedBox.shrink(),
+                  if (start + column < children.length)
+                    children[start + column]
+                  else
+                    const SizedBox.shrink(),
+                ],
+              ],
+            ),
+          ],
         ],
       );
     },

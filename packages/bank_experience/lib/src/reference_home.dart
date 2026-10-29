@@ -117,7 +117,7 @@ class _HomePageState extends State<_HomePage> {
     final surface = DsSliverPage(
       scrollKey: const PageStorageKey('home'),
       controller: _scroll,
-      white: true,
+      white: Theme.of(context).brightness == Brightness.light,
       onRefresh: _refresh,
       slivers: [
         DsHomeHeader(
