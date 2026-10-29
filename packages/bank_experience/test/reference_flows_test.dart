@@ -77,11 +77,25 @@ void main() {
       Rect surface(Finder label) => tester.getRect(
         find.ancestor(of: label, matching: find.byType(DsPanel)).first,
       );
+      double headerGap() =>
+          surface(topUp).top -
+          tester
+              .getRect(
+                find
+                    .descendant(
+                      of: find.byType(DsAccountHeader),
+                      matching: find.byType(ClipRect),
+                    )
+                    .first,
+              )
+              .bottom;
+      expect(headerGap(), DsTokens.space(DsSpace.section));
       expect(surface(topUp).right, lessThan(surface(pay).left));
       expect(surface(topUp).height, surface(pay).height);
       tester.platformDispatcher.textScaleFactorTestValue = 2;
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       await tester.pumpAndSettle();
+      expect(headerGap(), DsTokens.space(DsSpace.section));
       expect(surface(topUp).height, surface(pay).height);
       expect(surface(topUp).bottom, lessThan(surface(pay).top));
       tester.platformDispatcher.clearTextScaleFactorTestValue();

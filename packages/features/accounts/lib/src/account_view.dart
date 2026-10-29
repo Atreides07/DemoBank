@@ -105,6 +105,7 @@ class AccountDashboard extends StatelessWidget {
           onCard: onCard,
           onAdd: () => open(AccountAction.addCard),
         ),
+        const DsSliverGap(),
         DsSliverSections(
           children: [
             DsShortcutBar(
